@@ -59,20 +59,21 @@ from baxter_core_msgs.srv import (
 THRSH_START = 10
 THRSH_FORCE = 40
 THRSH_POS = 0.01
+THRSH_SPEED = 0.1
 
 # GLOBAL
 fx_left, fy_left, fz_left = 0, 0, 0
 fx_right, fy_right, fz_right = 0, 0, 0
 ball_x, ball_y = None, None
 
-# Green filter
+# Green filter - obtained using range-detector.py
 # colorLower = (29, 86, 6)
 # colorUpper = (64, 255, 255)
 # Blue filter
 colorLower = (73, 100, 190)
 colorUpper = (106, 255, 255)
 
-# INITIAL POSE
+# INITIAL POSE (recorded)
 # initial_left = {'left_w0': 0.1499466220157992, 'left_w1': 0.9836651802315216, 'left_w2': -0.6239466854723921, 'left_e0': -1.3173060015965992, 'left_e1': 1.349903093339164, 'left_s0': 0.9828981898375788, 'left_s1': -1.2524953133084402}
 # initial_right = {'right_s0': 0.7760595517077958, 'right_s1': 0.5187698944592852, 'right_w0': -1.8506648712234506, 'right_w1': 1.0262244939226002, 'right_w2': 1.1394899859079073, 'right_e0': 1.8801431484869309, 'right_e1': 1.486003064569564}
 
@@ -81,7 +82,7 @@ initial_right = {'right_s0': 0.8895058321345872, 'right_s1': 0.5979099682041336,
 
 #####################################################################
 
-# class MetaInfo():
+# class EpisodeInfo():
 #     def __init__(self,in,in2):
 #         self.
 
@@ -147,16 +148,13 @@ def getForces(hand):
     return [f.x, f.y, f.z]
 
 
-def checkForceOver():
+def getForceOver():
     forces_left = getForces('left')
     forces_right = getForces('right')
     return any([-THRSH_FORCE<np.linalg.norm(forces_left)<THRSH_FORCE,-THRSH_FORCE<np.linalg.norm(forces_right)<THRSH_FORCE])
 
 
-def motion_controller(dx_left=0,dy_left=0,dx_right=0,dy_right=0, speed_left=0.5, speed_right=0.5):   
-    # Track joint forces
-    frc_graph = [[],[]]
-
+def getNewPose(dx_left=0,dy_left=0,dx_right=0,dy_right=0, speed_left=0.5, speed_right=0.5):   
     # Get current position
     pose_tmp_left = limb_left.endpoint_pose()
     pose_tmp_right = limb_right.endpoint_pose()
@@ -171,29 +169,87 @@ def motion_controller(dx_left=0,dy_left=0,dx_right=0,dy_right=0, speed_left=0.5,
         z = pose_tmp_right['position'].z ) 
     # Get Joint positions
     joint_values_left = ik_solver.ik_solve('left', new_pos_left, pose_tmp_left['orientation'], limb_left.joint_angles())
-    joint_values_right = ik_solver.ik_solve('right', new_pos_right, pose_tmp_right['orientation'], limb_right.joint_angles())
-    # print joint_values_left
-    # print joint_values_right
+    joint_values_right = ik_solver.ik_solve('right', new_pos_right, pose_tmp_right['orientation'], limb_right.joint_angles()) 
     # Set joint speed
     limb_left.set_joint_position_speed(speed_left)
     limb_right.set_joint_position_speed(speed_right)
-    # Execute motion !!!!!!!!! CHECK THE FORCES !!!!!!!!
-    while not tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS):
+
+    return joint_values_left, joint_values_right
+
+def getPuckDirection(puck_positions):
+    # empty array
+    if not pos_array:
+        return None
+    pos_array = np.asarray(puck_positions)
+    # more than 20% failed
+    if sum(pos_array == np.array(None)) > 0.2*len(pos_array):
+        return None
+    # calculate angle
+    pos_array[pos_array != np.array(None)]
+    #
+    # LINEAR REGRESSION
+    #
+
+
+    return angle
+
+def getPuckSpeed(puck_positions):
+    if len(puck_positions)<2:
+        return 0
+    dt = puck_positions[-1][2] - puck_positions[-2][2]
+    dl = np.sqrt((puck_positions[-1][0] - puck_positions[-2][0])**2 + (puck_positions[-1][1] - puck_positions[-2][1])**2)
+    speed = dl/dt
+
+    return speed
+
+def executeTrial(dx_left=0,dy_left=0,dx_right=0,dy_right=0, speed_left=0.5, speed_right=0.5):  
+    jnt_vals = [[],[]] 
+    force_graph = [[],[]]
+    puck_positions = []
+    puck_speeds = []
+    # get new joint positions based on displacements
+    joint_values_left, joint_values_right = getNewPose(dx_left, dy_left, dx_right, dy_right, speed_left, speed_right)
+    # print joint_values_left
+    # print joint_values_right
+    # Execute motion and track progress
+    while (not tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) \ 
+        and (getPuckSpeed(puck_positions) < THRSH_SPEED):
+        # send joint commands
         limb_left.set_joint_positions(joint_values_left)
         limb_right.set_joint_positions(joint_values_right)
-        print 'reaching..'
+        # save joint movements
+        jnt_vals[0].append(joint_values_left)
+        jnt_vals[1].append(joint_values_right)
+        # check feedback force
+        # forces_left = getForces('left')
+        # forces_right = getForces('right')
+        frc_graph[0].append(getForces('left'))
+        frc_graph[1].append(getForces('right'))
+        # track puck positions
+        puck_positions.append([ball_x, ball_y, time_step])
+        puck_speeds.append(getPuckSpeed(puck_positions))
 
-        # Check feedback force
-        forces_left = getForces('left')
-        forces_right = getForces('right')
-        frc_graph[0].append(np.linalg.norm(forces_left))
-        frc_graph[1].append(np.linalg.norm(forces_right))
+    # Calculate puck direction
+    trial.puck_direction = getPuckDirection(puck_positions)
+    # Calculate puck speed
+    trial.puck_speed = np.mean(puck_speeds)
+    # Save information
+    trial.forces = frc_graph
+    trial.joints = jnt_vals
+    trial.puck_positions = puck_positions
 
-    print 'done!'
+
+
+# for i in range(0,10):
+#     # p[0].append(0+0.1*i)
+#     # p[1].append(0)
+#     # p[2].append(i)
+
+#     d.append([0+0.1*i,0,i])
+
+    print 'Trial X - DONE'
     # if stuck, fix arms? and move forward with base, add rotation if necessarry
     # if completely stuck  - stop ?
-    v=0
-    w=0
     ### alternativelly:
     ###? move the obstacle out of the way
     ###? get feedback about successfull manipulaiton
@@ -204,7 +260,7 @@ def motion_controller(dx_left=0,dy_left=0,dx_right=0,dy_right=0, speed_left=0.5,
     plt.plot(frc_graph[1]), plt.title('Rigth force norm')
     plt.show()
 
-    return [v, w]
+    return trial
 
 #####################################################################
 rospy.init_node('HCK_PC_main_node')
@@ -233,7 +289,10 @@ limb_left.set_joint_position_speed(0.5)
 limb_right.set_joint_position_speed(0.5)
 
 #####################################################################
+#####################################################################
 # Main loop
+#####################################################################
+#####################################################################
 
 limb_left.move_to_joint_positions(initial_left, timeout=3)
 limb_right.move_to_joint_positions(initial_right, timeout=3)
@@ -246,13 +305,13 @@ limb_right.move_to_joint_positions(initial_right, timeout=3)
 #     limb_right.move_to_joint_positions(initial_right, timeout=3)
     # time.sleep(5)
     # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Clear'\"")   
-    # motion_controller(-0.4,0,0.2,0)
-    # motion_controller(0,0,0.2,0)
-    # motion_controller(-0.4,0,0,0)
-    # motion_controller(0,0,0,0)
+    # executeTrial(-0.4,0,0.2,0)
+    # executeTrial(0,0,0.2,0)
+    # executeTrial(-0.4,0,0,0)
+    # executeTrial(0,0,0,0)
 #################
     # control_signals.data = [-20, 20, 0]
-    # control_base.data = motion_controller()
+    # control_base.data = executeTrial()
     # pub_ctrl_base.publish(control_base)
     # print ball_x, ball_y
 
@@ -267,7 +326,7 @@ for ep in range(0,1):
     # give voice signal 
     # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Clear'\"")
     # generate sample motion parameters
-    # motion_controller(-0.4,0,0.2,0,0.5,0.5)
+    # executeTrial(-0.4,0,0.2,0,0.5,0.5)
     # execute motion
     # monitor effect
     # calculate speed
