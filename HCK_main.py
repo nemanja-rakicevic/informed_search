@@ -18,14 +18,14 @@ import time
 import rospy
 import cv2
 import imutils
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 
-from cv_bridge import CvBridge, CvBridgeError
-
+import ik_solver
 import baxter_interface as BI
 
-import ik_solver
+from cv_bridge import CvBridge, CvBridgeError
 
 from geometry_msgs.msg import  (
     PoseStamped,
@@ -68,12 +68,16 @@ STICK_Y_MAX = 0.55
 # CONSTANTS - cartesian
 SPEED_MIN = 0.3
 SPEED_MAX = 0.7
+
 LEFT_X_MIN = -0.4
 LEFT_X_MAX = 0.4
-RIGHT_X_MIN = -0.4
-RIGHT_X_MAX = 0.4
+
 LEFT_Y_MIN = -0.4
 LEFT_Y_MAX = 0.4
+
+RIGHT_X_MIN = -0.4
+RIGHT_X_MAX = 0.4
+
 RIGHT_Y_MIN = -0.4
 RIGHT_Y_MAX = 0.4
 
@@ -140,8 +144,10 @@ def callback_cam(msg):
         ((x, y), radius) = cv2.minEnclosingCircle(c)
         M = cv2.moments(c)
         center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-        ball_x = center[0]-width/2.0
-        ball_y = -(center[1]-height/2.0)
+        ball_x = -(center[1]-height/2.0)
+        ball_y = -(center[0]-width/2.0)
+        # ball_x = center[0]-width/2.0
+        # ball_y = -(center[1]-height/2.0)
         if radius > 1:
             # draw the circle and centroid on the frame,
             # then update the list of tracked points
@@ -174,6 +180,28 @@ def getForceOver():
     return any([-THRSH_FORCE<np.linalg.norm(forces_left)<THRSH_FORCE,-THRSH_FORCE<np.linalg.norm(forces_right)<THRSH_FORCE])
 
 
+# def getPuckDirection(puck_positions):
+#     # empty array
+#     if not puck_positions:
+#         return None
+#     pos_array = np.asarray(puck_positions)
+#     # more than 20% failed
+#     if sum(pos_array[:,0] == np.array(None)) > 0.2*len(pos_array):
+#         return None
+#     # take out None elements
+#     pos_array[pos_array[:,0] != np.array(None)]
+#     # Linear regression to get angle - alternative numpy.polyfit(x, y, deg)
+#     length = len(pos_array)
+#     sum_x = sum(pos_array[:,0])
+#     sum_y = sum(pos_array[:,1])
+#     sum_x_squared = sum(pos_array[:,0]**2)
+#     sum_of_products = sum(pos_array[:,0]*pos_array[:,1])
+#     angle = (sum_of_products - (sum_x * sum_y) / length) / (sum_x_squared - ((sum_x ** 2) / length))
+#     intersect = (sum_y - angle * sum_x) / length
+
+#     return angle, intersect
+
+
 def getPuckDirection(puck_positions):
     # empty array
     if not puck_positions:
@@ -184,6 +212,9 @@ def getPuckDirection(puck_positions):
         return None
     # take out None elements
     pos_array[pos_array[:,0] != np.array(None)]
+
+    # SUBSAMPLE !!!!!
+
     # Linear regression to get angle - alternative numpy.polyfit(x, y, deg)
     length = len(pos_array)
     sum_x = sum(pos_array[:,0])
@@ -193,12 +224,15 @@ def getPuckDirection(puck_positions):
     angle = (sum_of_products - (sum_x * sum_y) / length) / (sum_x_squared - ((sum_x ** 2) / length))
     intersect = (sum_y - angle * sum_x) / length
 
-    return angle
+    return angle, intersect
 
 
 def getPuckSpeed(puck_positions):
     if len(puck_positions)<2:
         return 0
+
+    # SUBSAMPLE !!!!!
+
     dt = puck_positions[-1][2] - puck_positions[-2][2]
     dl = np.sqrt((puck_positions[-1][0] - puck_positions[-2][0])**2 + (puck_positions[-1][1] - puck_positions[-2][1])**2)
     if dt==0:
@@ -245,9 +279,9 @@ def generateDisplacement(tmp_left, tmp_right):
         # check constraints
         dx = abs((tmp_left.x + left_dx) - (tmp_right.x + right_dx))
         dy = abs((tmp_left.y + left_dy) - (tmp_right.y + right_dy))
-        if dx < STICK_X_MAX or dy < STICK_Y_MAX or\
-             abs(left_dx)<10*THRSH_POS or abs(left_dy)<10*THRSH_POS or\
-             abs(right_dx)<10*THRSH_POS or abs(right_dy)<10*THRSH_POS:
+        if dx < STICK_X_MAX and dy < STICK_Y_MAX and\
+             abs(left_dx)>10*THRSH_POS and abs(left_dy)>10*THRSH_POS and\
+             abs(right_dx)>10*THRSH_POS and abs(right_dy)>10*THRSH_POS:
             bad_limit = False
         else:
             bad_limit = True
@@ -261,6 +295,7 @@ def generateDisplacement(tmp_left, tmp_right):
 def executeTrial(trialnum):  
     trial = TrialInfo(trialnum)
     jnt_vals = [[],[]] 
+    end_vals = [[],[]] 
     force_graph = [[],[]]
     puck_positions = [[ball_x, ball_y,0],[ball_x, ball_y,0]]
     puck_speeds = []
@@ -276,8 +311,8 @@ def executeTrial(trialnum):
             get_joints = False
     # print joint_values_left
     # print joint_values_right
-    print new_pos_left
-    print new_pos_right 
+    print 'Left:',params[0], params[1]
+    print 'Right:',params[2], params[3]
     raw_input("Press ENTER to continue.")
 
     # Execute motion and track progress
@@ -290,6 +325,9 @@ def executeTrial(trialnum):
         # save joint movements
         jnt_vals[0].append(joint_values_left)
         jnt_vals[1].append(joint_values_right)
+        # save end-effector movements
+        end_vals[0].append(limb_left.endpoint_pose()['position'])
+        end_vals[1].append(limb_right.endpoint_pose()['position'])
         # check feedback force
         # forces_left = getForces('left')
         # forces_right = getForces('right')
@@ -297,27 +335,40 @@ def executeTrial(trialnum):
         force_graph[1].append(getForces('right'))
         # track puck positions
         puck_positions.append([ball_x, ball_y, time.time()-time_start])
-        puck_speeds.append(getPuckSpeed(puck_positions))
+        # puck_speeds.append(getPuckSpeed(puck_positions))
 
+
+    # CHECK IF TRIAL FAILED
+    trial.status = False
     # Save features and results
     # Calculate puck direction
     trial.puck_direction = getPuckDirection(puck_positions)
     print 'Angle:',trial.puck_direction
     # Calculate puck speed
-    trial.puck_speed = np.mean(puck_speeds)
+    trial.puck_speed = getPuckSpeed(puck_positions)
     print 'Speed:',trial.puck_speed
     # other
     trial.forces = force_graph
-    trial.position_joints = jnt_vals
-    trial.position_cartesian = params
-    trial.puck_positions = puck_positions
+    trial.trajectory_joints = jnt_vals
+    trial.trajectory_cartesian = end_vals
+    trial.position_final = params
+    trial.puck_positions = np.asarray(puck_positions)
     print 'Trial:',trialnum,'- DONE'
-    # plt.figure(1)
-    # plt.subplot(211)
-    # plt.plot(force_graph[0]), plt.title('Left force norm')
-    # plt.subplot(212)
-    # plt.plot(force_graph[1]), plt.title('Rigth force norm')
+    plt.figure(1)
+    plt.subplot(211)
+    plt.plot(force_graph[0]), plt.title('Left force norm')
+    plt.subplot(212)
+    plt.plot(force_graph[1]), plt.title('Rigth force norm')
     # plt.show()
+    plt.figure(2)
+    plt.subplot(211)
+    plt.plot(end_vals[0]), plt.title('Left cartesian')
+    plt.subplot(212)
+    plt.plot(end_vals[1]), plt.title('Rigth cartesian')
+    #
+    plt.figure(3)
+    plt.plot(puck_speeds)
+    plt.show()
 
     return trial
 
@@ -358,10 +409,11 @@ limb_right.move_to_joint_positions(initial_right, timeout=3)
 # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'System is ready!'\"") 
 # time.sleep(10)
 
+
 while not rospy.is_shutdown():
 #     # Get into initial position
-#     limb_left.move_to_joint_positions(initial_left, timeout=3)
-#     limb_right.move_to_joint_positions(initial_right, timeout=3)
+    limb_left.move_to_joint_positions(initial_left, timeout=3)
+    limb_right.move_to_joint_positions(initial_right, timeout=3)
     # time.sleep(5)
     # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Clear'\"")   
     # executeTrial(-0.4,0,0.2,0)
@@ -376,24 +428,31 @@ while not rospy.is_shutdown():
 
     trialList = []
 
-    # for ep in range(0,1):
-    #     print ep
+    # for trnum in range(0,1):
+    #     print trnum
+    trnum = 1
     # # return to initial pose
     # limb_left.move_to_joint_positions(initial_left, timeout=3)
     # limb_right.move_to_joint_positions(initial_right, timeout=3)
     # # check if ball in place ball_x in range
-    while not (-THRSH_START < ball_y < THRSH_START):
+    while not (-THRSH_START < ball_x < THRSH_START):
         pass
     # # give voice signal to start
     # print 'Ready for trial:',ep
     # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Ready my master!'\"")
     raw_input("Press ENTER to continue.")
-    # # generate sample motion parameters
-    trial = executeTrial(1)
-    # # save results
-    # if trial:
-    #     trialList = append(trial)
+    # generate sample motion parameters
+    trial = executeTrial(trnum)
+    # save results
+    if trial:
+        trialList = append(trial)
+        with open('TrialInfo.dat', "wb") as f:
+            pickle.dump(trialList, f)
+
+
+
 
 rospy.on_shutdown(cleanup_on_shutdown)
-rate.sleep()
+# rate.sleep()
+rospy.spin()
 
