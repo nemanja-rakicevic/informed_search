@@ -63,6 +63,9 @@ plt.plot(range(0,j),pA_heads[0:j], 'r--')
 plt.plot(range(0,j),pB_heads[0:j])
 plt.show()
 
+
+# http://dataconomy.com/2015/02/introduction-to-bayes-theorem-with-python/
+# http://nbviewer.jupyter.org/github/tfolkman/learningwithdata/blob/master/Bayes_Primer.ipynb
 def bern_post(n_params=100, n_sample=100, true_p=.8, prior_p=.5, n_prior=100):
     params = np.linspace(0, 1, n_params)
     sample = np.random.binomial(n=1, p=true_p, size=n_sample)
@@ -85,3 +88,35 @@ def bern_post(n_params=100, n_sample=100, true_p=.8, prior_p=.5, n_prior=100):
     plt.tight_layout()
 
 return posterior 
+
+
+#############################
+# 1D Bayesian rule example
+#############################
+x = np.linspace(-10,10,100)
+prior = [1./len(x)] * len(x)
+mu1 = -3
+sig1 = 2
+likelihood1 = (1./(sig1*np.sqrt(2*np.pi))) * np.exp(-0.5*((x - mu1)/sig1)**2)
+mu2 = 3
+sig2 = 0.8
+likelihood2 = (1./(sig2*np.sqrt(2*np.pi))) * np.exp(-0.5*((x - mu2)/sig2)**2)
+
+posterior1 = prior
+
+posterior2 = likelihood2 * prior
+
+post = posterior1+posterior2
+post = post/np.sum(post)
+posterior1 = posterior1/np.sum(posterior1)
+posterior2 = posterior2/np.sum(posterior2)
+
+plt.plot(x, prior)
+# plt.plot(x, likelihood1)
+# plt.plot(x, posterior1)
+plt.plot(x, likelihood2)
+# plt.plot(x, posterior2)
+# plt.plot(x, post)
+plt.plot(x, posterior1+posterior2)
+plt.show()
+
