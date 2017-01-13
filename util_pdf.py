@@ -9,9 +9,9 @@ def makeCovarianceMatrix(num_el, decay, coef=1):
         m += np.diag(coef*val,+i) + np.diag(coef*val,-i)
     return m
 
-# def generatePDF(x_sample, mu, cov):
-#     f = (1/np.sqrt(2*np.pi*np.linalg.det(cov)))*np.exp(-0.5*np.dot(np.dot((x_sample - mu), cov), (x_sample - mu).T))
-#     return f
+def generatePDF(x_sample, mu, cov):
+    f = (1/np.sqrt(2*np.pi*np.linalg.det(cov)))*np.exp(-0.5*np.dot(np.dot((x_sample - mu), cov), (x_sample - mu).T))
+    return f
 
 def generatePDF_matrix(x_sample, mu, cov):
     tmp = np.dot((x_sample - mu), cov)
@@ -28,7 +28,7 @@ def generatePDF_matrix(x_sample, mu, cov):
     ########################
 
 mu = np.array([0, 0, 0, 0, 0, 0])
-cov = np.eye(6)
+cov = np.eye(6) # increasing cov diagonal value makes the gaussian narrower
 st = time.time()
 
 # Initialise to uniform distribution
@@ -55,7 +55,7 @@ pdf_init = prior_init
 #     posterior = posterior/np.sum(posterior)
 #     return posterior
 
-# PROVERIIIIII ! ! ! ! ! ! !
+
 # MATRIX version
 def updatePDF(pdf, mu, cov):
     x_range = np.append(np.linspace(-0.5,-0.2,10), np.linspace(0.2,0.5,10))
@@ -79,31 +79,12 @@ def updatePDF(pdf, mu, cov):
     # solve for x, by putting u instead of F(x)
     # u is then the draw from the uniform distribution (which is transformed)
     ########################
-def samplePDF(pdf):
+def samplePDF(pdf, lower=True):
+    u = np.random.uniform(np.min(pdf),np.max(pdf))
+    if lower:
+        m = np.argwhere(pdf<=u)   # "<="" is because those are the good/unexplored parameters
+    else:
+        m = np.argwhere(pdf>=u)
+    mu = m[np.random.choice(len(m))]
 
-
-    return [idx1, idx2, idx3, idx4, idx5, idx6]
-
-
-
-
-
-
-# nsampl = 100    
-# mu = np.array([0, 0, 0, 0, 0, 0])
-# cov = np.eye(6)
-# # cov = makeCovarianceMatrix(2, 0.2)
-# x1 = np.linspace(-5,5,num=nsampl)
-# x2 = np.linspace(-5,5,num=nsampl)
-# x = np.array([x1,x2,x2,x2,x2,x2])
-# f = [generatePDF(c, mu, cov) for c in x.T]
-# plt.plot(f)
-# plt.show()
-
-# mm = np.ones((nsampl,nsampl))
-# for i, val_x1 in enumerate(x1):
-#     for j, val_x2 in enumerate(x1):
-#         mm[i,j]= generatePDF(np.array([val_x1, val_x2]), mu, cov)
-
-# plt.imshow(mm)
-# plt.show()
+    return mu

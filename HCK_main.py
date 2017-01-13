@@ -201,7 +201,7 @@ def getForceOver():
 
 #     return angle, intersect
 
-
+############################################################# MERGE DIRECTION AND SPEED
 def getPuckDirection(puck_positions):
     # empty array
     if not puck_positions:
@@ -213,7 +213,7 @@ def getPuckDirection(puck_positions):
     # take out None elements
     pos_array[pos_array[:,0] != np.array(None)]
 
-    # SUBSAMPLE !!!!!
+    # SUBSAMPLE !!!!! or adjust frame rate
 
     # Linear regression to get angle - alternative numpy.polyfit(x, y, deg)
     length = len(pos_array)
@@ -242,6 +242,33 @@ def getPuckSpeed(puck_positions):
 
     return speed
 
+# MAKE ALL INTO A CLASS TO KEEP track of PDF
+
+def generateDisplacement(tmp_left, tmp_right):
+    bad_limit = True
+    while bad_limit:
+        # generate samples
+        left_dx, left_dy, right_dx, right_dy, speed_left, speed_right = samplePDF(pdf, lower=True)
+        # left_dx = np.random.uniform(LEFT_X_MIN, LEFT_X_MAX)
+        # left_dy = np.random.uniform(LEFT_Y_MIN, LEFT_Y_MAX)
+        # right_dx = np.random.uniform(RIGHT_X_MIN, RIGHT_X_MAX)
+        # right_dy = np.random.uniform(RIGHT_Y_MIN, RIGHT_Y_MAX)
+        # check constraints
+        dx = abs((tmp_left.x + left_dx) - (tmp_right.x + right_dx))
+        dy = abs((tmp_left.y + left_dy) - (tmp_right.y + right_dy))
+        if dx < STICK_X_MAX and dy < STICK_Y_MAX:
+             # abs(left_dx)>10*THRSH_POS and abs(left_dy)>10*THRSH_POS and\
+             # abs(right_dx)>10*THRSH_POS and abs(right_dy)>10*THRSH_POS:
+            bad_limit = False
+            pdf = updatePDF(pdf, [left_dx, left_dy, right_dx, right_dy, speed_left, speed_right], cov)
+        else:
+            bad_limit = True
+    # assign speeds
+    # speed_left = np.random.uniform(SPEED_MIN, SPEED_MAX)
+    # speed_right = np.clip(speed_left + np.random.uniform(-0.2,0.2), SPEED_MIN, SPEED_MAX)
+
+    return left_dx, left_dy, right_dx, right_dy, speed_left, speed_right
+
 
 def getNewPose():   
     # Get current position
@@ -267,29 +294,6 @@ def getNewPose():
 
     return joint_values_left, joint_values_right, new_pos_left, new_pos_right, [left_dx, left_dy, right_dx, right_dy, speed_left, speed_right]
 
-
-def generateDisplacement(tmp_left, tmp_right):
-    bad_limit = True
-    while bad_limit:
-        # generate samples
-        left_dx = np.random.uniform(LEFT_X_MIN, LEFT_X_MAX)
-        left_dy = np.random.uniform(LEFT_Y_MIN, LEFT_Y_MAX)
-        right_dx = np.random.uniform(RIGHT_X_MIN, RIGHT_X_MAX)
-        right_dy = np.random.uniform(RIGHT_Y_MIN, RIGHT_Y_MAX)
-        # check constraints
-        dx = abs((tmp_left.x + left_dx) - (tmp_right.x + right_dx))
-        dy = abs((tmp_left.y + left_dy) - (tmp_right.y + right_dy))
-        if dx < STICK_X_MAX and dy < STICK_Y_MAX and\
-             abs(left_dx)>10*THRSH_POS and abs(left_dy)>10*THRSH_POS and\
-             abs(right_dx)>10*THRSH_POS and abs(right_dy)>10*THRSH_POS:
-            bad_limit = False
-        else:
-            bad_limit = True
-    # assign speeds
-    speed_left = np.random.uniform(SPEED_MIN, SPEED_MAX)
-    speed_right = np.clip(speed_left + np.random.uniform(-0.2,0.2), SPEED_MIN, SPEED_MAX)
-
-    return left_dx, left_dy, right_dx, right_dy, speed_left, speed_right
 
 
 def executeTrial(trialnum):  

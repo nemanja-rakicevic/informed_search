@@ -94,15 +94,15 @@ return posterior
 # 1D Bayesian rule example
 #############################
 x = np.linspace(-10,10,100)
-prior = [1./len(x)] * len(x)
+prior = np.array([1./len(x)] * len(x))
 mu1 = -3
 sig1 = 2
 likelihood1 = (1./(sig1*np.sqrt(2*np.pi))) * np.exp(-0.5*((x - mu1)/sig1)**2)
 mu2 = 3
-sig2 = 0.8
+sig2 = 2
 likelihood2 = (1./(sig2*np.sqrt(2*np.pi))) * np.exp(-0.5*((x - mu2)/sig2)**2)
 
-posterior1 = prior
+posterior1 = likelihood1 * prior
 
 posterior2 = likelihood2 * prior
 
@@ -120,3 +120,58 @@ plt.plot(x, likelihood2)
 plt.plot(x, posterior1+posterior2)
 plt.show()
 
+###### SAMPLING 1D example ######
+p = posterior1+posterior2
+s=[]
+for i in range(0,100):
+    u = np.random.uniform(min(p),max(p))
+    print u
+    m = np.argwhere(p<=u)   # "<="" is because thos eare the good/unexplored parameters
+    s.append(np.random.choice(m.reshape(len(m),)))
+
+plt.plot(p)
+plt.scatter(s,p[s])
+plt.show()
+
+
+
+#############################
+# 2D Gaussian example
+#############################
+def generatePDF(x_sample, mu, cov):
+    f = (1/np.sqrt(2*np.pi*np.linalg.det(cov)))*np.exp(-0.5*np.dot(np.dot((x_sample - mu), cov), (x_sample - mu).T))
+    return f
+
+nsampl = 100   
+mu = np.array([-2, -2])
+mu2 = np.array([1, 3])
+cov = np.eye(2)
+# cov = makeCovarianceMatrix(2, 0.2)
+x1 = np.linspace(-5,5,num=nsampl)
+x2 = np.linspace(-5,5,num=nsampl)
+x = np.array([x1,x2])
+# f = [generatePDF(c, mu, cov) for c in x.T]
+# plt.plot(f)
+# plt.show()
+
+mm = np.ones((nsampl,nsampl))
+for i, val_x1 in enumerate(x1):
+    for j, val_x2 in enumerate(x1):
+        mm[i,j]= generatePDF(np.array([val_x1, val_x2]), mu, cov) + generatePDF(np.array([val_x1, val_x2]), mu2, cov)
+
+plt.imshow(mm)
+plt.show()
+
+###### SAMPLING 2D example ######
+p = mm
+s=[]
+for i in range(0,100):
+    u = np.random.uniform(np.min(mm),np.max(mm))
+    m = np.argwhere(p<=u)   # "<="" is because thos eare the good/unexplored parameters
+    # print m
+    s.append(m[np.random.choice(len(m))])
+
+s=np.array(s)
+plt.imshow(p)
+plt.scatter(s[:,1],s[:,0])
+plt.show()
