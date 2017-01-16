@@ -10,7 +10,7 @@ from sensor_msgs.msg import Image
 
 # grab the reference to the webcam
 # camera = cv2.VideoCapture(0)
-camera = cv2.VideoCapture(3)
+camera = cv2.VideoCapture(0)
 camera.set(cv2.cv.CV_CAP_PROP_FPS, 120)
 camera.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 640)
 camera.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 480)
