@@ -3,6 +3,7 @@ import PIL
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 DWN_RATE = 4
 # Load background image
@@ -92,8 +93,8 @@ def max_pool_2x2(x):
 
 
 #### LEARNING PART
-sess = tf.InteractiveSession()
-x = tf.placeholder(tf.float32, [None, 120*160*3]) #19200
+# sess = tf.InteractiveSession()
+x = tf.placeholder(tf.float32, [None, 120*160*3]) #57600
 y_ = tf.placeholder(tf.float32, [None, 2])
 
 # DEFINING THE LAYERS
@@ -116,8 +117,8 @@ h_pool3 = max_pool_2x2(h_conv3)
 # fully connected
 W_fc1 = weight_variable([15 * 20 * 128, 1024])
 b_fc1 = bias_variable([1024])
-h_pool1_flat = tf.reshape(h_pool1, [-1, 15 * 20 * 128])
-h_fc1 = tf.nn.relu(tf.matmul(h_pool1_flat, W_fc1) + b_fc1)
+h_pool3_flat = tf.reshape(h_pool3, [-1, 15 * 20 * 128])
+h_fc1 = tf.nn.relu(tf.matmul(h_pool3_flat, W_fc1) + b_fc1)
 # Regularisation
 keep_prob = tf.placeholder(tf.float32)
 h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
@@ -128,25 +129,30 @@ y_conv = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
 
 # TRAINING
 batch_size = 100
-cost_function = tf.reduce_sum(tf.pow(y_conv - y_, 2))/(2 * batch_size)
+cost_function = tf.reduce_sum(tf.pow(y_conv - y_, 2))/(2 * tf.cast(tf.shape(y_conv)[0], tf.float32))
 train_step = tf.train.AdamOptimizer(1e-4).minimize(cost_function)
 
-correct_prediction = tf.equal(y_conv, y_)
-accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+# correct_prediction = tf.equal(y_conv, y_)
+# accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+sess = tf.Session()
 sess.run(tf.initialize_all_variables())
 
-for i in range(1):
+start_time = time.time()
+
+for i in range(100000):
     batch = generateImage(batch_size, img_bd, img_gd, img_pd)
     if i%100 == 0:
-        train_accuracy = accuracy.eval(feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
-        print("step %d, training accuracy %g"%(i, train_accuracy))
-    train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+        train_accuracy = sess.run(cost_function, feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
+        print 'time elapsed:', time.time()-start_time
+        print "step ",i,", cost function", train_accuracy
+        print "-----"*10
+    sess.run(train_step, feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
 
-print("test accuracy %g"%accuracy.eval(feed_dict={
-    x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
+test_data = generateImage(500, img_bd, img_gd, img_pd)
+print "test accuracy", sess.run(cost_function, feed_dict={x: test_data[0], y_: test_data[1], keep_prob: 1.0})
 
-
+sess.close()
 
 
 ######################################################
