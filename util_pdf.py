@@ -1,24 +1,83 @@
 
 from numpy.core.umath_tests import inner1d
 import itertools
+import numpy as np
+import matplotlib.pyplot as pl
+import pickle
 
-def makeCovarianceMatrix(num_el, decay, coef=1):
-    m = np.eye(num_el)
-    for i in range(1,num_el):
-        val = [1-decay*i]*(num_el-i)
-        m += np.diag(coef*val,+i) + np.diag(coef*val,-i)
-    return m
+##################################################################3
+# CONSTANTS - thresholds
+THRSH_START = 10
+THRSH_FORCE = 40
+THRSH_POS = 0.01
+THRSH_SPEED = 0.1
+# CONSTANTS - stick length
+STICK_X_MIN = 0
+STICK_X_MAX = 0.35
+STICK_Y_MIN = 0
+STICK_Y_MAX = 0.55
+# CONSTANTS - speed 
+SPEED_MIN = 0.3
+SPEED_MAX = 1
+# CONSTANTS - left arm
+LEFT_X_MIN = -0.3
+LEFT_X_MAX = 0.1
+LEFT_Y_MIN = -0.8
+LEFT_Y_MAX = 0.05
+# CONSTANTS - right arm
+RIGHT_X_MIN = -0.05
+RIGHT_X_MAX = 0.15
+RIGHT_Y_MIN = -0.8
+RIGHT_Y_MAX = 0.1
+##################################################################3
 
-def generatePDF(x_sample, mu, cov):
-    f = (1/np.sqrt(2*np.pi*np.linalg.det(cov)))*np.exp(-0.5*np.dot(np.dot((x_sample - mu), cov), (x_sample - mu).T))
-    return f
+# max length of combination vector should be 25000
+range_l_dx = np.round(np.linspace(LEFT_X_MIN, LEFT_X_MAX, 10), 3)
+range_l_dy = np.round(np.linspace(LEFT_Y_MIN, LEFT_Y_MAX, 3), 3)
+range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 3), 3)
+range_r_dy = np.round(np.linspace(RIGHT_Y_MIN, RIGHT_Y_MAX, 3), 3)
+range_v = np.round(np.linspace(SPEED_MIN, SPEED_MAX, 3), 3)
 
+dims = [len(range_l_dx)]
+param_space = range_l_dx.reshape(-1,1)
+# param_space = np.array([xs for xs in itertools.product(range_l_dx, range_l_dy, range_r_dx, range_r_dy, range_v)])
+param_list = np.array([range_l_dx])
+
+# dims = [len(range_l_dx), len(range_l_dy), len(range_r_dx), len(range_r_dy), len(range_v)]
+# param_space = np.array([xs for xs in itertools.product(range_l_dx, range_l_dy, range_r_dx, range_r_dy, range_v)])
+# param_list = np.array([range_l_dx, range_l_dy, range_r_dx, range_r_dy, range_v])
+
+# Define the kernel
+def kernel(a, b):
+    """ GP squared exponential kernel """
+    kernelParameter = 1
+    sqdist = np.sum(a**2,1).reshape(-1,1) + np.sum(b**2,1) - 2*np.dot(a, b.T)
+    return np.exp(-.5 * (1/kernelParameter) * sqdist)
+# # # Taken from intro to bayes opt
+# def kernel(a, b):
+#     """ GP squared exponential kernel """
+#     kernelParameter = 1
+#     sqdist = (1/kernelParameter) * np.sum(a**2,1).reshape(-1,1) + np.sum(b**2,1) - 2*np.dot(a, b.T)
+#     return (1+np.sqrt(5*sqdist)+5*sqdist/3.) * np.exp(-np.sqrt(5*sqdist))
+
+
+Kss = kernel(param_space, param_space)
+
+mu = np.zeros(len(param_list))
+cov = 1000*np.eye(len(param_list)) # increasing cov diagonal value makes the gaussian narrower
+
+# Initialise to uniform distribution
+prior_init = np.ones(tuple(dims))/(np.product(dims))
+pdf = prior_init
+# posterior = np.zeros(tuple(dims))
+    
+
+# Make a multinomial gaussian 
 def generatePDF_matrix(x_sample, mu, cov):
     tmp = np.dot((x_sample - mu), cov)
     tmp_T = (x_sample - mu).T
     f = (1/np.sqrt(2*np.pi*np.linalg.det(cov)))*np.exp(-0.5*inner1d(tmp,tmp_T.T))
-    return f
-
+    return f  
 
 
 # GENERATING POSTERIOR
@@ -26,57 +85,113 @@ def generatePDF_matrix(x_sample, mu, cov):
     # range of data - within or forwarded????
     # later PRIOR = POSTERIOR
     ########################
-
-mu = np.array([0, 0, 0, 0, 0, 0])
-cov = np.eye(6) # increasing cov diagonal value makes the gaussian narrower
-st = time.time()
-
-# Initialise to uniform distribution
-prior_init = np.ones((len(x_range),len(x_range),len(x_range),len(x_range),len(v_range),len(v_range)))/(np.product([len(x_range),len(x_range),len(x_range),len(x_range),len(v_range),len(v_range)]))
-pdf_init = prior_init
-
-
-
-# MATRIX version
-def updatePDF(pdf, mu, cov):
-    x_range = np.append(np.linspace(-0.5,-0.2,10), np.linspace(0.2,0.5,10))
-    v_range = np.linspace(0.3,1,10)
-    prior_init = np.ones((len(x_range),len(x_range),len(x_range),len(x_range),len(v_range),len(v_range)))/(np.product([len(x_range),len(x_range),len(x_range),len(x_range),len(v_range),len(v_range)]))
-    posterior = np.zeros((len(x_range),len(x_range),len(x_range),len(x_range),len(v_range),len(v_range)))
+# Update the penalisation PDF based on the failed trials
+def updatePDF(param_space, pdf, mu, cov):
     # Update with the gaussian likelihood
-    x_samples = np.array([s for s in itertools.product(x_range,x_range,x_range,x_range,v_range,v_range)])
-    likelihood = np.reshape(generatePDF_matrix(x_samples, mu, cov), (len(x_range),len(x_range),len(x_range),len(x_range),len(v_range),len(v_range)))
+    likelihood = np.reshape(generatePDF_matrix(param_space, mu, cov), tuple(dims))
     # Apply Bayes rule
-    posterior = prior_init * likelihood
+    posterior = (prior_init * likelihood)/np.sum(prior_init * likelihood)
     # Normalise posterior distribution and add it to the previous one
-    posterior = pdf + posterior/np.sum(posterior)
+    shift = (prior_init + posterior)/np.sum(prior_init+posterior)
     # Normalise the final pdf
-    posterior = posterior/np.sum(posterior)
-    return posterior
+    final_pdf = (pdf + shift)/np.sum(pdf + shift)
+    return final_pdf
 
 
-# GETTING SAMPLES (Probability Integral Transform)
-    # calculate cdf
-    # solve for x, by putting u instead of F(x)
-    # u is then the draw from the uniform distribution (which is transformed)
-    ########################
-def samplePDF(pdf, lower=True):
-    u = np.random.uniform(np.min(pdf),np.max(pdf))
-    if lower:
-        m = np.argwhere(pdf<=u)   # "<="" is because those are the good/unexplored parameters
-    else:
-        m = np.argwhere(pdf>=u)
-    mu = m[np.random.choice(len(m))]
+# Perform Gaussian Process Regression based on performed trials
+def updateGP(param_space, Kss, trials, f_evals):
+    Xtrain = trials
+    y = f_evals
+    eps_var = 0.00005
+    Xtest = param_space
+    # 
+    K = kernel(Xtrain, Xtrain)
+    L = np.linalg.cholesky(K + eps_var*np.eye(len(trials)))
+    Ks = kernel(Xtrain, Xtest)
+    Lk = np.linalg.solve(L, Ks)
+    # get posterior MU and SIGMA
+    mu = np.dot(Lk.T, np.linalg.solve(L, y))
+    var_post = np.sqrt(np.diag(Kss) - np.sum(Lk**2, axis=0))
+    # return the matrix version
+    return mu.reshape(tuple(dims)), var_post.reshape(tuple(dims))/np.sum(var_post)
 
-    return mu
 
+# Generate the next parameter vector to evaluate
+def generateSample():
+# update the penalisation PDF
+p_pdf = updatePDF(param_space, pdf, mu, cov)
+# estimate the Angle GP
+mu_alpha, var_alpha = updateGP(param_space, Kss, trials, f_evals)
+# estimate the Distance GP
+mu_L, var_L = updateGP(param_space, Kss, trials, f_evals)
+# multiply the above's uncertainties to get the most informative point
+info_pdf = var_alpha * var_L * (1-p_pdf)/np.sum(1-p_pdf)
+info_pdf /= np.sum(info_pdf)
+# get poition of highest uncertainty
+coord = np.argwhere(info_pdf==np.max(info_pdf))[0]
+# return the next sample vector
+return np.array([param_list[i][coord[i]] for i in range(len(param_list))])
+
+
+# trials =np.array([[-0.1, -0.23, 0.05, 0., -.2]]).reshape(-1,1)
+# f_evals =np.array([[1, -0.3, 0.5, 0., .2]]).reshape(-1,1)
+trials =np.array([[-0.1, -0.23]]).reshape(-1,1)
+f_evals =np.array([[1, -0.3]]).reshape(-1,1)
+
+mu = np.zeros(len(param_list))
+mu = -0.2*np.ones(len(param_list))
+
+pl.figure()
+pl.plot(param_space, var_alpha)
+pl.figure()
+pl.plot(param_space, var_L)
+pl.figure()
+pl.plot(param_space, (1-p_pdf)/np.sum(1-p_pdf))
+pl.figure()
+pl.plot(param_space, info_pdf)
+
+pl.show()
+
+
+pl.plot(param_space, likelihood)
+pl.plot(param_space, prior_init)
+pl.plot(param_space, posterior)
+pl.plot(param_space, posterior/np.sum(posterior))
+pl.show()
+
+
+pl.plot(param_space, p_pdf)
+pl.plot(param_space, shift)
+pl.show()
+
+
+pl.plot(param_space, mu_L)
+pl.plot(param_space, var_L)
+pl.show()
 
 
 #######################################################
 ### HELPER CODE ###
 #######################################################
 
-# LOOP version
+########################
+# GETTING SAMPLES (Probability Integral Transform)
+# calculate cdf
+# solve for x, by putting u instead of F(x)
+# u is then the draw from the uniform distribution (which is transformed)
+########################
+
+### Sampling the penalisation PDF uniformly
+# def samplePDF(pdf, lower=True):
+#     u = np.random.uniform(np.min(pdf),np.max(pdf))
+#     if lower:
+#         m = np.argwhere(pdf<=u)   # "<="" is because those are the good/unexplored parameters
+#     else:
+#         m = np.argwhere(pdf>=u)
+#     mu = m[np.random.choice(len(m))]
+#     return mu
+
+### LOOP version of the penalisaiton updatePDF function 
 # def updatePDF(pdf, mu, cov):
 #     x_range = np.append(np.linspace(-0.5,-0.2,10), np.linspace(0.2,0.5,10))
 #     v_range = np.linspace(0.3,1,10)
@@ -95,3 +210,16 @@ def samplePDF(pdf, lower=True):
 #     # Normalise the final pdf
 #     posterior = posterior/np.sum(posterior)
 #     return posterior
+
+### Covariance matrix with off-diagonal dependencies
+# def makeCovarianceMatrix(num_el, decay, coef=1):
+#     m = np.eye(num_el)
+#     for i in range(1,num_el):
+#         val = [1-decay*i]*(num_el-i)
+#         m += np.diag(coef*val,+i) + np.diag(coef*val,-i)
+#     return m
+
+### Generating gaussian pdf
+# def generatePDF(x_sample, mu, cov):
+#     f = (1/np.sqrt(2*np.pi*np.linalg.det(cov)))*np.exp(-0.5*np.dot(np.dot((x_sample - mu), cov), (x_sample - mu).T))
+#     return f

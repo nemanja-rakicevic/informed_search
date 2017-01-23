@@ -67,38 +67,35 @@ STICK_Y_MIN = 0
 STICK_Y_MAX = 0.55
 # CONSTANTS - cartesian
 SPEED_MIN = 0.3
-SPEED_MAX = 0.7
+SPEED_MAX = 1
 
-LEFT_X_MIN = -0.4
-LEFT_X_MAX = 0.4
+LEFT_X_MIN = -0.3
+LEFT_X_MAX = 0.1
 
-LEFT_Y_MIN = -0.4
-LEFT_Y_MAX = 0.4
+LEFT_Y_MIN = -0.8
+LEFT_Y_MAX = 0.05
 
-RIGHT_X_MIN = -0.4
-RIGHT_X_MAX = 0.4
+RIGHT_X_MIN = -0.05
+RIGHT_X_MAX = 0.15
 
-RIGHT_Y_MIN = -0.4
-RIGHT_Y_MAX = 0.4
+RIGHT_Y_MIN = -0.8
+RIGHT_Y_MAX = 0.1
 
 # GLOBAL
 fx_left, fy_left, fz_left = 0, 0, 0
 fx_right, fy_right, fz_right = 0, 0, 0
 ball_x, ball_y = None, None
 
-# Green filter - obtained using range-detector.py
-# colorLower = (29, 86, 6)
-# colorUpper = (64, 255, 255)
-# Blue filter
-colorLower = (73, 100, 190)
-colorUpper = (106, 255, 255)
+# # Green filter - obtained using range-detector.py
+# # colorLower = (29, 86, 6)
+# # colorUpper = (64, 255, 255)
+# # Blue filter
+# colorLower = (73, 100, 190)
+# colorUpper = (106, 255, 255)
 
-# INITIAL POSE (recorded)
-# initial_left = {'left_w0': 0.1499466220157992, 'left_w1': 0.9836651802315216, 'left_w2': -0.6239466854723921, 'left_e0': -1.3173060015965992, 'left_e1': 1.349903093339164, 'left_s0': 0.9828981898375788, 'left_s1': -1.2524953133084402}
-# initial_right = {'right_s0': 0.7760595517077958, 'right_s1': 0.5187698944592852, 'right_w0': -1.8506648712234506, 'right_w1': 1.0262244939226002, 'right_w2': 1.1394899859079073, 'right_e0': 1.8801431484869309, 'right_e1': 1.486003064569564}
-
-initial_left = {'left_w0': 0.8590292412158317, 'left_w1': 0.7850146682003605, 'left_w2': 2.8324955248304167, 'left_e0': -1.831573060735184, 'left_e1': 1.4860438882639946, 'left_s0': 1.0530778108833365, 'left_s1': -0.5840631849873713}
-initial_right = {'right_s0': 0.8942580596047225, 'right_s1': 0.5936894423811188, 'right_w0': -2.0064777590922307, 'right_w1': 1.1135462654472854, 'right_w2': 1.1819992394524164, 'right_e0': 1.9901836920417224, 'right_e1': 1.4520039296340554}
+# INITIAL POSE v3 - best conf
+initial_left = {'left_w0': -2.6461168591023387, 'left_w1': -0.9595049828223263, 'left_w2': -0.5668059011236604, 'left_e0': -1.9493060862053895, 'left_e1': 1.2202817167628466, 'left_s0': 0.9437816797465008, 'left_s1': -0.08321845774278369}
+initial_right = {'right_s0': 0.9594823450680383, 'right_s1': 0.29484998388802847, 'right_w0': -2.098514074519654, 'right_w1': 0.8602590333104184, 'right_w2': 1.9667979410452, 'right_e0': 1.6474396266164186, 'right_e1': 1.4020464458749478}
 
 #####################################################################
 
@@ -432,28 +429,30 @@ while not rospy.is_shutdown():
 
     trialList = []
 
-    # for trnum in range(0,1):
-    #     print trnum
-    trnum = 1
-    # # return to initial pose
-    # limb_left.move_to_joint_positions(initial_left, timeout=3)
-    # limb_right.move_to_joint_positions(initial_right, timeout=3)
-    # # check if ball in place ball_x in range
-    while not (-THRSH_START < ball_x < THRSH_START):
-        pass
-    # # give voice signal to start
-    # print 'Ready for trial:',ep
-    # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Ready my master!'\"")
-    raw_input("Press ENTER to continue.")
-    # generate sample motion parameters
-    trial = executeTrial(trnum)
-    # save results
-    if trial:
-        trialList = append(trial)
-        with open('TrialInfo.dat', "wb") as f:
-            pickle.dump(trialList, f)
+    for trnum in range(1):
+        limb_left.move_to_joint_positions(initial_left, timeout=3)
+        limb_right.move_to_joint_positions(initial_right, timeout=3)
+        print "\nStep", i+1
+        raw_input("Ready to execute configuration: "+str((left_dx, left_dy, right_dx, right_dy, speed))+"?")
+        # time.sleep(15)
+        # (left_dx, left_dy, right_dx, right_dy, speed)
+        executeTrial(left_dx, left_dy, right_dx, right_dy, speed)
+        y = np.append(y, np.array(input('Enter distance: ')))
+        # # give voice signal to start
+        # print 'Ready for trial:',ep
+        # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Ready my master!'\"")
+        raw_input("Press ENTER to continue.")
+        # generate sample motion parameters
+        trial = executeTrial(trnum)
+        # save results
+        if trial:
+            trialList = append(trial)
+            with open('TrialInfo.dat', "wb") as f:
+                pickle.dump(trialList, f)
 
-
+    print '\nDONE! saving..'
+    with open('TrialInfo.dat', "wb") as f:
+                pickle.dump(trialList, f)
 
 
 rospy.on_shutdown(cleanup_on_shutdown)

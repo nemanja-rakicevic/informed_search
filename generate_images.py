@@ -190,3 +190,11 @@ sess.close()
 # ### CONVERSION
 # def px2m_original(px):
 #     return 0.0628*np.exp(0.0122*px)
+
+# # Convert camera coordinate to robot coordinate
+# def px2cm(in_px_y, in_px_x, img):
+#     w, h = img.size
+#     px_y = 77-in_px_y
+#     px_x = w-in_px_y
+#     # output is (X, Y) in robot coordinate system
+#     return 0.05*np.exp(0.05231*px_y)*100, 1.2*px_x
