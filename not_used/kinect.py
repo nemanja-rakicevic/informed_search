@@ -9,18 +9,13 @@ import sys
 import numpy as np
 import cv2
 
-import matplotlib.pyplot as plt
-# from pyqtgraph.Qt import QtCore, QtGui
-# import pyqtgraph.opengl as gl
+#from pyqtgraph.Qt import QtCore, QtGui
+#import pyqtgraph.opengl as gl
 
 from pylibfreenect2 import Freenect2, SyncMultiFrameListener
 from pylibfreenect2 import FrameType, Registration, Frame, libfreenect2
 
-
-
-colorLower = (73, 100, 190)
-colorUpper = (106, 255, 255)
-
+import matplotlib.pyplot as plt
 
 fn = Freenect2()
 num_devices = fn.enumerateDevices()
@@ -43,27 +38,27 @@ device.setIrAndDepthFrameListener(listener)
 device.start()
 
 # NOTE: must be called after device.start()
-registration = libfreenect2.Registration(device.getIrCameraParams(),
+registration = Registration(device.getIrCameraParams(),
                             device.getColorCameraParams())
 
 undistorted = Frame(512, 424, 4)
 registered = Frame(512, 424, 4)
 
 
-# #QT app
-# app = QtGui.QApplication([])
-# gl_widget = gl.GLViewWidget()
-# gl_widget.show()
-# gl_grid = gl.GLGridItem()
-# gl_widget.addItem(gl_grid)
+#QT app
+#app = QtGui.QApplication([])
+#gl_widget = gl.GLViewWidget()
+#gl_widget.show()
+#gl_grid = gl.GLGridItem()
+#gl_widget.addItem(gl_grid)
 
 #initialize some points data
 pos = np.zeros((1,3))
 
-# sp2 = gl.GLScatterPlotItem(pos=pos)
-# sp2.setGLOptions('opaque') # Ensures not to allow vertexes located behinde other vertexes to be seen.
+#sp2 = gl.GLScatterPlotItem(pos=pos)
+#sp2.setGLOptions('opaque') # Ensures not to allow vertexes located behinde other vertexes to be seen.
 
-# gl_widget.addItem(sp2)
+#gl_widget.addItem(sp2)
 
 # Kinects's intrinsic parameters based on v2 hardware (estimated).
 CameraParams = {
@@ -164,108 +159,26 @@ def applyCameraMatrixOrientation(pt):
     return pt
 
 
-def update():
-    colors = ((1.0, 1.0, 1.0, 1.0))
+def extract_coords_puck(frame):
+    colorLower = (73, 100, 190)
+    colorUpper = (106, 255, 255)
 
-    frames = listener.waitForNewFrame()
-
-    # Get the frames from the Kinect sensor
-    ir = frames["ir"]
-    color = frames["color"]
-    depth = frames["depth"]
-
-    d = depth.asarray() #the depth frame as an array (Needed only with non-vectorized functions)
-
-    registration.apply(color, depth, undistorted, registered)
-
-    # Format the color registration map - To become the "color" input for the scatterplot's setData() function.
-    colors = registered.asarray(np.uint8)
-    colors = np.divide(colors, 255) # values must be between 0.0 - 1.0
-    colors = colors.reshape(colors.shape[0] * colors.shape[1], 4 ) # From: Rows X Cols X RGB -to- [[r,g,b],[r,g,b]...]
-    colors = colors[:, :3:]  # remove alpha (fourth index) from BGRA to BGR
-    colors = colors[...,::-1] #BGR to RGB
-
-    # # Calculate a dynamic vertex size based on window dimensions and camera's position - To become the "size" input for the scatterplot's setData() function.
-    # v_rate = 5.0 # Rate that vertex sizes will increase as zoom level increases (adjust this to any desired value).
-    # v_scale = np.float32(v_rate) / gl_widget.opts['distance'] # Vertex size increases as the camera is "zoomed" towards center of view.
-    # v_offset = (gl_widget.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
-    # v_size = v_scale + v_offset
-
-    # Calculate 3d coordinates (Note: five optional methods are shown - only one should be un-commented at any given time)
-
-    """
-    # Method 1 (No Processing) - Format raw depth data to be displayed
-    m, n = d.shape
-    R, C = np.mgrid[:m, :n]
-    out = np.column_stack((d.ravel() / 4500, C.ravel()/m, (-R.ravel()/n)+1))
-    """
-
-    # # Method 2 (Fastest) - Format and compute the real-world 3d coordinates using a fast vectorized algorithm - To become the "pos" input for the scatterplot's setData() function.
-    # out = depthMatrixToPointCloudPos(undistorted.asarray(np.float32))
-
-    
-    # Method 3 - Format undistorted depth data to real-world coordinates
-    n_rows, n_columns = d.shape
-    out = np.zeros((n_rows * n_columns, 3), dtype=np.float32)
-    for row in range(n_rows):
-        for col in range(n_columns):
-            z = undistorted.asarray(np.float32)[row][col]
-            X, Y, Z = depthToPointCloudPos(row, col, z)
-            out[row * n_columns + col] = np.array([Z, Y, -X])
- 
-
-    
-    # # Method 4 - Format undistorted depth data to real-world coordinates
-    # n_rows, n_columns = d.shape
-    # out = np.zeros((n_rows * n_columns, 3), dtype=np.float64)
-    # for row in range(n_rows):
-    #     for col in range(n_columns):
-    #         X, Y, Z = registration.getPointXYZ(undistorted, row, col)
-    #         out[row * n_columns + col] = np.array([Z, X, -Y])
-    
-
-    """
-    # Method 5 - Format undistorted and regisered data to real-world coordinates with mapped colors (dont forget color=colors in setData)
-    n_rows, n_columns = d.shape
-    out = np.zeros((n_rows * n_columns, 3), dtype=np.float64)
-    colors = np.zeros((d.shape[0] * d.shape[1], 3), dtype=np.float64)
-    for row in range(n_rows):
-        for col in range(n_columns):
-            X, Y, Z, B, G, R = registration.getPointXYZRGB(undistorted, registered, row, col)
-            out[row * n_columns + col] = np.array([Z, X, -Y])
-            colors[row * n_columns + col] = np.divide([R, G, B], 255)
-    """
-
-
-    # Kinect sensor real-world orientation compensation.
-    out = applyCameraMatrixOrientation(out)
-
-    """
-    # For demonstrating the non-vectorized orientation compensation function (slow)
-    for i, pt in enumerate(out):
-        out[i] = applyCameraOrientation(pt)
-    """
-
-
-    # Show the data in a scatter plot
-    # sp2.setData(pos=out, color=colors, size=v_size)
-
-    # Lastly, release frames from memory.
-    # listener.release(frames)
-    cv2.imshow("asdad",frames["color"])
-    cv2.waitKey(1)
-    # print frames["color"].shape
-
-# t = QtCore.QTimer()
-# t.timeout.connect(update)
-# t.start(50)
-
-def callback_cam(image):
-    global ball_x, ball_y
+    #global ball_x, ball_y
     # Read image
- 
+    
     # Extract blob position
-    height, width, _ = frame.shape
+    #frame = frame.asarray()
+
+    #height, width = 424, 512
+    #frame = frame.reshape(height, width, 3)
+
+    #cv2.imshow("Front Camera", (frame*255).astype('uint8')) #(frame * 255).astype(int))
+    #cv2.waitKey(1)
+
+    #print frame[:,:,0].min(), frame[:,:,0].mean(), frame[:,:,0].max()
+    #plt.imshow(frame[:,:,0])
+    #plt.show()
+
     blurred = cv2.GaussianBlur(frame, (11, 11), 0)
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     # construct a mask for the color "green", then perform
@@ -296,27 +209,141 @@ def callback_cam(image):
         if radius > 1:
             # draw the circle and centroid on the frame,
             # then update the list of tracked points
-            cv2.circle(frame, (int(x), int(y)), int(radius),
-                (0, 255, 255), 2)
+            frame = frame.copy()
+            cv2.circle(frame, (int(x), int(y)), int(radius), (0, 255, 255), 2)
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
     else:
         ball_x = None
         ball_y = None
-    # Add text for puck position
-    cv2.putText(frame, "x _pos: {}, y_pos: {}".format(ball_x, ball_y),
-        (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
-        0.35, (0, 0, 255), 1)
-    # Show augmented image
-    cv2.imshow("Front Camera", frame)
+
+    cv2.imshow("Front Camera", frame) #(frame * 255).astype(int))
     cv2.waitKey(1)
+    
+    return ball_x, ball_y
+
+
+def update():
+    colors = ((1.0, 1.0, 1.0, 1.0))
+
+    frames = listener.waitForNewFrame()
+
+    # Get the frames from the Kinect sensor
+    ir = frames["ir"]
+    color = frames["color"]
+    depth = frames["depth"]
+
+    d = depth.asarray() #the depth frame as an array (Needed only with non-vectorized functions)
+
+    registration.apply(color, depth, undistorted, registered)
+    
+    # # Format the color registration map - To become the "color" input for the scatterplot's setData() function.
+    # colors = registered.asarray(np.uint8)
+    # colors = np.divide(colors, 255) # values must be between 0.0 - 1.0
+    # colors = colors.reshape(colors.shape[0] * colors.shape[1], 4 ) # From: Rows X Cols X RGB -to- [[r,g,b],[r,g,b]...]
+    # colors = colors[:, :3:]  # remove alpha (fourth index) from BGRA to BGR
+    # colors = colors[...,::-1] #BGR to RGB
+    # print "colors", colors.shape
+    
+
+    # Calculate a dynamic vertex size based on window dimensions and camera's position - To become the "size" input for the scatterplot's setData() function.
+    #v_rate = 5.0 # Rate that vertex sizes will increase as zoom level increases (adjust this to any desired value).
+    #v_scale = np.float32(v_rate) / gl_widget.opts['distance'] # Vertex size increases as the camera is "zoomed" towards center of view.
+    #v_offset = (gl_widget.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
+    #v_size = v_scale + v_offset
+
+    # Calculate 3d coordinates (Note: five optional methods are shown - only one should be un-commented at any given time)
+
+    """
+    # Method 1 (No Processing) - Format raw depth data to be displayed
+    m, n = d.shape
+    R, C = np.mgrid[:m, :n]
+    out = np.column_stack((d.ravel() / 4500, C.ravel()/m, (-R.ravel()/n)+1))
+    """
+
+    # Method 2 (Fastest) - Format and compute the real-world 3d coordinates using a fast vectorized algorithm - To become the "pos" input for the scatterplot's setData() function.
+    # out = depthMatrixToPointCloudPos(undistorted.asarray(np.float32))
+
+    
+    # Method 3 - Format undistorted depth data to real-world coordinates
+    
+
+    # n_rows, n_columns = d.shape
+    # out = np.zeros((n_rows * n_columns, 3), dtype=np.float32)
+    # for row in range(n_rows):
+    #     for col in range(n_columns):
+    #         z = undistorted.asarray(np.float32)[row][col]
+    #         X, Y, Z = depthToPointCloudPos(row, col, z)
+    #         out[row * n_columns + col] = np.array([Z, Y, -X])
+    
+    #print out.tolist()
+    #print
+    #print "colors", colors.shape, "depth", depth.asarray().shape
+    #print registered.asarray(np.uint8).shape
+    puck_x, puck_y = extract_coords_puck(registered.asarray(np.uint8)[:,:,:3])
+    if puck_x and puck_y:
+        if puck_x >= undistorted.height or puck_y >= undistorted.width:
+            print "problem with shapes", puck_x, undistorted.width, puck_y, undistorted.height
+        else:
+            z = undistorted.asarray(np.float32)[puck_x, puck_y]
+            X, Y, Z = depthToPointCloudPos(puck_x, puck_y, z)
+            #print puck_x, puck_y, "->", X, Y, Z
+            # Kinect sensor real-world orientation compensation.
+            out = applyCameraMatrixOrientation(np.array([[Z, Y, -X]]))
+            print out, "in image:", puck_x, puck_y
+            print
+    else:
+        print "puck not found"
+
+    """
+    # Method 4 - Format undistorted depth data to real-world coordinates
+    n_rows, n_columns = d.shape
+    out = np.zeros((n_rows * n_columns, 3), dtype=np.float64)
+    for row in range(n_rows):
+        for col in range(n_columns):
+            X, Y, Z = registration.getPointXYZ(undistorted, row, col)
+            out[row * n_columns + col] = np.array([Z, X, -Y])
+    
+    #print registration.getPointXYZ(undistorted, 50, 50)
+    """
+    """
+    # Method 5 - Format undistorted and regisered data to real-world coordinates with mapped colors (dont forget color=colors in setData)
+    n_rows, n_columns = d.shape
+    out = np.zeros((n_rows * n_columns, 3), dtype=np.float64)
+    colors = np.zeros((d.shape[0] * d.shape[1], 3), dtype=np.float64)
+    for row in range(n_rows):
+        for col in range(n_columns):
+            X, Y, Z, B, G, R = registration.getPointXYZRGB(undistorted, registered, row, col)
+            out[row * n_columns + col] = np.array([Z, X, -Y])
+            colors[row * n_columns + col] = np.divide([R, G, B], 255)
+    """
+
+
+    
+
+    """
+    # For demonstrating the non-vectorized orientation compensation function (slow)
+    for i, pt in enumerate(out):
+        out[i] = applyCameraOrientation(pt)
+    """
+
+
+    # Show the data in a scatter plot
+    #sp2.setData(pos=out, color=colors, size=v_size)
+
+    # Lastly, release frames from memory.
+    listener.release(frames)
+
+#t = QtCore.QTimer()
+#t.timeout.connect(update)
+#t.start(50)
 
 
 ## Start Qt event loop unless running in interactive mode.
 if __name__ == '__main__':
-    update()
-    raw_input('here')
-    # if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-    #     QtGui.QApplication.instance().exec_()
+    while True:
+        update()
+    #if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+    #    QtGui.QApplication.instance().exec_()
 
 device.stop()
 device.close()

@@ -20,12 +20,12 @@ img_gd = img_goal.resize((img_goal.size[0]/DWN_RATE, img_goal.size[1]/DWN_RATE),
 
 
 # Convert camera coordinate to robot coordinate
-def px2cm(in_px_y, in_px_x, img):
+def wrt_centre(in_px_y, in_px_x, img):
     w, h = img.size
-    px_y = 77-in_px_y
-    px_x = w-in_px_y
+    px_y = h/2.-in_px_y
+    px_x = w/2.-in_px_y
     # output is (X, Y) in robot coordinate system
-    return 0.05*np.exp(0.05231*px_y)*100, 1.2*px_x
+    return px_y, px_x
 
 
 # Generate image (60k)
@@ -58,8 +58,8 @@ def generateImage(samples, img_bd, img_gd, img_pd):
         y_p = int(-0.4*x_p+99)
         img.paste(img_pmask, (x_p, y_p), img_pmask)
         # Convert coordinates
-        rob_x_p, rob_y_p = px2cm(y_p, x_p, img)
-        rob_x_g, rob_y_g = px2cm(y_g, x_g, img)
+        rob_x_p, rob_y_p = wrt_centre(y_p, x_p, img)
+        rob_x_g, rob_y_g = wrt_centre(y_g, x_g, img)
         # Calculate angle and distance
         dx = rob_x_g - rob_x_p
         dy = rob_y_g - rob_y_p

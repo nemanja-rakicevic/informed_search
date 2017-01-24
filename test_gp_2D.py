@@ -235,11 +235,12 @@ f = lambda x: np.sum(np.sin(np.pi*x)/(np.pi*x), axis=1)
 f1 = lambda x: np.sum(np.sin(np.pi*x)/(np.pi*x), axis=0)
 
 # Define the kernel
-def kernel(a, b):
-    """ GP squared exponential kernel """
-    kernelParameter = 1
-    sqdist = np.sum(a**2,1).reshape(-1,1) + np.sum(b**2,1) - 2*np.dot(a, b.T)
-    return np.exp(-.5 * (1/kernelParameter) * sqdist)
+# def kernel(a, b):
+#     """ GP squared exponential kernel """
+#     kernelParameter = 1
+#     sqdist = np.sum(a**2,1).reshape(-1,1) + np.sum(b**2,1) - 2*np.dot(a, b.T)
+#     return np.exp(-.5 * (1/kernelParameter) * sqdist)
+
 
 # Create distribution with ONE TRAINING POINT!
 N = 60
@@ -288,11 +289,11 @@ X, Y = np.meshgrid(np.linspace(-5, 5, n), np.linspace(-5, 5, n))
 Z=mu.reshape(100,100)
 surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,linewidth=0, antialiased=False)
 #
-fig2 = pl.figure()
-ax2 = fig2.gca(projection='3d')
-Ztrue = f1(np.array([X,Y]))
-surf = ax2.plot_surface(X, Y, Ztrue, cmap=cm.coolwarm,linewidth=0, antialiased=False)
-pl.show()
+# fig2 = pl.figure()
+# ax2 = fig2.gca(projection='3d')
+# Ztrue = f1(np.array([X,Y]))
+# surf = ax2.plot_surface(X, Y, Ztrue, cmap=cm.coolwarm,linewidth=0, antialiased=False)
+# pl.show()
 #
 fig3 = pl.figure()
 ax2 = fig3.gca(projection='3d')
@@ -306,3 +307,167 @@ pl.show()
 # pl.figure()
 # pl.scatter(Xtest[:,1], f(Xtest))
 # pl.show()
+
+fig3 = pl.figure()
+ax2 = fig3.gca(projection='3d')
+X, Y = np.meshgrid(range_l_dx, range_l_dy)
+Z = cr.reshape(7,10)
+surf = ax2.plot_surface(X, Y, Z, cmap=cm.coolwarm,linewidth=0, antialiased=False)
+pl.show()
+
+
+##########################################################################3333
+##########################################################################3333
+##########################################################################3333
+##########################################################################3333
+# REAL WORLD EXAMPLE
+# implement GPR 2D sample
+
+import itertools
+import numpy as np
+import matplotlib.pyplot as pl
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+import pickle
+
+# f = lambda x: np.sum(np.sin(np.pi*x)/(np.pi*x), axis=1)
+# f1 = lambda x: np.sum(np.sin(np.pi*x)/(np.pi*x), axis=0)
+
+# Define the kernel
+def kernel(a, b):
+    """ GP squared exponential kernel """
+    kernelParameter = 1
+    sqdist = np.sum(a**2,1).reshape(-1,1) + np.sum(b**2,1) - 2*np.dot(a, b.T)
+    return np.exp(-.5 * (1/kernelParameter) * sqdist)
+
+# def kernel(a, b):
+#     """ GP Matern 5/2 kernel: """
+#     kernelParameter = 1
+#     sqdist = (1/kernelParameter) * np.sum(a**2,1).reshape(-1,1) + np.sum(b**2,1) - 2*np.dot(a, b.T)
+    # return (1+np.sqrt(5*sqdist)+5*sqdist/3.) * np.exp(-np.sqrt(5*sqdist))
+
+# Create distribution with ONE TRAINING POINT!
+s = 0.00005    # noise variance.
+# N = 60
+# n = 100         # number of test points.
+
+# measurements in pixels
+x_train = np.array( [[0., 0.], 
+                    [140., 0], 
+                    [340., 0], 
+                    [540., 0], 
+                    [740., 0], 
+                    [940., 200], 
+                    [140., 200], 
+                    [340., 200], 
+                    [540., 200], 
+                    [740., 200], 
+                    [940., 200], 
+                    [140., 400], 
+                    [340., 400], 
+                    [540., 400], 
+                    [740., 400], 
+                    [940., 400]])/100
+# distances in meters
+y_train = np.array( [[0., 0.], 
+                [20., 0], 
+                [56., 0], 
+                [106., 0], 
+                [180., 0], 
+                [298.,0],
+                [20., 30], 
+                [56.5, 36], 
+                [107.5, 43], 
+                [182., 52], 
+                [298., 67],
+                [20., 61], 
+                [57.5, 70.5], 
+                [111., 85], 
+                [187., 105], 
+                [307., 137]])
+
+
+
+# Xtrain = x_train[:,0].reshape(-1,1)/100
+Xtrain = x_train
+# x -coordinate mapping
+y1 = y_train[:,0]
+# y -coordinate mapping
+y2 = y_train[:,1]
+
+Xtest = np.array([ss for ss in itertools.product(np.linspace(-0.5, 10.80, 200),np.linspace(0, 8, 100))])
+
+# Xtest = np.linspace(0, 10.80, 20).reshape(-1,1)
+
+Kss = kernel(Xtest, Xtest)
+
+# for i in range(10):
+# y = f(Xtrain).reshape(-1,1)# + s*np.random.randn(Xtrain.shape[0])
+# get posterior MU and SIGMA
+K = kernel(Xtrain, Xtrain)
+L = np.linalg.cholesky(K + s*np.eye(len(Xtrain)))
+Ks = kernel(Xtrain, Xtest)
+Lk = np.linalg.solve(L, Ks)
+# get posterior MU and SIGMA
+mu1 = np.dot(Lk.T, np.linalg.solve(L, y1))
+mu2 = np.dot(Lk.T, np.linalg.solve(L, y2))
+
+var_post = np.sqrt(np.diag(Kss) - np.sum(Lk**2, axis=0))
+
+
+
+
+X, Y = np.meshgrid(np.linspace(0, 8.00, 100), np.linspace(-0.5, 10.80, 200))
+fig1 = pl.figure()
+ax1 = fig1.gca(projection='3d')
+Z1 = mu1.reshape(200,100)
+surf = ax1.plot_surface(X, Y, Z1, cmap=cm.coolwarm,linewidth=0, antialiased=False)
+#
+X1, Y1 = np.meshgrid(np.linspace(0, 19.20, 200), np.linspace(-0.5, 10.80, 200))
+fig2 = pl.figure()
+ax2 = fig2.gca(projection='3d')
+Z_x = np.hstack((np.fliplr(Z1), Z1))
+surf = ax2.plot_surface(X1, Y1, Z_x, cmap=cm.coolwarm,linewidth=0, antialiased=False)
+pl.show()
+#
+#
+fig3 = pl.figure()
+ax3 = fig3.gca(projection='3d')
+Z2 = mu2.reshape(200,100)
+surf = ax3.plot_surface(X, Y, Z2, cmap=cm.coolwarm,linewidth=0, antialiased=False)
+#
+fig4 = pl.figure()
+ax4 = fig4.gca(projection='3d')
+Z_y = np.hstack((np.fliplr(Z2), -Z2))
+surf = ax4.plot_surface(X1, Y1, Z_y, cmap=cm.coolwarm,linewidth=0, antialiased=False)
+pl.show()
+
+
+x_range = np.linspace(-0.5, 10.80, 200)
+y_range = np.linspace(0, 19.20, 200)
+
+with open('kinect_mapping.dat', "wb") as f:
+    pickle.dump((Z_x, Z_y, x_range, y_range), f)
+
+
+ball_x = 557
+ball_y = 745
+
+px_x = ball_x
+px_y = 1080 - ball_y
+matx = np.abs(x_range-px_y/100.).argmin()
+maty = np.abs(y_range-px_x/100.).argmin()
+
+x_coord = Z_x[matx, maty]
+y_coord = Z_y[matx, maty]
+
+print x_coord, y_coord
+print matx, maty
+
+pl.plot(x_range, Z_y[:,maty])
+pl.show()
+
+
+pl.plot(Xtest, mu1)
+pl.scatter(Xtrain, y1)
+pl.show()

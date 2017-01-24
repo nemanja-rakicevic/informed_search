@@ -1,5 +1,8 @@
 
-# import the necessary packages
+#####################################################################
+# used to broadcast webcam image as rostopic
+
+
 import rospy
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
