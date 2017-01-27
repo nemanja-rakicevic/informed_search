@@ -7,12 +7,20 @@ import numpy as np
 import ik_solver
 import baxter_interface as BI
 
+# from dynamic_reconfigure.server import (
+#     Server,
+# )
+
+# from baxter_examples.cfg import (
+#     JointSpringsExampleConfig,
+# )
+
 #####################################################################
 
 # CONSTANTS - thresholds
 THRSH_START = 10
 THRSH_FORCE = 40
-THRSH_POS = 0.01
+THRSH_POS = 0.0051
 THRSH_SPEED = 0.1
 # CONSTANTS - stick length
 STICK_X_MIN = 0
@@ -32,25 +40,6 @@ RIGHT_X_MIN = -0.05
 RIGHT_X_MAX = 0.15
 RIGHT_Y_MIN = -0.8
 RIGHT_Y_MAX = 0.1
-
-
-### INITIAL POSES
-# INITIAL POSE v3 - best conf
-initial_left = {'left_w0': -2.6461168591023387, 'left_w1': -0.9595049828223263, 'left_w2': -0.5668059011236604, 'left_e0': -1.9493060862053895, 'left_e1': 1.2202817167628466, 'left_s0': 0.9437816797465008, 'left_s1': -0.08321845774278369}
-initial_right = {'right_s0': 0.9594823450680383, 'right_s1': 0.29484998388802847, 'right_w0': -2.098514074519654, 'right_w1': 0.8602590333104184, 'right_w2': 1.9667979410452, 'right_e0': 1.6474396266164186, 'right_e1': 1.4020464458749478}
-
-# # INITIAL POSE v2
-# initial_left = {'left_w0': 0.6895243641544935, 'left_w1': 1.864170152477749, 'left_w2': 2.879665434057893, 'left_e0': -1.7299468335377755, 'left_e1': 1.3936215457938983, 'left_s0': 0.5211699726840693, 'left_s1': -0.9012137128826806}
-# initial_right = {'right_s0': 0.37964739807565584, 'right_s1': 0.14352143114051552, 'right_w0': -1.8527256523443292, 'right_w1': 1.420931037716502, 'right_w2': 1.685053641346243, 'right_e0': 1.4377696804678948, 'right_e1': 2.0279224340086435}
-
-# INITIAL POSE v1 
-# initial_left = {'left_w0': 0.642354454927017, 'left_w1': 1.3690778531877317, 'left_w2': 3.01197127701301, 'left_e0': -1.4871943738549087, 'left_e1': 1.259781722050896, 'left_s0': 0.9698593531405528, 'left_s1': -1.1792477306869118}
-# initial_right = {'right_s0': 1.1888384467948654, 'right_s1': 0.10362679558375552, 'right_w0': -1.754988626921679, 'right_w1': 1.4634793712939942, 'right_w2': 1.734155015491007, 'right_e0': 1.6475973989727597, 'right_e1': 1.1819367115504478}
-
-# Some old one...
-# initial_left = {'left_w0': 0.8590292412158317, 'left_w1': 0.7850146682003605, 'left_w2': 2.8324955248304167, 'left_e0': -1.831573060735184, 'left_e1': 1.4860438882639946, 'left_s0': 1.0530778108833365, 'left_s1': -0.5840631849873713}
-# initial_right = {'right_s0': 0.8942580596047225, 'right_s1': 0.5936894423811188, 'right_w0': -2.0064777590922307, 'right_w1': 1.1135462654472854, 'right_w2': 1.1819992394524164, 'right_e0': 1.9901836920417224, 'right_e1': 1.4520039296340554}
-
 #####################################################################
 
 # Check range
@@ -84,33 +73,33 @@ def getNewPose(left_dx, left_dy, right_dx, right_dy, speed):
         speed_right = speed
         speed_left = speed*left_dL/right_dL
 
-    print speed_left, speed_right
+    # print speed_left, speed_right
     limb_left.set_joint_position_speed(speed_left)
     limb_right.set_joint_position_speed(speed_right)
 
     return joint_values_left, joint_values_right, new_pos_left, new_pos_right
 
 
-def executeTrial(left_dx, left_dy, right_dx, right_dy, speed=0.3):  
+def executeTrial(left_dx, left_dy, right_dx, right_dy, speed=0.9):  
     joint_values_left, joint_values_right, new_pos_left, new_pos_right = getNewPose(left_dx, left_dy, right_dx, right_dy, speed)
 
-    ### For incremental tests
-    # limb_left.set_joint_positions(joint_values_left)
-    # limb_right.set_joint_positions(joint_values_right)
+    ## For incremental tests
+    limb_left.set_joint_positions(joint_values_left)
+    limb_right.set_joint_positions(joint_values_right)
 
     curr_left = limb_left.endpoint_pose()['position']
     print "\nnow LEFT ( x:", round(curr_left[0],2),', y:', round(curr_left[1],2),', z:', round(curr_left[2],2),')'
     curr_right = limb_right.endpoint_pose()['position']
     print "now RIGHT ( x:", round(curr_right[0],2),', y:', round(curr_right[1],2),', z:', round(curr_right[2],2),')'
 
-    # Execute motion and track progress
-    while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
-        not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
-        # send joint commands
-        limb_left.set_joint_positions(joint_values_left)
-        limb_right.set_joint_positions(joint_values_right)
-        # save joint movements
-        # puck_speeds.append(getPuckSpeed(puck_positions))
+    # # Execute motion and track progress
+    # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
+    #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
+    #     # send joint commands
+    #     limb_left.set_joint_positions(joint_values_left)
+    #     limb_right.set_joint_positions(joint_values_right)
+    #     # save joint movements
+    #     # puck_speeds.append(getPuckSpeed(puck_positions))
 
     return 1
 
@@ -126,8 +115,8 @@ if not BI.RobotEnable().state().enabled:
 
 limb_left = BI.Limb("left")
 limb_right = BI.Limb("right")
-# limb_left.set_joint_position_speed(0.3)
-# limb_right.set_joint_position_speed(0.3)
+limb_left.set_joint_position_speed(0.5)
+limb_right.set_joint_position_speed(0.5)
 
 #####################################################################
 #####################################################################
@@ -135,10 +124,24 @@ limb_right = BI.Limb("right")
 #####################################################################
 #####################################################################
 
+#v4 - 35,20
+# initial_left = {'left_w0': -2.89577223233069, 'left_w1': -1.1600729708383442, 'left_w2': -1.6582332317041322, 'left_e0': -1.448461358960802, 'left_e1': 0.7669903939427068, 'left_s0': 0.27113110425874687, 'left_s1': -0.7060146576242616}
+# # initial_right = {'right_s0': 0.4415068194922188, 'right_s1': 0.947, 'right_w0': -2.742287838168007, 'right_w1': 0.9780381055677475, 'right_w2': 1.1313534973875081, 'right_e0': 1.881106510746034, 'right_e1': 1.9022031896138627}
+# initial_right = {'right_s0': 0.800466048527356, 'right_s1': 0.3491576638939382, 'right_w0': -2.959, 'right_w1': 1.5025484131118265, 'right_w2': 2.935518625428416, 'right_e0': 1.559681467805579, 'right_e1': 1.7002814644295619}
+
+# #v3 - 30, 5
+# initial_left = {'left_w0': -2.6461168591023387, 'left_w1': -0.9595049828223263, 'left_w2': -0.5668059011236604, 'left_e0': -1.9493060862053895, 'left_e1': 1.2202817167628466, 'left_s0': 0.9437816797465008, 'left_s1': -0.08321845774278369}
+# initial_right = {'right_s0': 1.032759546843563, 'right_s1': 0.4353110245074654, 'right_w0': -2.248856247084555, 'right_w1': 1.018974816124536, 'right_w2': 1.9044125747349738, 'right_e0': 1.8281707804907916, 'right_e1': 1.3464587499877072}
+
+# v5 38, 16
+initial_left = {'left_w0': -2.8091023178151637, 'left_w1': -1.088359369004701, 'left_w2': -1.3874856226423566, 'left_e0': -1.3798157187029296, 'left_e1': 0.9993884833073471, 'left_s0': 0.5702573578964025, 'left_s1': -0.705247667230319}
+initial_right = {'right_s0': 0.877122385358828, 'right_s1': 0.38881368501200375, 'right_w0': -2.959, 'right_w1': 1.1286424474647607, 'right_w2': 2.932984543928958, 'right_e0': 1.4928188728981575, 'right_e1': 1.5984069969052348}
+
+
 limb_left.move_to_joint_positions(initial_left, timeout=5)
 limb_right.move_to_joint_positions(initial_right, timeout=5)
 # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'System is ready!'\"") 
-time.sleep(5)
+# time.sleep(5)
 
 init_left = limb_left.endpoint_pose()['position']
 print "\nINIT LEFT ( x:", round(init_left[0],2),', y:', round(init_left[1],2),', z:', round(init_left[2],2),')'
@@ -146,11 +149,23 @@ init_right = limb_right.endpoint_pose()['position']
 print "INIT RIGHT ( x:", round(init_right[0],2),', y:', round(init_right[1],2),', z:', round(init_right[2],2),')'
 print "-"*50
 
+
+
+
+raw_input("Execute trial?")
+
+
+
 while not rospy.is_shutdown():
     # (left_dx, left_dy, right_dx, right_dy, speed_left=0.3, speed_right=0.3)
-    raw_input("Execute trial?")
-    s = 0.9
-    executeTrial(-0.1,0, 0.2,0, s)
+
+    executeTrial(0, 0, 0.1 ,0)
+
+    # executeTrial(-0.1, 0, 0 ,0)
+
+    # raw_input("Execute trial?")
+    # s = 0.5
+    # executeTrial(-0.4,0, 0.3,0, s)
 
 
 rospy.on_shutdown(cleanup_on_shutdown)

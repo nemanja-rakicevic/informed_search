@@ -114,8 +114,8 @@ def get_coord(puck_x, puck_y):
 def getLabels(x_coord, y_coord):
     if not (x_coord and y_coord):
         return None, None
-    init_x = -15
-    init_y = -15
+    init_x = -22.
+    init_y = -22.
     L = np.sqrt((x_coord-init_x)**2 + (y_coord-init_y)**2)
     angle = np.rad2deg(np.arctan2(y_coord-init_y, x_coord-init_x))
     return round(angle,2), round(L,2)
