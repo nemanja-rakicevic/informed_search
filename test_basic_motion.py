@@ -63,19 +63,29 @@ def getNewPose(left_dx, left_dy, right_dx, right_dy, speed):
     # Get Joint positions
     joint_values_left = ik_solver.ik_solve('left', new_pos_left, pose_tmp_left['orientation'], limb_left.joint_angles())
     joint_values_right = ik_solver.ik_solve('right', new_pos_right, pose_tmp_right['orientation'], limb_right.joint_angles()) 
+    
+    # print joint_values_left
+    # print joint_values_right
+
     # Set joint speed
     left_dL = sqdist(left_dx,left_dy)
     right_dL = sqdist(right_dx,right_dy) 
     if left_dL>right_dL:
         speed_left = speed
-        speed_right = speed*right_dL/left_dL
+        try:
+            speed_right = speed*right_dL/left_dL
+        except:
+            speed_right = 0
     else:
         speed_right = speed
         speed_left = speed*left_dL/right_dL
 
     # print speed_left, speed_right
-    limb_left.set_joint_position_speed(speed_left)
-    limb_right.set_joint_position_speed(speed_right)
+
+    # limb_left.set_joint_position_speed(speed_left)
+    # limb_right.set_joint_position_speed(speed_right)
+    limb_left.set_joint_position_speed(1)
+    limb_right.set_joint_position_speed(1)
 
     return joint_values_left, joint_values_right, new_pos_left, new_pos_right
 
@@ -84,8 +94,9 @@ def executeTrial(left_dx, left_dy, right_dx, right_dy, speed=0.9):
     joint_values_left, joint_values_right, new_pos_left, new_pos_right = getNewPose(left_dx, left_dy, right_dx, right_dy, speed)
 
     ## For incremental tests
-    limb_left.set_joint_positions(joint_values_left)
-    limb_right.set_joint_positions(joint_values_right)
+    # limb_left.set_joint_positions(joint_values_left)
+    # limb_right.set_joint_positions(joint_values_right)
+
 
     curr_left = limb_left.endpoint_pose()['position']
     print "\nnow LEFT ( x:", round(curr_left[0],2),', y:', round(curr_left[1],2),', z:', round(curr_left[2],2),')'
@@ -96,10 +107,21 @@ def executeTrial(left_dx, left_dy, right_dx, right_dy, speed=0.9):
     # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
     #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
     #     # send joint commands
-    #     limb_left.set_joint_positions(joint_values_left)
     #     limb_right.set_joint_positions(joint_values_right)
+    #     limb_left.set_joint_positions(joint_values_left)
     #     # save joint movements
     #     # puck_speeds.append(getPuckSpeed(puck_positions))
+    cnt = 0
+    while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and cnt <100000:
+        limb_left.set_joint_positions(joint_values_left)
+        cnt+=1
+        # print 'LEFT',cnt
+    cnt=0
+    while not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)) and cnt <100000:
+        limb_right.set_joint_positions(joint_values_right)
+        cnt+=1
+        # print 'RIGHT',cnt
+
 
     return 1
 
@@ -133,9 +155,19 @@ limb_right.set_joint_position_speed(0.5)
 # initial_left = {'left_w0': -2.6461168591023387, 'left_w1': -0.9595049828223263, 'left_w2': -0.5668059011236604, 'left_e0': -1.9493060862053895, 'left_e1': 1.2202817167628466, 'left_s0': 0.9437816797465008, 'left_s1': -0.08321845774278369}
 # initial_right = {'right_s0': 1.032759546843563, 'right_s1': 0.4353110245074654, 'right_w0': -2.248856247084555, 'right_w1': 1.018974816124536, 'right_w2': 1.9044125747349738, 'right_e0': 1.8281707804907916, 'right_e1': 1.3464587499877072}
 
-# v5 38, 16
-initial_left = {'left_w0': -2.8091023178151637, 'left_w1': -1.088359369004701, 'left_w2': -1.3874856226423566, 'left_e0': -1.3798157187029296, 'left_e1': 0.9993884833073471, 'left_s0': 0.5702573578964025, 'left_s1': -0.705247667230319}
-initial_right = {'right_s0': 0.877122385358828, 'right_s1': 0.38881368501200375, 'right_w0': -2.959, 'right_w1': 1.1286424474647607, 'right_w2': 2.932984543928958, 'right_e0': 1.4928188728981575, 'right_e1': 1.5984069969052348}
+# # v5 38, 16
+# initial_left = {'left_w0': -2.8091023178151637, 'left_w1': -1.088359369004701, 'left_w2': -1.3874856226423566, 'left_e0': -1.3798157187029296, 'left_e1': 0.9993884833073471, 'left_s0': 0.5702573578964025, 'left_s1': -0.705247667230319}
+# initial_right = {'right_s0': 0.877122385358828, 'right_s1': 0.38881368501200375, 'right_w0': -2.959, 'right_w1': 1.1286424474647607, 'right_w2': 2.932984543928958, 'right_e0': 1.4928188728981575, 'right_e1': 1.5984069969052348}
+
+# v6, bigger angle span
+initial_left = {'left_w0': 1.0987137393229276, 'left_w1': 1.0270001374892845, 'left_w2': -2.8604906742093252, 'left_e0': -2.3324177879797716, 'left_e1': 1.7422186798408588, 'left_s0': 0.4452379236837413, 'left_s1': 0.9322768238373602}
+initial_right = {'right_s0': -0.24191704699435934, 'right_s1': 0.9320225083599076, 'right_w0': -2.634182591662538, 'right_w1': 0.9931456535434887, 'right_w2': 1.1775742356463146, 'right_e0': 1.3751312891539729, 'right_e1': 1.9915054135984016}
+
+
+# # v6B, bigger angle span
+# initial_left = {'left_w0': 1.4661021380214843, 'left_w1': 1.0956457777471567, 'left_w2': -3.041500407179804, 'left_e0': -2.351209052631368, 'left_e1': 2.074325520418051, 'left_s0': 0.5526165788357204, 'left_s1': 1.0469418877317949}
+# initial_right = {'right_s0': -0.05900444901673606, 'right_s1': 0.9135875859862467, 'right_w0': -2.602005025511741, 'right_w1': 1.5171900257131175, 'right_w2': 1.537563192138872, 'right_e0': 1.5210722717970757, 'right_e1': 2.1073124493073467}
+
 
 
 limb_left.move_to_joint_positions(initial_left, timeout=5)
@@ -153,20 +185,22 @@ print "-"*50
 
 
 raw_input("Execute trial?")
-
+time.sleep(2)
 
 
 while not rospy.is_shutdown():
+
     # (left_dx, left_dy, right_dx, right_dy, speed_left=0.3, speed_right=0.3)
-
-    executeTrial(0, 0, 0.1 ,0)
-
+    # executeTrial(0, -0.1, 0 ,0)
     # executeTrial(-0.1, 0, 0 ,0)
+    # executeTrial(0, 0 , 0, 0.1)
 
     # raw_input("Execute trial?")
-    # s = 0.5
-    # executeTrial(-0.4,0, 0.3,0, s)
+    s = 0.91
+    executeTrial(-0.25, 0.15, 0.25, 0.25, s)   # left angle
+    # executeTrial(0.25, -0.1, 0.30, -0.100, s)   # straight angle
 
+    raw_input("Done?")
 
 rospy.on_shutdown(cleanup_on_shutdown)
 # rate.sleep()

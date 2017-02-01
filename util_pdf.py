@@ -31,14 +31,19 @@ RIGHT_X_MAX = 0.2
 
 RIGHT_Y_MIN = -0.8
 RIGHT_Y_MAX = 0.
+
+# COVARIANCE
+COV = 5000
 ##################################################################
 ## max length of combination vector should be 25000 - 8/7/8/7/8
+# FULL MOTION SPACE
 range_l_dx = np.round(np.linspace(LEFT_X_MIN, LEFT_X_MAX, 8), 3)
 range_l_dy = np.round(np.linspace(LEFT_Y_MIN, LEFT_Y_MAX, 7), 3)
 range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 8), 3)
 range_r_dy = np.round(np.linspace(RIGHT_Y_MIN, RIGHT_Y_MAX, 7), 3)
 range_v = np.round(np.linspace(SPEED_MIN, SPEED_MAX, 8), 3)
 ##################################################################(-0.1,0, 0.2,0, s)
+# ### PARTIAL JOINT SPACE
 # range_l_dx = np.round(np.linspace(-0.2, -0.2, 1), 4)
 # range_l_dy = np.round(np.linspace(0, 0, 1), 4)
 # range_r_dx = np.round(np.linspace(0.1, 0.1, 1), 4)
@@ -50,7 +55,6 @@ class PDFoperations:
 
     def __init__(self):
         
-
         # self.param_list = np.array([range_r_dx, range_r_dy, range_v])
         # self.param_space = np.array([xs for xs in itertools.product(range_r_dx, range_r_dy, range_v)])
         # self.param_dims = np.array([len(i) for i in self.param_list])
@@ -63,7 +67,7 @@ class PDFoperations:
 
         # Initialise to uniform distribution
         self.prior_init = np.ones(tuple(self.param_dims))/(np.product(self.param_dims))
-        self.cov = 5000*np.eye(len(self.param_list))
+        self.cov = COV * np.eye(len(self.param_list))
         self.eps_var = 0.00005
         # Calculate Kernel for the whole parameter (test) space
         # try:
@@ -88,7 +92,7 @@ class PDFoperations:
         self.var_alpha = np.ones(tuple(self.param_dims))
         self.var_L = np.ones(tuple(self.param_dims))
         #
-        self.date = "_20170127"
+        self.date = "_20170201"
 
     # Define the kernel 1
     def kernel(self, a, b):

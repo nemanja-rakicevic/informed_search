@@ -57,7 +57,7 @@ range_v = np.round(np.linspace(SPEED_MIN, SPEED_MAX, 20), 3)
 param_list = np.array([range_l_dx, range_l_dy, range_r_dx, range_r_dy, range_v])
 
 ##################################################################
-(angle, L, var_angle, var_L) = pickle.load(open("DATA_HCK_model_checkpoint.dat", "rb"))
+(M_angle, M_dist, var_angle, var_L) = pickle.load(open("DATA_HCK_model_checkpoint.dat", "rb"))
 
 def sqdist(x,y):
     return np.sqrt(x**2 + y**2)
@@ -65,15 +65,18 @@ def sqdist(x,y):
 def coord2vals(coord, param_list):
     return np.array([param_list[i][coord[i]] for i in range(len(param_list))])
 
-### OPTION 1
+
+angle_s, dist_s = input("\nEnter GOAL angle, distance: ")
+
+### Do paired cartesian sqrt distance
 # Select (angle, L) pair which is closest to the desired one
-meas = (angle-angle_s)* (L-L_s)
+M_meas = sqdist(M_angle-angle_s, M_dist-dist_s)
 # Get the indices of closest
-meas_idx = np.argwhere(info_pdf==np.max(info_pdf))
+meas_idx = np.argwhere(M_meas==np.max(M_meas))
 # locally refine
-
-### OPTION 2
-# check if L*alpha is in range around the goal
-
+coords = meas_idx[0]
 
 # Execute obtained parameters
+left_dx, left_dy, right_dx, right_dy, speed = coord2vals(coords, param_list)
+
+
