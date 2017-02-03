@@ -12,6 +12,14 @@
 # python HCK_DENIRO_camera.py 
 #################################################
 
+
+
+import matplotlib.pyplot as pl
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+
+
+
 import os
 import math
 import time
@@ -54,10 +62,10 @@ STICK_Y_MAX = 1.
 # RIGHT_Y_MAX = 0.1
 ##################################################################
 # INITIAL POSE 
-# v6, bigger angle span
-initial_left = {'left_w0': 1.0987137393229276, 'left_w1': 1.0270001374892845, 'left_w2': -2.8604906742093252, 'left_e0': -2.3324177879797716, 'left_e1': 1.7422186798408588, 'left_s0': 0.4452379236837413, 'left_s1': 0.9322768238373602}
-initial_right = {'right_s0': -0.24191704699435934, 'right_s1': 0.9320225083599076, 'right_w0': -2.634182591662538, 'right_w1': 0.9931456535434887, 'right_w2': 1.1775742356463146, 'right_e0': 1.3751312891539729, 'right_e1': 1.9915054135984016}
-
+# # v6C, bigger angle span
+initial_left = {'left_w0': -1.9017526817809416, 'left_w1': -1.5098205904762185, 'left_w2': 0.0, 'left_e0': -2.111141059327301, 'left_e1': 1.5926555530220308, 'left_s0': 0.3861796633501529, 'left_s1': 0.25349032519806464}
+# initial_right = {'right_s0': -0.37155194764034827, 'right_s1': 0.947, 'right_w0': -1.9226134104693988, 'right_w1': 1.2720872783823325, 'right_w2': 0.9336995649992517, 'right_e0': 1.4905379406793826, 'right_e1': 1.8962337509333822}
+initial_right = {'right_s0': -0.18604712804257897, 'right_s1': 0.7366307125790943, 'right_w0': -1.6419219445615647, 'right_w1': 1.4053479234536634, 'right_w2': 1.0948321182211216, 'right_e0': 1.5301695974547347, 'right_e1': 1.8269783292751778}
 
 #####################################################################
 #####################################################################
@@ -79,7 +87,7 @@ def sqdist(x,y):
     return np.sqrt(x**2 + y**2)
 
 
-def checkStickConstraints(left_dx, left_dy, right_dx, right_dy, _):
+def checkStickConstraints(left_dx, left_dy, right_dx, right_dy, *_k):
     # Check if the parameters comply with stick dimension constraints  
     tmp_left = limb_left.endpoint_pose()['position']
     tmp_right = limb_right.endpoint_pose()['position']
@@ -95,7 +103,7 @@ def checkStickConstraints(left_dx, left_dy, right_dx, right_dy, _):
         return True
 
 
-def getNewPose(left_dx, left_dy, right_dx, right_dy, speed):   
+def getNewPose(left_dx, left_dy, right_dx, right_dy, w, speed):   
     # Get current position
     pose_tmp_left = limb_left.endpoint_pose()
     pose_tmp_right = limb_right.endpoint_pose()
@@ -141,7 +149,9 @@ def executeTrial(trialnum, params):
         return trial
     print "> TRIAL CHECK 1): OK Stick constraint"
 
+    # GET IK SOLUTION
     joint_values_left, joint_values_right, speed_left, speed_right, new_pos_left, new_pos_right = getNewPose(*params) 
+    # joint_values_left['left_w2'] = params[4]
     # CHECK 2) Inverse Kinematic solution
     if joint_values_left == -1 or joint_values_right == -1:
         trial.fail_status = 2
@@ -155,21 +165,32 @@ def executeTrial(trialnum, params):
 
     # Passed constraint check ready to execute
     raw_input(">>> Ready to execute configuration: "+str((trial_params))+"?\n") 
+    time.sleep(1)
+    # EXECUTE MOTION
+    # Set tip hit angle
+    angle_left = limb_left.joint_angles()
+    angle_left['left_w2'] = params[4]
+    limb_left.set_joint_position_speed(1)
+    limb_left.move_to_joint_positions(angle_left, timeout=1)
     # Set the speeds
     limb_left.set_joint_position_speed(speed_left)
     limb_right.set_joint_position_speed(speed_right)
-    # EXECUTE MOTION and save/track progress
-    while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
-        not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
-        # send joint commands
-        limb_left.set_joint_positions(joint_values_left)
-        limb_right.set_joint_positions(joint_values_right)
-        # save joint movements
-        trial.traj_jnt[0].append(limb_left.joint_angles())
-        trial.traj_jnt[1].append(limb_right.joint_angles())
-        # save end-effector movements
-        trial.traj_cart[0].append(limb_left.endpoint_pose()['position'][0:3])
-        trial.traj_cart[1].append(limb_right.endpoint_pose()['position'][0:3])
+    # # EXECUTE MOTION and save/track progress
+    # # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
+    # #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
+    # cnt = 0
+    # while (not (tuple(np.array(joint_values_left.values())-THRSH_POS) <= tuple(limb_left.joint_angles().values()) <= tuple(np.array(joint_values_left.values())+THRSH_POS)) or \
+    #     not (tuple(np.array(joint_values_right.values())-THRSH_POS) <= tuple(limb_right.joint_angles().values()) <= tuple(np.array(joint_values_right.values())+THRSH_POS))) and cnt <30000:
+    #     cnt+=1
+    #     # send joint commands
+    #     limb_left.set_joint_positions(joint_values_left)
+    #     limb_right.set_joint_positions(joint_values_right)
+    #     # save joint movements
+    #     trial.traj_jnt[0].append(limb_left.joint_angles())
+    #     trial.traj_jnt[1].append(limb_right.joint_angles())
+    #     # save end-effector movements
+    #     trial.traj_cart[0].append(limb_left.endpoint_pose()['position'][0:3])
+    #     trial.traj_cart[1].append(limb_right.endpoint_pose()['position'][0:3])
 
 
     # CHECK 3) PHYSICAL EFFECT
@@ -219,16 +240,17 @@ limb_right = BI.Limb("right")
 # while not rospy.is_shutdown():
 
 # Get into initial position
-limb_left.move_to_joint_positions(initial_left, timeout=3)
-limb_right.move_to_joint_positions(initial_right, timeout=3)
+limb_left.move_to_joint_positions(initial_left, timeout=5)
+limb_right.move_to_joint_positions(initial_right, timeout=5)
 # time.sleep(5)
 # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Clear'\"")  
 # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Ready my master!'\"") 
 
-params_list = []
+trials_list = []
 info_list = []
 labels_list = []
 
+print "Calculating Kss ... \n"
 model = updf.PDFoperations()
 
 #################################################################
@@ -244,8 +266,8 @@ while True:
     print "===== Step", tr,"====="
     avar, lvar = model.returnUncertainty()
     print "- Generating new trial parameters...\n- Current entropy [alpha:"+str(round(avar,4))+"; L:"+str(round(lvar,4))+"]"
-    trial_params = model.generateSample(np.array(params_list), np.array(labels_list))
-    params_list.append(trial_params)
+    trial_params = model.generateSample(np.array(trials_list), np.array(labels_list))
+    trials_list.append(trial_params)
     print "---generated params:", trial_params
 
 ##### EXECUTE TRIAL      
@@ -265,6 +287,24 @@ while True:
             else:
                 break
         labels_list.append(trial_label)
+
+        print model.mu_alpha.shape
+        if len(model.mu_alpha) and len(model.mu_L):
+            # VISUALISE PREDICTIONS       
+            X, Y = np.meshgrid(np.linspace(0, 0.17, 100), np.linspace(-0.97, 0.4, 100))
+            #
+            fig1 = pl.figure("ANGLE")
+            ax1 = fig1.gca(projection='3d')
+            Z1 = model.var_alpha.reshape(100,100)
+            # Z1 = model.mu_alpha.reshape(10,10)
+            surf = ax1.plot_surface(X, Y, Z1, cmap=cm.coolwarm,linewidth=0, antialiased=False)
+            #   
+            fig2 = pl.figure("DISTANCE")
+            ax2 = fig2.gca(projection='3d')
+            # Z1 = model.var_L.reshape(10,10)
+            Z1 = model.mu_L.reshape(100,100)
+            surf = ax2.plot_surface(X, Y, Z1, cmap=cm.coolwarm,linewidth=0, antialiased=False)
+            pl.show()
     else:
         labels_list.append([None, None])
         ### if task has failed, remember where it failed
@@ -273,7 +313,7 @@ while True:
 
 ##### SAVE FEATURES and LABELS
     with open("DATA_HCK_trial_checkpoint"+model.date+".dat", "wb") as f:
-        pickle.dump((params_list, labels_list, info_list, model.failed_list), f)
+        pickle.dump((trials_list, labels_list, info_list, model.failed_list), f)
 
     if not tr%100:
         quit = raw_input("\n\n=============== Continue 100 more iterations? [x to quit]\n")
@@ -288,7 +328,7 @@ while True:
 
 print '\nDONE! saving..'
 with open("DATA_HCK_trial_checkpoint"+model.date+".dat", "wb") as f:
-    pickle.dump((params_list, labels_list, info_list, model.failed_list), f)
+    pickle.dump((trials_list, labels_list, info_list, model.failed_list), f)
 
 
 rospy.on_shutdown(cleanup_on_shutdown)
