@@ -262,7 +262,41 @@ coord = np.argwhere(info_pdf==np.max(info_pdf))[0]
 #         m += np.diag(coef*val,+i) + np.diag(coef*val,-i)
 #     return m
 
-### Generating gaussian pdf
+# ## Generating gaussian pdf
 # def generatePDF(x_sample, mu, cov):
-#     f = (1/np.sqrt(2*np.pi*np.linalg.det(cov)))*np.exp(-0.5*np.dot(np.dot((x_sample - mu), cov), (x_sample - mu).T))
+#     f = (1/np.sqrt(2*np.pi*np.linalg.det(cov))) * np.exp(-0.5*np.dot(np.dot((x_sample.T - mu), cov), (x_sample - mu)))
 #     return f
+
+
+
+### 2D Gaussian Plot example
+
+import itertools
+import numpy as np
+import matplotlib.pyplot as pl
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+import pickle
+from numpy.core.umath_tests import inner1d
+
+
+N = 10
+xrang = np.linspace(1,10,N)
+yrang = np.linspace(1,10,N)
+mu = np.array([1,1])#.reshape(-1,1)
+cov = np.eye(2)
+x_sample = np.array([ss for ss in itertools.product(xrang, yrang)])
+
+X, Y = np.meshgrid(xrang, yrang)
+Z1 = generatePDF_matrix(x_sample, mu, cov)
+
+Z1 = (0.25-Z1).reshape(N,N)
+
+fig1 = pl.figure()
+ax1 = fig1.gca(projection='3d')
+surf1 = ax1.plot_wireframe(X, Y, Z1, color='black', rstride=1, cstride=1)
+surf = ax1.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=True)
+# surf1 = ax1.plot_surface(X, Y, Z1, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=True)
+fig1.colorbar(surf, shrink=0.5, aspect=5)
+# fig1.colorbar(surf1, shrink=0.5, aspect=5)
+pl.show()

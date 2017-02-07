@@ -1,4 +1,6 @@
 
+import os
+import time
 from numpy.core.umath_tests import inner1d
 import itertools
 import numpy as np
@@ -6,16 +8,6 @@ import pickle
 from heapq import nlargest
 
 ##################################################################
-# # CONSTANTS - thresholds
-# THRSH_START = 10
-# THRSH_FORCE = 40
-# THRSH_POS = 0.01
-# THRSH_SPEED = 0.1
-# # CONSTANTS - stick length
-# STICK_X_MIN = 0
-# STICK_X_MAX = 0.35
-# STICK_Y_MIN = 0
-# STICK_Y_MAX = 0.55
 # CONSTANTS - speed 
 SPEED_MIN = 0.4
 SPEED_MAX = 1
@@ -34,6 +26,7 @@ RIGHT_Y_MIN = -0.5
 RIGHT_Y_MAX = 0.5
 # COVARIANCE
 COV = 5000
+
 # ##################################################################
 # ## max length of combination vector should be 25000 - 8/7/8/7/8
 # # FULL MOTION SPACE
@@ -47,9 +40,9 @@ COV = 5000
 # ### PARTIAL JOINT SPACE
 range_l_dx = np.round(np.linspace(-0.3, -0.3, 1), 3)
 range_l_dy = np.round(np.linspace(0.1, 0.1, 1), 3)
-range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 100), 3)
+range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 10), 3)
 range_r_dy = np.round(np.linspace(0.4, 0.4, 1), 3)
-range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 100), 3)
+range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 10), 3)
 range_speed = np.round(np.linspace(1, 1, 1), 3)
 ##################################################################
     
@@ -87,17 +80,17 @@ class PDFoperations:
         self.var_alpha = np.ones(tuple(self.param_dims))
         self.var_L = np.ones(tuple(self.param_dims))
         #
-        self.date = "_20170203"
+        self.trial_dirname = 'TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
+        os.makedirs(self.trial_dirname)
 
-    # Define the kernel 1
+    # # Define the kernel 1
     def kernel(self, a, b):
         """ GP squared exponential kernel """
         kernelParameter = 1
         sqdist = np.sum(a**2,1).reshape(-1,1) + np.sum(b**2,1) - 2*np.dot(a, b.T)
         return np.exp(-.5 * (1/kernelParameter) * sqdist)
 
-
-    # # Define the kernel 2
+    # Define the kernel 2
     # def kernel(self, a, b):
     #     """ GP Matern 5/2 kernel: """
     #     kernelParameter = 1
@@ -165,8 +158,8 @@ class PDFoperations:
             # SAVE CURRENT MODEL
             # with open('DATA_trial_checkpoint.dat', "wb") as f:
             #         pickle.dump([self.trial_list,self.f_eval_list], f)
-            with open("DATA_HCK_model_checkpoint"+self.date+".dat", "wb") as m:
-                    pickle.dump([self.mu_alpha, self.mu_L, self.var_alpha, self.var_L], m)
+            with open(self.trial_dirname+"/DATA_HCK_model_checkpoint.dat", "wb") as m:
+                    pickle.dump([self.mu_alpha, self.mu_L, self.var_alpha, self.penal_PDF, self.param_list], m)
 
         # multiply the above's uncertainties to get the most informative point
         info_pdf = self.var_alpha * self.var_L * (1-self.penal_PDF)/np.sum(1-self.penal_PDF)
@@ -182,8 +175,8 @@ class PDFoperations:
         cnt=1
         # print len(temp), len(temp_good), len(self.coord_list)
         while not len(temp_good):
-            temp_good = np.array([c for c in np.argwhere(nlargest(cnt, info_pdf)) if c not in np.array(self.coord_list)])
-            print "\nsamples:",temp_good,"\n"
+            temp_good = np.array([c for c in np.argwhere(info_pdf==nlargest(cnt, info_pdf.ravel())) if c not in np.array(self.coord_list)])
+            print "\nsamples:",temp_good, cnt, self.coord_list, "\n"
             cnt+=1
 
         self.coord = temp_good[np.random.choice(len(temp_good)),:]

@@ -95,9 +95,9 @@ def extract_coords_puck(frame):
     print frame.shape
     frame = frame.copy()
     for x in xrange(-600, 601, 200):
-        cv2.line(frame, (960 + x, 0), (960 + x, 1080), (0, 255, 255), 5)
+        cv2.line(frame, (960 + x, 0), (960 + x, 1080), (100, 255, 0), 5)
     for y in xrange(-400, 401, 200):
-        cv2.line(frame, (0, 540 + y), (1920, 540 + y), (0, 255, 255), 5)
+        cv2.line(frame, (0, 540 + y), (1920, 540 + y), (100, 255, 0), 5)
     cv2.imshow("Front Camera", frame) #(frame * 255).astype(int))
     cv2.waitKey(1)
     
