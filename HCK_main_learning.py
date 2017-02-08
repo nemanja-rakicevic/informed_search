@@ -136,6 +136,8 @@ def executeTrial(trialnum, params):
         print "> TRIAL CHECK 1): OK Stick constraint"
 
         # GET IK SOLUTION
+        limb_left.move_to_joint_positions(initial_left, timeout=4)
+        limb_right.move_to_joint_positions(initial_right, timeout=4)
         joint_values_left, joint_values_right, speed_left, speed_right, new_pos_left, new_pos_right = getNewPose(*params) 
         # joint_values_left['left_w2'] = params[4]
         # CHECK 2) Inverse Kinematic solution
@@ -150,8 +152,6 @@ def executeTrial(trialnum, params):
         print "> TRIAL CHECK 2): OK IK solution"
 
         # Passed constraint check ready to execute
-        limb_left.move_to_joint_positions(initial_left, timeout=4)
-        limb_right.move_to_joint_positions(initial_right, timeout=4)
         raw_input(">>> Ready to execute configuration: "+str((params))+"?\n")
         os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Stand clear'\"")   
         time.sleep(1)
@@ -164,22 +164,23 @@ def executeTrial(trialnum, params):
         # Set the speeds
         limb_left.set_joint_position_speed(speed_left)
         limb_right.set_joint_position_speed(speed_right)
-        # EXECUTE MOTION and save/track progress
-        # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
-        #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
-        cnt = 0
-        while (not (tuple(np.array(joint_values_left.values())-THRSH_POS) <= tuple(limb_left.joint_angles().values()) <= tuple(np.array(joint_values_left.values())+THRSH_POS)) or \
-            not (tuple(np.array(joint_values_right.values())-THRSH_POS) <= tuple(limb_right.joint_angles().values()) <= tuple(np.array(joint_values_right.values())+THRSH_POS))) and cnt <30000:
-            cnt+=1
-            # send joint commands
-            limb_left.set_joint_positions(joint_values_left)
-            limb_right.set_joint_positions(joint_values_right)
-            # save joint movements
-            trial.traj_jnt[0].append(limb_left.joint_angles())
-            trial.traj_jnt[1].append(limb_right.joint_angles())
-            # save end-effector movements
-            trial.traj_cart[0].append(limb_left.endpoint_pose()['position'][0:3])
-            trial.traj_cart[1].append(limb_right.endpoint_pose()['position'][0:3])
+
+        # # EXECUTE MOTION and save/track progress
+        # # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
+        # #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
+        # cnt = 0
+        # while (not (tuple(np.array(joint_values_left.values())-THRSH_POS) <= tuple(limb_left.joint_angles().values()) <= tuple(np.array(joint_values_left.values())+THRSH_POS)) or \
+        #     not (tuple(np.array(joint_values_right.values())-THRSH_POS) <= tuple(limb_right.joint_angles().values()) <= tuple(np.array(joint_values_right.values())+THRSH_POS))) and cnt <30000:
+        #     cnt+=1
+        #     # send joint commands
+        #     limb_left.set_joint_positions(joint_values_left)
+        #     limb_right.set_joint_positions(joint_values_right)
+        #     # save joint movements
+        #     trial.traj_jnt[0].append(limb_left.joint_angles())
+        #     trial.traj_jnt[1].append(limb_right.joint_angles())
+        #     # save end-effector movements
+        #     trial.traj_cart[0].append(limb_left.endpoint_pose()['position'][0:3])
+        #     trial.traj_cart[1].append(limb_right.endpoint_pose()['position'][0:3])
 
 
         # CHECK 3) PHYSICAL EFFECT
@@ -288,7 +289,8 @@ while True:
             fig = pl.figure("DISTRIBUTIONs at step: "+str(tr), figsize=None)
             fig.set_size_inches(fig.get_size_inches()[0]*2,fig.get_size_inches()[1]*2)
             # ANGLE MODEL
-            ax = fig.add_subplot(2, 2, 1, projection='3d')
+            ax = pl.subplot2grid((2,6),(0, 0), colspan=3, projection='3d')
+            # ax = fig.add_subplot(2, 2, 1, projection='3d')
             ax.set_title('ANGLE MODEL')
             ax.set_xlabel('right dx')
             ax.set_ylabel('wrist angle')
@@ -296,24 +298,34 @@ while True:
             ax.plot_surface(X, Y, model.mu_alpha.reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             # fig.colorbar(surf, shrink=0.5, aspect=5)
             # DISTANCE MODEL
-            ax = fig.add_subplot(2, 2, 2, projection='3d')
+            ax = pl.subplot2grid((2,6),(0, 3), colspan=3, projection='3d')
+            # ax = fig.add_subplot(2, 2, 2, projection='3d')
             ax.set_title('DISTANCE MODEL')
             ax.set_xlabel('right dx')
             ax.set_ylabel('wrist angle')
             ax.set_zlabel('[cm]', rotation='vertical')
             ax.plot_surface(X, Y, model.mu_L.reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             # PENALISATION PDF
-            ax = fig.add_subplot(2, 2, 3, projection='3d')
-            ax.set_title('Penalisation PDF')
+            ax = pl.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
+            # ax = fig.add_subplot(2, 2, 3, projection='3d')
+            ax.set_title('Penalisation PDF: '+str(len(model.failed_list))+' points')
             ax.set_xlabel('right dx')
             ax.set_ylabel('wrist angle')
             ax.plot_surface(X, Y, model.penal_PDF.reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
             # UNCERTAINTY
-            ax = fig.add_subplot(2, 2, 4, projection='3d')
+            ax = pl.subplot2grid((2,6),(1, 2), colspan=2, projection='3d')
+            # ax = fig.add_subplot(2, 2, 4, projection='3d')
             ax.set_xlabel('right dx')
             ax.set_ylabel('wrist angle')
-            ax.set_title('Model uncertainty:'+str(round(avar,4)))
+            ax.set_title('Model uncertainty: '+str(round(avar,4)))
             ax.plot_surface(X, Y, model.var_alpha.reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
+            # PENALISATION PDF
+            ax = pl.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
+            # ax = fig.add_subplot(2, 2, 3, projection='3d')
+            ax.set_title('Selection function')
+            ax.set_xlabel('right dx')
+            ax.set_ylabel('wrist angle')
+            ax.plot_surface(X, Y, model.info_pdf.reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
             # SAVEFIG
             pl.savefig(model.trial_dirname+"/IMG_HCK_distributions_step"+str(tr)+".png")
             pl.show()
@@ -324,10 +336,10 @@ while True:
 
 
 ##### SAVE FEATURES and LABELS
-    if tr%10==0:
-        print "Saving progress..."
-        with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint.dat", "wb") as f:
-            pickle.dump((trials_list, labels_list, info_list, model.failed_list), f)
+    # if tr%5==0:
+    print "\nSaving progress...\n"
+    with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint.dat", "wb") as f:
+        pickle.dump((trials_list, labels_list, info_list, model.failed_list), f)
 
     # PROMPT for continuation
     if tr%100==0:

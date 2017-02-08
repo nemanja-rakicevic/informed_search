@@ -162,26 +162,39 @@ class PDFoperations:
                     pickle.dump([self.mu_alpha, self.mu_L, self.var_alpha, self.penal_PDF, self.param_list], m)
 
         # multiply the above's uncertainties to get the most informative point
-        info_pdf = self.var_alpha * self.var_L * (1-self.penal_PDF)/np.sum(1-self.penal_PDF)
+        info_pdf = self.var_alpha * (1-self.penal_PDF)/np.sum(1-self.penal_PDF)
         info_pdf /= np.sum(info_pdf)
 
-        # get positions of highest uncertainty 
-        temp = np.argwhere(info_pdf==np.max(info_pdf))
-        # check and take those which have not been explored
-        temp_good = set(map(tuple, temp)) - set(map(tuple, self.coord_list))
-        temp_good = np.array(map(list, temp_good))
-        # temp_good = np.array([c for c in np.array(temp) if c not in np.array(self.coord_list)])
-        
+        self.info_pdf = info_pdf
+
+        temp_good = []
         cnt=1
-        # print len(temp), len(temp_good), len(self.coord_list)
         while not len(temp_good):
-            temp_good = np.array([c for c in np.argwhere(info_pdf==nlargest(cnt, info_pdf.ravel())) if c not in np.array(self.coord_list)])
-            print "\nsamples:",temp_good, cnt, self.coord_list, "\n"
+            # get positions of highest uncertainty 
+            # temp = np.argwhere(info_pdf==np.max(info_pdf))
+            print "cnt: ",cnt
+            temp = np.argwhere(info_pdf==nlargest(cnt, info_pdf.ravel()))
+            # check and take those which have not been explored
+            temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_list))
+            temp_good = np.array(map(list, temp_good))            
             cnt+=1
+
+            # FILTER 2D
+            temp_good = np.array([c for c in temp_good if c[0]==0 and c[1]==0 and c[3]==0 and c[5]==0])
+
+            if cnt-1 > 100:
+                print 'ALL options exhausted...Quitting'
+                break
+            # print "\nsamples:"
+            # print len(temp)
+            # print cnt
+            # print len(self.coord_list)
+            # print 'selected:'
+            # print len(temp_good1),'---',len(temp_good),"\n"
 
         self.coord = temp_good[np.random.choice(len(temp_good)),:]
         self.coord_list.append(self.coord)
-        print "---info_pdf provided:", len(temp),"of which", len(temp_good),"unexplored." 
+        print "---info_pdf provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" 
         print "---generated coords:", self.coord
         # return the next sample vector
         return np.array([self.param_list[i][self.coord[i]] for i in range(len(self.param_list))])
