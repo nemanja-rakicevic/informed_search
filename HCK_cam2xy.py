@@ -101,8 +101,9 @@ def callback_cam(msg):
         (10, frame.shape[0] - 130), cv2.FONT_HERSHEY_SIMPLEX,
         1, (255, 20, 0), 3)
 
-    # # PRINT LINES
-    # frame = frame.copy()
+    # PRINT LINES
+    frame = frame.copy()
+    cv2.line(frame, (960, 0), (960, 1080), (0, 0, 255), 2)
     # for x in xrange(-600, 601, 200):
     #     cv2.line(frame, (960 + x, 0), (960 + x, 1080), (100, 255, 0), 5)
     # for y in xrange(-400, 401, 200):

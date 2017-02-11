@@ -1,0 +1,8 @@
+
+# TRIALS: 
+20
+
+# PARAMETERS:
+sigsq = np.exp(1)
+siglensq = np.exp(1)
+alpha = np.exp(1)

@@ -1,0 +1,9 @@
+
+# TRIALS: 
+60
+
+# PARAMETERS:
+COV = 1000
+        """ GP squared exponential kernel """
+        sigsq = 1
+        siglensq = 0.03

@@ -2,6 +2,7 @@
 ### KERNEL TESTING
 # overview: http://crsouza.com/2010/03/17/kernel-functions-for-machine-learning-applications/
 # http://pythonhosted.org/GPy/GPy.kern.html
+# https://uk.mathworks.com/help/stats/kernel-covariance-function-options.html
 
 # Testing various implementatins of Kernels, taken from:
 # GROUP 1) Nando's lectures
@@ -181,3 +182,28 @@ K7 = OrnsteinKernel(a,b)
 
 pl.imshow(K7)
 pl.show()
+
+
+
+def kernel1( a, b):
+    """ GP squared exponential kernel """
+    sigsq = 1
+    siglensq = 0.03
+    sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+    return sigsq*np.exp(-.5 *sqdist)
+
+def kernel2( a, b):
+    """ GP Matern 5/2 kernel: """
+    sigsq = np.exp(1)
+    siglensq = 0.03
+    sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+    return sigsq * (1 + np.sqrt(5*sqdist) + 5*sqdist/3.) * np.exp(-np.sqrt(5.*sqdist))
+
+def kernel3( a, b):
+    """ GP rational quadratic kernel """
+    sigsq = 1
+    siglensq = 0.03
+    alpha = len(a)/2. #np.exp(1)
+    sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+    return sigsq * np.power(1 + 0.5*sqdist/alpha, -alpha)
+

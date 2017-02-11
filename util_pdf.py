@@ -4,46 +4,48 @@ import time
 from numpy.core.umath_tests import inner1d
 import itertools
 import numpy as np
-import pickle
+import scipy as sp
+import scipy.spatial
+import cPickle as pickle
 from heapq import nlargest
 
 ##################################################################
 # CONSTANTS - speed 
 SPEED_MIN = 0.4
 SPEED_MAX = 1
+# CONSTANTS - left arm
+LEFT_X_MIN = -0.30  #(-0.35)
+LEFT_X_MAX = 0.1   #(0.12)
+LEFT_Y_MIN = -0.1   #(-0.8)
+LEFT_Y_MAX = 0.25   #(0.30)
 # CONSTANTS - left wrist
 WRIST_MIN = -0.97   #(max = -3.) lean front
 WRIST_MAX = 0.4     #(max = +3.) lean back
-# CONSTANTS - left arm
-LEFT_X_MIN = -0.30  #-0.35
-LEFT_X_MAX = 0.12
-LEFT_Y_MIN = -0.8
-LEFT_Y_MAX = 0.25
 # CONSTANTS - right arm
-RIGHT_X_MIN = 0.0
-RIGHT_X_MAX = 0.17
-RIGHT_Y_MIN = -0.5
-RIGHT_Y_MAX = 0.5
+RIGHT_X_MIN = 0.0   #(-0.05)
+RIGHT_X_MAX = 0.17  #(0.20)
+RIGHT_Y_MIN = -0.1  #(-0.5)
+RIGHT_Y_MAX = 0.5   #(0.5)
 # COVARIANCE
-COV = 5000
+COV = 500
 
 # ##################################################################
 # ## max length of combination vector should be 25000 - 8/7/8/7/8
-# # FULL MOTION SPACE
-# range_l_dx = np.round(np.linspace(LEFT_X_MIN, LEFT_X_MAX, 6), 3)
-# range_l_dy = np.round(np.linspace(LEFT_Y_MIN, LEFT_Y_MAX, 5), 3)
-# range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 6), 3)
-# range_r_dy = np.round(np.linspace(RIGHT_Y_MIN, RIGHT_Y_MAX, 5), 3)
-# range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 6), 3)
-# range_speed = np.round(np.linspace(SPEED_MIN, SPEED_MAX, 5), 3)
+# FULL MOTION SPACE
+range_l_dx = np.round(np.linspace(LEFT_X_MIN, LEFT_X_MAX, 5), 3)
+range_l_dy = np.round(np.linspace(LEFT_Y_MIN, LEFT_Y_MAX, 5), 3)
+range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 5), 3)
+range_r_dy = np.round(np.linspace(RIGHT_Y_MIN, RIGHT_Y_MAX, 5), 3)
+range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 6), 3)
+range_speed = np.round(np.linspace(SPEED_MIN, SPEED_MAX, 5), 3)
 #################################################################(-0.3, 0.1, 0.05, 0.4, w=-0.97, speed=s) #(-0.1,0, 0.2,0, s)
-# ### PARTIAL JOINT SPACE
-range_l_dx = np.round(np.linspace(-0.3, -0.3, 1), 3)
-range_l_dy = np.round(np.linspace(0.1, 0.1, 1), 3)
-range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 10), 3)
-range_r_dy = np.round(np.linspace(0.4, 0.4, 1), 3)
-range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 10), 3)
-range_speed = np.round(np.linspace(1, 1, 1), 3)
+# # ### PARTIAL JOINT SPACE
+# range_l_dx = np.round(np.linspace(-0.3, -0.3, 1), 3)
+# range_l_dy = np.round(np.linspace(0.1, 0.1, 1), 3)
+# range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 10), 3)
+# range_r_dy = np.round(np.linspace(0.4, 0.4, 1), 3)
+# range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 10), 3)
+# range_speed = np.round(np.linspace(1, 1, 1), 3)
 ##################################################################
     
 class PDFoperations:
@@ -80,22 +82,31 @@ class PDFoperations:
         self.var_alpha = np.ones(tuple(self.param_dims))
         self.var_L = np.ones(tuple(self.param_dims))
         #
-        self.trial_dirname = 'TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
+        self.trial_dirname = 'TRIALS_FULL/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
         os.makedirs(self.trial_dirname)
 
-    # # Define the kernel 1
-    def kernel(self, a, b):
-        """ GP squared exponential kernel """
-        kernelParameter = 1
-        sqdist = np.sum(a**2,1).reshape(-1,1) + np.sum(b**2,1) - 2*np.dot(a, b.T)
-        return np.exp(-.5 * (1/kernelParameter) * sqdist)
+    # def kernel(self, a, b):
+    #     """ GP squared exponential kernel """
+    #     sigsq = 1
+    #     siglensq = 0.03
+    #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+    #     return sigsq*np.exp(-.5 *sqdist)
 
-    # Define the kernel 2
     # def kernel(self, a, b):
     #     """ GP Matern 5/2 kernel: """
-    #     kernelParameter = 1
-    #     sqdist = (1/kernelParameter) * np.sum(a**2,1).reshape(-1,1) + np.sum(b**2,1) - 2*np.dot(a, b.T)
-    #     return (1+np.sqrt(5*sqdist)+5*sqdist/3.) * np.exp(-np.sqrt(5*sqdist))
+    #     sigsq = 1
+    #     siglensq = 1
+    #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+    #     return sigsq * (1 + np.sqrt(5*sqdist) + 5*sqdist/3.) * np.exp(-np.sqrt(5.*sqdist))
+
+    def kernel(self, a, b):
+        """ GP rational quadratic kernel """
+        sigsq = 1
+        siglensq = 1
+        alpha = a.shape[1]/2. #a.shape[1]/2. #np.exp(1) #len(a)/2.
+        # print alpha
+        sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+        return sigsq * np.power(1 + 0.5*sqdist/alpha, -alpha)
 
 
     # Make a multinomial gaussian 
@@ -162,7 +173,8 @@ class PDFoperations:
                     pickle.dump([self.mu_alpha, self.mu_L, self.var_alpha, self.penal_PDF, self.param_list], m)
 
         # multiply the above's uncertainties to get the most informative point
-        info_pdf = self.var_alpha * (1-self.penal_PDF)/np.sum(1-self.penal_PDF)
+        # DO NOT NORMALIZE ?!
+        info_pdf = self.var_alpha * (1-self.penal_PDF)#/np.sum(1-self.penal_PDF)
         info_pdf /= np.sum(info_pdf)
 
         self.info_pdf = info_pdf
@@ -172,15 +184,19 @@ class PDFoperations:
         while not len(temp_good):
             # get positions of highest uncertainty 
             # temp = np.argwhere(info_pdf==np.max(info_pdf))
-            print "cnt: ",cnt
-            temp = np.argwhere(info_pdf==nlargest(cnt, info_pdf.ravel()))
+            # temp = np.argwhere((info_pdf==nlargest(cnt, info_pdf.ravel())).reshape(tuple(np.append(self.param_dims, -1))))[:,0:-1]
+            temp = np.argwhere(np.array([info_pdf==c for c in nlargest(cnt, info_pdf.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
+
             # check and take those which have not been explored
             temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_list))
             temp_good = np.array(map(list, temp_good))            
             cnt+=1
 
-            # FILTER 2D
-            temp_good = np.array([c for c in temp_good if c[0]==0 and c[1]==0 and c[3]==0 and c[5]==0])
+            print "cnt: ", cnt-1
+            print "tmp: ", len(temp_good)
+
+            # # FILTER 2D
+            # temp_good = np.array([c for c in temp_good if c[0]==0 and c[1]==0 and c[3]==0 and c[5]==0])
 
             if cnt-1 > 100:
                 print 'ALL options exhausted...Quitting'

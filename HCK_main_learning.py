@@ -22,7 +22,7 @@ import os
 import math
 import time
 import rospy
-import pickle
+import cPickle as pickle
 import numpy as np
 import ik_solver
 import baxter_interface as BI
@@ -63,6 +63,10 @@ class TrialInfo:
 
 def cleanup_on_shutdown():
     # cleanup, close any open windows
+    print "\nSaving at exit...\n"
+    with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint.dat", "wb") as f:
+        pickle.dump((trials_list, labels_list, info_list, model.failed_list), f)
+
     BI.RobotEnable().disable()
     cv2.destroyAllWindows()
 
@@ -136,8 +140,8 @@ def executeTrial(trialnum, params):
         print "> TRIAL CHECK 1): OK Stick constraint"
 
         # GET IK SOLUTION
-        limb_left.move_to_joint_positions(initial_left, timeout=4)
-        limb_right.move_to_joint_positions(initial_right, timeout=4)
+        limb_right.move_to_joint_positions(initial_right, timeout=5)
+        limb_left.move_to_joint_positions(initial_left, timeout=5)
         joint_values_left, joint_values_right, speed_left, speed_right, new_pos_left, new_pos_right = getNewPose(*params) 
         # joint_values_left['left_w2'] = params[4]
         # CHECK 2) Inverse Kinematic solution
@@ -160,27 +164,27 @@ def executeTrial(trialnum, params):
         angle_left = limb_left.joint_angles()
         angle_left['left_w2'] = params[4]
         limb_left.set_joint_position_speed(1)
-        limb_left.move_to_joint_positions(angle_left, timeout=1)
+        limb_left.move_to_joint_positions(angle_left, timeout=2)
         # Set the speeds
         limb_left.set_joint_position_speed(speed_left)
         limb_right.set_joint_position_speed(speed_right)
 
-        # # EXECUTE MOTION and save/track progress
-        # # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
-        # #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
-        # cnt = 0
-        # while (not (tuple(np.array(joint_values_left.values())-THRSH_POS) <= tuple(limb_left.joint_angles().values()) <= tuple(np.array(joint_values_left.values())+THRSH_POS)) or \
-        #     not (tuple(np.array(joint_values_right.values())-THRSH_POS) <= tuple(limb_right.joint_angles().values()) <= tuple(np.array(joint_values_right.values())+THRSH_POS))) and cnt <30000:
-        #     cnt+=1
-        #     # send joint commands
-        #     limb_left.set_joint_positions(joint_values_left)
-        #     limb_right.set_joint_positions(joint_values_right)
-        #     # save joint movements
-        #     trial.traj_jnt[0].append(limb_left.joint_angles())
-        #     trial.traj_jnt[1].append(limb_right.joint_angles())
-        #     # save end-effector movements
-        #     trial.traj_cart[0].append(limb_left.endpoint_pose()['position'][0:3])
-        #     trial.traj_cart[1].append(limb_right.endpoint_pose()['position'][0:3])
+        # EXECUTE MOTION and save/track progress
+        # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
+        #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
+        cnt = 0
+        while (not (tuple(np.array(joint_values_left.values())-THRSH_POS) <= tuple(limb_left.joint_angles().values()) <= tuple(np.array(joint_values_left.values())+THRSH_POS)) or \
+            not (tuple(np.array(joint_values_right.values())-THRSH_POS) <= tuple(limb_right.joint_angles().values()) <= tuple(np.array(joint_values_right.values())+THRSH_POS))) and cnt <20000:
+            cnt+=1
+            # send joint commands
+            limb_left.set_joint_positions(joint_values_left)
+            limb_right.set_joint_positions(joint_values_right)
+            # save joint movements
+            trial.traj_jnt[0].append(limb_left.joint_angles())
+            trial.traj_jnt[1].append(limb_right.joint_angles())
+            # save end-effector movements
+            trial.traj_cart[0].append(limb_left.endpoint_pose()['position'][0:3])
+            trial.traj_cart[1].append(limb_right.endpoint_pose()['position'][0:3])
 
 
         # CHECK 3) PHYSICAL EFFECT
@@ -251,8 +255,10 @@ model = updf.PDFoperations()
 tr = 0
 while True:
     tr+=1
-    limb_left.move_to_joint_positions(initial_left, timeout=5)
-    limb_right.move_to_joint_positions(initial_right, timeout=5)
+    limb_right.move_to_joint_positions(initial_right, timeout=2)
+    limb_left.move_to_joint_positions(initial_left, timeout=2)
+    limb_right.move_to_joint_positions(initial_right, timeout=3)
+    limb_left.move_to_joint_positions(initial_left, timeout=3)
 
 ##### GENERATE SAMPLE
     print "\n==================="
@@ -281,51 +287,52 @@ while True:
             else:
                 break
         labels_list.append(trial_label)
-######## VISUALISE PREDICTIONS     
+######## VISUALISE PREDICTIONS
+        print "<- CHECK PLOTS"     
         if len(model.mu_alpha) and len(model.mu_L):
             dim1 = model.param_list[2]
             dim2 = model.param_list[4]
-            X, Y = np.meshgrid(dim1, dim2)
+            X, Y = np.meshgrid(dim2, dim1)
             fig = pl.figure("DISTRIBUTIONs at step: "+str(tr), figsize=None)
             fig.set_size_inches(fig.get_size_inches()[0]*2,fig.get_size_inches()[1]*2)
             # ANGLE MODEL
             ax = pl.subplot2grid((2,6),(0, 0), colspan=3, projection='3d')
             # ax = fig.add_subplot(2, 2, 1, projection='3d')
             ax.set_title('ANGLE MODEL')
-            ax.set_xlabel('right dx')
-            ax.set_ylabel('wrist angle')
+            ax.set_ylabel('right dx')
+            ax.set_xlabel('wrist angle')
             ax.set_zlabel('[degrees]', rotation='vertical')
-            ax.plot_surface(X, Y, model.mu_alpha.reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            ax.plot_surface(X, Y, model.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             # fig.colorbar(surf, shrink=0.5, aspect=5)
             # DISTANCE MODEL
             ax = pl.subplot2grid((2,6),(0, 3), colspan=3, projection='3d')
             # ax = fig.add_subplot(2, 2, 2, projection='3d')
             ax.set_title('DISTANCE MODEL')
-            ax.set_xlabel('right dx')
-            ax.set_ylabel('wrist angle')
+            ax.set_ylabel('right dx')
+            ax.set_xlabel('wrist angle')
             ax.set_zlabel('[cm]', rotation='vertical')
-            ax.plot_surface(X, Y, model.mu_L.reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            ax.plot_surface(X, Y, model.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             # PENALISATION PDF
             ax = pl.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
             # ax = fig.add_subplot(2, 2, 3, projection='3d')
             ax.set_title('Penalisation PDF: '+str(len(model.failed_list))+' points')
-            ax.set_xlabel('right dx')
-            ax.set_ylabel('wrist angle')
-            ax.plot_surface(X, Y, model.penal_PDF.reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
+            ax.set_ylabel('right dx')
+            ax.set_xlabel('wrist angle')
+            ax.plot_surface(X, Y, model.penal_PDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
             # UNCERTAINTY
             ax = pl.subplot2grid((2,6),(1, 2), colspan=2, projection='3d')
             # ax = fig.add_subplot(2, 2, 4, projection='3d')
-            ax.set_xlabel('right dx')
-            ax.set_ylabel('wrist angle')
+            ax.set_ylabel('right dx')
+            ax.set_xlabel('wrist angle')
             ax.set_title('Model uncertainty: '+str(round(avar,4)))
-            ax.plot_surface(X, Y, model.var_alpha.reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
+            ax.plot_surface(X, Y, model.var_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
             # PENALISATION PDF
             ax = pl.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
             # ax = fig.add_subplot(2, 2, 3, projection='3d')
             ax.set_title('Selection function')
-            ax.set_xlabel('right dx')
-            ax.set_ylabel('wrist angle')
-            ax.plot_surface(X, Y, model.info_pdf.reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
+            ax.set_ylabel('right dx')
+            ax.set_xlabel('wrist angle')
+            ax.plot_surface(X, Y, model.info_pdf[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
             # SAVEFIG
             pl.savefig(model.trial_dirname+"/IMG_HCK_distributions_step"+str(tr)+".png")
             pl.show()
@@ -336,10 +343,10 @@ while True:
 
 
 ##### SAVE FEATURES and LABELS
-    # if tr%5==0:
-    print "\nSaving progress...\n"
-    with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint.dat", "wb") as f:
-        pickle.dump((trials_list, labels_list, info_list, model.failed_list), f)
+    if tr%5==0:
+        print "\nSaving progress...\n"
+        with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint.dat", "wb") as f:
+            pickle.dump((trials_list, labels_list, info_list, model.failed_list), f)
 
     # PROMPT for continuation
     if tr%100==0:
