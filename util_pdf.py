@@ -27,25 +27,26 @@ RIGHT_X_MAX = 0.17  #(0.20)
 RIGHT_Y_MIN = -0.1  #(-0.5)
 RIGHT_Y_MAX = 0.5   #(0.5)
 # COVARIANCE
-COV = 500
+COV = 1000
 
 # ##################################################################
 # ## max length of combination vector should be 25000 - 8/7/8/7/8
 # FULL MOTION SPACE
-range_l_dx = np.round(np.linspace(LEFT_X_MIN, LEFT_X_MAX, 5), 3)
-range_l_dy = np.round(np.linspace(LEFT_Y_MIN, LEFT_Y_MAX, 5), 3)
-range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 5), 3)
-range_r_dy = np.round(np.linspace(RIGHT_Y_MIN, RIGHT_Y_MAX, 5), 3)
-range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 6), 3)
-range_speed = np.round(np.linspace(SPEED_MIN, SPEED_MAX, 5), 3)
+# range_l_dx = np.round(np.linspace(LEFT_X_MIN, LEFT_X_MAX, 5), 3)
+# range_l_dy = np.round(np.linspace(LEFT_Y_MIN, LEFT_Y_MAX, 5), 3)
+# range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 5), 3)
+# range_r_dy = np.round(np.linspace(RIGHT_Y_MIN, RIGHT_Y_MAX, 5), 3)
+# range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 6), 3)
+# range_speed = np.round(np.linspace(SPEED_MIN, SPEED_MAX, 5), 3)
 #################################################################(-0.3, 0.1, 0.05, 0.4, w=-0.97, speed=s) #(-0.1,0, 0.2,0, s)
-# # ### PARTIAL JOINT SPACE
-# range_l_dx = np.round(np.linspace(-0.3, -0.3, 1), 3)
-# range_l_dy = np.round(np.linspace(0.1, 0.1, 1), 3)
-# range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 10), 3)
-# range_r_dy = np.round(np.linspace(0.4, 0.4, 1), 3)
-# range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 10), 3)
-# range_speed = np.round(np.linspace(1, 1, 1), 3)
+
+# ### PARTIAL JOINT SPACE
+range_l_dx = np.round(np.linspace(-0.3, -0.3, 1), 3)
+range_l_dy = np.round(np.linspace(0.1, 0.1, 1), 3)
+range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 10), 3)
+range_r_dy = np.round(np.linspace(0.4, 0.4, 1), 3)
+range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 10), 3)
+range_speed = np.round(np.linspace(1, 1, 1), 3)
 ##################################################################
     
 class PDFoperations:
@@ -72,7 +73,8 @@ class PDFoperations:
         self.trial_list = []
         self.f_eval_list = []
         #
-        self.failed_list = []
+        self.failed_params = []
+        self.failed_coords = []
         self.coord_list = []
         ###
         self.penal_PDF = self.prior_init
@@ -85,6 +87,7 @@ class PDFoperations:
         self.trial_dirname = 'TRIALS_FULL/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
         os.makedirs(self.trial_dirname)
 
+#### SELECT KERNEL
     # def kernel(self, a, b):
     #     """ GP squared exponential kernel """
     #     sigsq = 1
@@ -119,8 +122,29 @@ class PDFoperations:
 
     # Update the penalisation PDF based on the failed trials
     def updatePDF(self, mu):
-        self.failed_list.append(mu)
-        pdf = self.penal_PDF
+        self.failed_params.append(mu)
+        self.failed_coords.append(self.coord)
+        pdf = self.penal_PDF.copy()
+        # Update the covariance matrix taking into acount stationary parameters
+        fl_var = np.array([len(np.unique(np.array(self.failed_coords)[:,f])) for f in range(len(self.coord)) ], np.float)
+       
+        # ### VERSION 1
+        # # Make the ones that change often change less (make cov smaller and wider), 
+        # # and the ones which don't push to change more (make cov larger and narrower)
+        # cov_coeff = (1-(fl_var-fl_var.mean())/(fl_var.max()))
+
+        ### VERSION 2
+        # Leave the ones that change often as they are (leave cov as is),
+        # and the ones which don't push to change more (make cov larger and narrower)
+        cov_coeff = 1+(1-(fl_var)/(fl_var.max()))
+        
+        ### Update values
+        for i in range(len(self.param_list)):
+            self.cov[i,i] = COV * cov_coeff[i]
+
+        print fl_var
+        print self.cov
+
         # Update with the gaussian likelihood
         likelihood = np.reshape(self.generatePDF_matrix(self.param_space, mu, self.cov), tuple(self.param_dims))
         # Apply Bayes rule
@@ -133,7 +157,7 @@ class PDFoperations:
         # else:
         #     final_pdf = (pdf + shift)/np.sum(pdf + shift)
         self.penal_PDF = pdf + shift
-        print "\n---penalised", len(np.argwhere(self.penal_PDF.round(2)==np.max(self.penal_PDF.round(2))))," ponts and",len(self.failed_list),"combinations."
+        print "\n---penalised", len(np.argwhere(self.penal_PDF.round(2)==np.max(self.penal_PDF.round(2))))," ponts and",len(self.failed_params),"combinations."
         return self.penal_PDF
 
 
@@ -171,14 +195,11 @@ class PDFoperations:
             #         pickle.dump([self.trial_list,self.f_eval_list], f)
             with open(self.trial_dirname+"/DATA_HCK_model_checkpoint.dat", "wb") as m:
                     pickle.dump([self.mu_alpha, self.mu_L, self.var_alpha, self.penal_PDF, self.param_list], m)
-
         # multiply the above's uncertainties to get the most informative point
         # DO NOT NORMALIZE ?!
         info_pdf = self.var_alpha * (1-self.penal_PDF)#/np.sum(1-self.penal_PDF)
         info_pdf /= np.sum(info_pdf)
-
         self.info_pdf = info_pdf
-
         temp_good = []
         cnt=1
         while not len(temp_good):
@@ -186,21 +207,17 @@ class PDFoperations:
             # temp = np.argwhere(info_pdf==np.max(info_pdf))
             # temp = np.argwhere((info_pdf==nlargest(cnt, info_pdf.ravel())).reshape(tuple(np.append(self.param_dims, -1))))[:,0:-1]
             temp = np.argwhere(np.array([info_pdf==c for c in nlargest(cnt, info_pdf.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
-
             # check and take those which have not been explored
             temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_list))
             temp_good = np.array(map(list, temp_good))            
             cnt+=1
-
             print "cnt: ", cnt-1
             print "tmp: ", len(temp_good)
-
             # # FILTER 2D
             # temp_good = np.array([c for c in temp_good if c[0]==0 and c[1]==0 and c[3]==0 and c[5]==0])
-
-            if cnt-1 > 100:
-                print 'ALL options exhausted...Quitting'
-                break
+            # if cnt-1 > 100:
+            #     print 'ALL options exhausted...Quitting'
+            #     break
             # print "\nsamples:"
             # print len(temp)
             # print cnt

@@ -280,23 +280,51 @@ import pickle
 from numpy.core.umath_tests import inner1d
 
 
-N = 10
-xrang = np.linspace(1,10,N)
-yrang = np.linspace(1,10,N)
-mu = np.array([1,1])#.reshape(-1,1)
-cov = np.eye(2)
+N = 100
+xrang = np.linspace(-0.5,1,N)
+yrang = np.linspace(-0.5,1,N)
+# xrang = np.linspace(-5,10,N)
+# yrang = np.linspace(-5,10,N)
+mu = np.array([0.1,0.1])#.reshape(-1,1)
+cov = 100* np.eye(2)
+cov[0,0]*=1.
+cov[1,1]*=.5
+
 x_sample = np.array([ss for ss in itertools.product(xrang, yrang)])
 
 X, Y = np.meshgrid(xrang, yrang)
 Z1 = generatePDF_matrix(x_sample, mu, cov)
 
-Z1 = (0.25-Z1).reshape(N,N)
+Z1 = (Z1).reshape(N,N)
+pl.imshow(Z1)
+pl.show()
+
+
 
 fig1 = pl.figure()
 ax1 = fig1.gca(projection='3d')
-surf1 = ax1.plot_wireframe(X, Y, Z1, color='black', rstride=1, cstride=1)
-surf = ax1.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=True)
-# surf1 = ax1.plot_surface(X, Y, Z1, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=True)
-fig1.colorbar(surf, shrink=0.5, aspect=5)
+# surf1 = ax1.plot_wireframe(X, Y, Z1, color='black', rstride=1, cstride=1)
+# surf = ax1.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=True)
 # fig1.colorbar(surf1, shrink=0.5, aspect=5)
+surf1 = ax1.plot_surface(X, Y, Z1, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=True)
+fig1.colorbar(surf1, shrink=0.5, aspect=5)
 pl.show()
+
+
+
+
+
+
+
+
+
+
+### TESTING THE UPDATING OF COV MATRIX
+# fl = np.array([[4, 0, 4, 0, 0, 4], [4, 0, 0, 0, 0, 4], [4, 2, 4, 0, 0, 4], [0, 0, 4, 0, 0, 4], [4, 4, 4, 0, 0, 4], [2, 0, 4, 0, 0, 4], [4, 2, 0, 0, 0, 4], [3, 0, 2, 0, 0, 4], [4, 4, 0, 0, 0, 4]])
+# fl_var = np.array([ len(np.unique(fl[:,f])) for f in range(fl.shape[1]) ], np.float)
+# # make the ones that change often change less (make cov smaller and wider), 
+# # and the ones which don't push to change more (make cov larger and narrower)
+# cov_coeff = (1-(fl_var-fl_var.mean())/(fl_var.max()))
+# # leave the ones that change often as they are (leave cov as is),
+# # and the ones which don't push to change more (make cov larger and narrower)
+# cov_coeff = 1+(1-(fl_var)/(fl_var.max()))

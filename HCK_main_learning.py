@@ -65,7 +65,7 @@ def cleanup_on_shutdown():
     # cleanup, close any open windows
     print "\nSaving at exit...\n"
     with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint.dat", "wb") as f:
-        pickle.dump((trials_list, labels_list, info_list, model.failed_list), f)
+        pickle.dump((trials_list, labels_list, info_list, model.failed_params), f)
 
     BI.RobotEnable().disable()
     cv2.destroyAllWindows()
@@ -125,8 +125,8 @@ def getNewPose(left_dx, left_dy, right_dx, right_dy, w, speed):
 
 
 def executeTrial(trialnum, params):  
-    repeat = True
-    while repeat:
+    resp = -1
+    while True:
         trial = TrialInfo(trialnum)
         # CHECK 1) Stick constraints
         if checkStickConstraints(*params):
@@ -140,8 +140,9 @@ def executeTrial(trialnum, params):
         print "> TRIAL CHECK 1): OK Stick constraint"
 
         # GET IK SOLUTION
-        limb_right.move_to_joint_positions(initial_right, timeout=5)
-        limb_left.move_to_joint_positions(initial_left, timeout=5)
+        if resp==5:
+            limb_right.move_to_joint_positions(initial_right, timeout=5)
+            limb_left.move_to_joint_positions(initial_left, timeout=5)
         joint_values_left, joint_values_right, speed_left, speed_right, new_pos_left, new_pos_right = getNewPose(*params) 
         # joint_values_left['left_w2'] = params[4]
         # CHECK 2) Inverse Kinematic solution
@@ -157,7 +158,7 @@ def executeTrial(trialnum, params):
 
         # Passed constraint check ready to execute
         raw_input(">>> Ready to execute configuration: "+str((params))+"?\n")
-        os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Stand clear'\"")   
+        # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Stand clear'\"")   
         time.sleep(1)
         # EXECUTE MOTION
         # Set tip hit angle
@@ -302,7 +303,8 @@ while True:
             ax.set_ylabel('right dx')
             ax.set_xlabel('wrist angle')
             ax.set_zlabel('[degrees]', rotation='vertical')
-            ax.plot_surface(X, Y, model.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            # ax.plot_surface(X, Y, model.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            ax.plot_surface(X, Y, model.mu_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             # fig.colorbar(surf, shrink=0.5, aspect=5)
             # DISTANCE MODEL
             ax = pl.subplot2grid((2,6),(0, 3), colspan=3, projection='3d')
@@ -311,28 +313,32 @@ while True:
             ax.set_ylabel('right dx')
             ax.set_xlabel('wrist angle')
             ax.set_zlabel('[cm]', rotation='vertical')
-            ax.plot_surface(X, Y, model.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            # ax.plot_surface(X, Y, model.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            ax.plot_surface(X, Y, model.mu_L[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             # PENALISATION PDF
             ax = pl.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
             # ax = fig.add_subplot(2, 2, 3, projection='3d')
-            ax.set_title('Penalisation PDF: '+str(len(model.failed_list))+' points')
+            ax.set_title('Penalisation PDF: '+str(len(model.failed_params))+' points')
             ax.set_ylabel('right dx')
             ax.set_xlabel('wrist angle')
-            ax.plot_surface(X, Y, model.penal_PDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
+            # ax.plot_surface(X, Y, model.penal_PDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
+            ax.plot_surface(X, Y, model.penal_PDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
             # UNCERTAINTY
             ax = pl.subplot2grid((2,6),(1, 2), colspan=2, projection='3d')
             # ax = fig.add_subplot(2, 2, 4, projection='3d')
             ax.set_ylabel('right dx')
             ax.set_xlabel('wrist angle')
             ax.set_title('Model uncertainty: '+str(round(avar,4)))
-            ax.plot_surface(X, Y, model.var_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
+            # ax.plot_surface(X, Y, model.var_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
+            ax.plot_surface(X, Y, model.var_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
             # PENALISATION PDF
             ax = pl.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
             # ax = fig.add_subplot(2, 2, 3, projection='3d')
             ax.set_title('Selection function')
             ax.set_ylabel('right dx')
             ax.set_xlabel('wrist angle')
-            ax.plot_surface(X, Y, model.info_pdf[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
+            # ax.plot_surface(X, Y, model.info_pdf[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
+            ax.plot_surface(X, Y, model.info_pdf[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
             # SAVEFIG
             pl.savefig(model.trial_dirname+"/IMG_HCK_distributions_step"+str(tr)+".png")
             pl.show()
@@ -346,7 +352,7 @@ while True:
     if tr%5==0:
         print "\nSaving progress...\n"
         with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint.dat", "wb") as f:
-            pickle.dump((trials_list, labels_list, info_list, model.failed_list), f)
+            pickle.dump((trials_list, labels_list, info_list, model.failed_params), f)
 
     # PROMPT for continuation
     if tr%100==0:
@@ -364,7 +370,7 @@ while True:
 
 print '\nDONE! saving..'
 with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint.dat", "wb") as f:
-    pickle.dump((trials_list, labels_list, info_list, model.failed_list), f)
+    pickle.dump((trials_list, labels_list, info_list, model.failed_params), f)
 
 
 rospy.on_shutdown(cleanup_on_shutdown)

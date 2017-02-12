@@ -126,12 +126,12 @@ def executeTrial(params):
     # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
     #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
     cnt = 0
-    # while (not (tuple(np.array(joint_values_left.values())-THRSH_POS) <= tuple(limb_left.joint_angles().values()) <= tuple(np.array(joint_values_left.values())+THRSH_POS)) or \
-    #     not (tuple(np.array(joint_values_right.values())-THRSH_POS) <= tuple(limb_right.joint_angles().values()) <= tuple(np.array(joint_values_right.values())+THRSH_POS))) and cnt <30000:
-    #     cnt+=1
-    #     # send joint commands
-    #     limb_left.set_joint_positions(joint_values_left)
-    #     limb_right.set_joint_positions(joint_values_right)
+    while (not (tuple(np.array(joint_values_left.values())-THRSH_POS) <= tuple(limb_left.joint_angles().values()) <= tuple(np.array(joint_values_left.values())+THRSH_POS)) or \
+        not (tuple(np.array(joint_values_right.values())-THRSH_POS) <= tuple(limb_right.joint_angles().values()) <= tuple(np.array(joint_values_right.values())+THRSH_POS))) and cnt <30000:
+        cnt+=1
+        # send joint commands
+        limb_left.set_joint_positions(joint_values_left)
+        limb_right.set_joint_positions(joint_values_right)
 
     return 1
 
@@ -167,8 +167,6 @@ if not BI.RobotEnable().state().enabled:
 limb_left = BI.Limb("left")
 limb_right = BI.Limb("right")
 
-limb_left.move_to_joint_positions(initial_left, timeout=5)
-limb_right.move_to_joint_positions(initial_right, timeout=5)
 
 ############################################################################################
 
@@ -188,6 +186,7 @@ elif test_v==2:
     test_num = input("\nEnter number of model to load > ")
     trialname = "TRIALS_FULL/"+list_models[test_num]
     print "Loading: ",trialname
+    
 (M_angle, M_dist, var_angle, penal_PDF, param_list) = pickle.load(open(trialname+'/DATA_HCK_model_checkpoint.dat', "rb"))
 
 # The dimensions which are plotted
@@ -195,6 +194,8 @@ p1 = 2
 p2 = 4
 
 while True:
+    limb_left.move_to_joint_positions(initial_left, timeout=5)
+    limb_right.move_to_joint_positions(initial_right, timeout=5)
     ### Do paired cartesian sqrt distance
     # Select (angle, L) pair which is closest to the desired one
     angle_s, dist_s = input("\nEnter GOAL angle, distance: ")
@@ -241,6 +242,8 @@ while True:
             angle_2d = M_angle[0,0,:,0,:,0].reshape(len(dim1),len(dim2)).T
             dist_2d = M_dist[0,0,:,0,:,0].reshape(len(dim1),len(dim2)).T
         elif test_v==2:
+            # angle_2d = M_angle[0,0,:,0,:,0].reshape(len(dim1),len(dim2)).T
+            # dist_2d = M_dist[0,0,:,0,:,0].reshape(len(dim1),len(dim2)).T
             angle_2d = M_angle[0,3,:,3,:,4].reshape(len(dim1),len(dim2)).T
             dist_2d = M_dist[0,3,:,3,:,4].reshape(len(dim1),len(dim2)).T
 
