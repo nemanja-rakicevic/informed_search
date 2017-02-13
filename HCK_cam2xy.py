@@ -20,10 +20,16 @@ from sensor_msgs.msg import Image
 # colorUpper = (125, 255, 255)
 #
 colorLower = (73, 100, 190)
-colorUpper = (106, 255, 255)
+colorUpper = (110, 255, 255)
 #daylight
 # colorLower = (54, 73, 255)
 # colorUpper = (93, 150, 255)
+#RED filter
+colorLowerR = (160, 80, 235)    # (125, 80, 190)
+colorUpperR = (175, 255, 255)
+# # YELLOW filter
+# colorLowerR = (25, 80, 200)    # (125, 80, 190)
+# colorUpperR = (50, 200, 255)
 
 ball_x, ball_y = None, None
 
@@ -45,17 +51,22 @@ def callback_cam(msg):
     height, width, _ = frame.shape
     blurred = cv2.GaussianBlur(frame, (11, 11), 0)
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    # construct a mask for the color "green", then perform
+    # construct a mask for the color "BLUE", then perform
     # a series of dilations and erosions to remove any small
     # blobs left in the mask
     mask = cv2.inRange(hsv, colorLower, colorUpper)
     mask = cv2.erode(mask, None, iterations=2)
     mask = cv2.dilate(mask, None, iterations=2)
+    # same for RED
+    maskR = cv2.inRange(hsv, colorLowerR, colorUpperR)
+    maskR = cv2.erode(maskR, None, iterations=2)
+    maskR = cv2.dilate(maskR, None, iterations=2)
     # find contours in the mask and initialize the current
     # (x, y) center of the ball
-    cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
-        cv2.CHAIN_APPROX_SIMPLE)[-2]
+    cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2]
+    cntsR = cv2.findContours(maskR.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2]
     center = None
+    centerR = None
     # only proceed if at least one contour was found
     if len(cnts) > 0:
         # find the largest contour in the mask, then use
@@ -74,32 +85,68 @@ def callback_cam(msg):
             # draw the circle and centroid on the frame,
             # then update the list of tracked points
             cv2.circle(frame, (int(x), int(y)), int(radius),
-                (0, 255, 255), 2)
-            cv2.circle(frame, center, 5, (0, 0, 255), -1)
+                (255, 10, 0), 2)
+            cv2.circle(frame, center, 5, (0, 255, 255), -1)
     else:
         ball_x = None
         ball_y = None
+
+
+    # only proceed if at least one contour was found
+    if len(cntsR) > 0:
+        # find the largest contour in the mask, then use
+        # it to compute the minimum enclosing circle and
+        # centroid
+        cR = max(cntsR, key=cv2.contourArea)
+        ((xR, yR), radiusR) = cv2.minEnclosingCircle(cR)
+        MR = cv2.moments(cR)
+        centerR = (int(MR["m10"] / MR["m00"]), int(MR["m01"] / MR["m00"]))
+        ballR_x = centerR[0]
+        ballR_y = centerR[1]
+        # ball_y = -(center[0]-width/2.0)
+        # ball_x = center[0]-width/2.0
+        # ball_y = -(center[1]-height/2.0)
+        if radiusR > 1:
+            # draw the circle and centroid on the frame,
+            # then update the list of tracked points
+            cv2.circle(frame, (int(xR), int(yR)), int(radiusR),
+                (0, 10, 255), 2)
+            cv2.circle(frame, centerR, 5, (0, 255, 255), -1)
+    else:
+        ballR_x = None
+        ballR_y = None
+
+##### # BLUE BALL
     # Add text for PIXEL position
     cv2.putText(frame, "x_px_pos: {}, y_px_pos: {}".format(ball_x, ball_y),
         (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
-        1, (0, 20, 255), 2)
+        1, (10, 255, 10), 2)
     # Add text for REAL position
     x_coord, y_coord = get_coord(ball_x, ball_y)
     cv2.putText(frame, "x_REAL: {}, y_REAL: {}".format(x_coord, y_coord),
         (10, frame.shape[0] - 50), cv2.FONT_HERSHEY_SIMPLEX,
-        1, (0, 20, 255), 2)
-
-    # # Add text for LABELS
-    # x_coord1, y_coord1, z_coord1 = get_coord1(ball_x, ball_y)
-    # cv2.putText(frame, "x_REAL1: {}, y_REAL1: {}, z_REAL1: {}".format(x_coord1, y_coord1, z_coord1),
-    #     (10, frame.shape[0] - 90), cv2.FONT_HERSHEY_SIMPLEX,
-    #     1, (0, 20, 255), 2)
-
+        1, (10, 255, 10), 2)
     # Add text for LABELS
     angle, L = getLabels(x_coord, y_coord)
     cv2.putText(frame, "ANGLE: {}, DISTANCE: {}".format(angle, L),
         (10, frame.shape[0] - 130), cv2.FONT_HERSHEY_SIMPLEX,
         1, (255, 20, 0), 3)
+
+##### # RED BALL
+    # Add text for PIXEL position
+    cv2.putText(frame, "x_px_pos: {}, y_px_pos: {}".format(ballR_x, ballR_y),
+        (frame.shape[1]-550, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
+        1, (10, 255, 10), 2)
+    # Add text for REAL position
+    xR_coord, yR_coord = get_coord(ballR_x, ballR_y)
+    cv2.putText(frame, "x_REAL: {}, y_REAL: {}".format(xR_coord, yR_coord),
+        (frame.shape[1]-550, frame.shape[0] - 50), cv2.FONT_HERSHEY_SIMPLEX,
+        1, (10, 255, 10), 2)
+    # Add text for LABELS
+    angleR, LR = getLabels(xR_coord, yR_coord)
+    cv2.putText(frame, "ANGLE: {}, DISTANCE: {}".format(angleR, LR),
+        (frame.shape[1]-550, frame.shape[0] - 130), cv2.FONT_HERSHEY_SIMPLEX,
+        1, (0, 20, 255), 3)
 
     # PRINT LINES
     frame = frame.copy()

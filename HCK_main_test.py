@@ -111,7 +111,7 @@ def executeTrial(params):
 
     # Passed constraint check ready to execute
     raw_input(">>> Ready to execute configuration: "+str((params))+"?\n")
-    os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Stand clear'\"")   
+    # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Stand clear'\"")   
     time.sleep(1)
     # EXECUTE MOTION
     # Set tip hit angle

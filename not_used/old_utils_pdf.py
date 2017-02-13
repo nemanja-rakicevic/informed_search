@@ -319,8 +319,9 @@ pl.show()
 
 
 
-### TESTING THE UPDATING OF COV MATRIX
+# ## TESTING THE UPDATING OF COV MATRIX
 # fl = np.array([[4, 0, 4, 0, 0, 4], [4, 0, 0, 0, 0, 4], [4, 2, 4, 0, 0, 4], [0, 0, 4, 0, 0, 4], [4, 4, 4, 0, 0, 4], [2, 0, 4, 0, 0, 4], [4, 2, 0, 0, 0, 4], [3, 0, 2, 0, 0, 4], [4, 4, 0, 0, 0, 4]])
+# ### get most diverse samples:
 # fl_var = np.array([ len(np.unique(fl[:,f])) for f in range(fl.shape[1]) ], np.float)
 # # make the ones that change often change less (make cov smaller and wider), 
 # # and the ones which don't push to change more (make cov larger and narrower)
@@ -328,3 +329,14 @@ pl.show()
 # # leave the ones that change often as they are (leave cov as is),
 # # and the ones which don't push to change more (make cov larger and narrower)
 # cov_coeff = 1+(1-(fl_var)/(fl_var.max()))
+
+
+# ### get samples with most repeated elements:
+# fl_var = np.array([ max(np.bincount(fl[:,f])) for f in range(fl.shape[1]) ], np.float)
+# # make the ones that change often change less (make cov smaller and wider), 
+# # and the ones which don't push to change more (make cov larger and narrower)
+# cov_coeff = 1+(fl_var-fl_var.mean())/(fl_var.max())
+# # leave the ones that change often as they are (leave cov as is),
+# # and the ones which don't push to change more (make cov larger and narrower)
+# cov_coeff = 1+(fl_var1-fl_var1.min())/fl_var1.max()
+

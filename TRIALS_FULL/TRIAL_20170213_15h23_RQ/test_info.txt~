@@ -1,0 +1,10 @@
+
+# TRIALS: 
+154
+
+# PARAMETERS:
+COV = 1000 (V1)
+        """ GP rational quadratic kernel """
+        sigsq = 1
+        siglensq = 1
+        alpha = a.shape[1]/2.

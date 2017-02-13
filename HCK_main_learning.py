@@ -43,7 +43,7 @@ THRSH_SPEED = 0.1
 STICK_X_MIN = 0.
 STICK_X_MAX = 1.
 STICK_Y_MIN = 0.
-STICK_Y_MAX = 1.
+STICK_Y_MAX = 0.7
 ##################################################################
 # INITIAL POSE 
 # # v6C, bigger angle span
@@ -170,7 +170,7 @@ def executeTrial(trialnum, params):
         limb_left.set_joint_position_speed(speed_left)
         limb_right.set_joint_position_speed(speed_right)
 
-        # EXECUTE MOTION and save/track progress
+        # ## EXECUTE MOTION and save/track progress
         # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
         #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
         cnt = 0
@@ -288,7 +288,13 @@ while True:
             else:
                 break
         labels_list.append(trial_label)
+        model.updatePDF(trial_params, -1)
+    else:
+        labels_list.append([None, None])
+        ### if task has failed, remember where it failed
+        model.updatePDF(trial_params)
 ######## VISUALISE PREDICTIONS
+    if tr%10==0 or trial_info.fail_status==0:
         print "<- CHECK PLOTS"     
         if len(model.mu_alpha) and len(model.mu_L):
             dim1 = model.param_list[2]
@@ -342,11 +348,6 @@ while True:
             # SAVEFIG
             pl.savefig(model.trial_dirname+"/IMG_HCK_distributions_step"+str(tr)+".png")
             pl.show()
-    else:
-        labels_list.append([None, None])
-        ### if task has failed, remember where it failed
-        model.updatePDF(trial_params)
-
 
 ##### SAVE FEATURES and LABELS
     if tr%5==0:
