@@ -17,7 +17,7 @@ SPEED_MAX = 1
 LEFT_X_MIN = -0.3   #(-0.35)
 LEFT_X_MAX = 0.1    #(0.12)
 LEFT_Y_MIN = -0.1   #(-0.8)
-LEFT_Y_MAX = 0.05   #(0.30)
+LEFT_Y_MAX = 0.1   #(0.30)
 # CONSTANTS - left wrist
 WRIST_MIN = -0.97   #(max = -3.) lean front
 WRIST_MAX = 0.4     #(max = +3.) lean back
@@ -32,21 +32,21 @@ COV = 1000
 # ##################################################################
 # ## max length of combination vector should be 25000 - 8/7/8/7/8
 # # ### FULL MOTION SPACE
-# range_l_dx = np.round(np.linspace(LEFT_X_MIN, LEFT_X_MAX, 5), 3)
-# range_l_dy = np.round(np.linspace(LEFT_Y_MIN, LEFT_Y_MAX, 5), 3)
-# range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 5), 3)
-# range_r_dy = np.round(np.linspace(RIGHT_Y_MIN, RIGHT_Y_MAX, 5), 3)
-# range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 6), 3)
-# range_speed = np.round(np.linspace(SPEED_MIN, SPEED_MAX, 5), 3)
+range_l_dx = np.round(np.linspace(LEFT_X_MIN, LEFT_X_MAX, 5), 3)
+range_l_dy = np.round(np.linspace(LEFT_Y_MIN, LEFT_Y_MAX, 5), 3)
+range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 5), 3)
+range_r_dy = np.round(np.linspace(RIGHT_Y_MIN, RIGHT_Y_MAX, 5), 3)
+range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 6), 3)
+range_speed = np.round(np.linspace(SPEED_MIN, SPEED_MAX, 5), 3)
 #################################################################(-0.3, 0.1, 0.05, 0.4, w=-0.97, speed=s) #(-0.1,0, 0.2,0, s)
 
-# ### PARTIAL JOINT SPACE
-range_l_dx = np.round(np.linspace(-0.3, -0.3, 1), 3)
-range_l_dy = np.round(np.linspace(0.1, 0.1, 1), 3)
-range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 10), 3)
-range_r_dy = np.round(np.linspace(0.4, 0.4, 1), 3)
-range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 10), 3)
-range_speed = np.round(np.linspace(1, 1, 1), 3)
+# # ### PARTIAL JOINT SPACE
+# range_l_dx = np.round(np.linspace(-0.3, -0.3, 1), 3)
+# range_l_dy = np.round(np.linspace(0.1, 0.1, 1), 3)
+# range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 10), 3)
+# range_r_dy = np.round(np.linspace(0.4, 0.4, 1), 3)
+# range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 10), 3)
+# range_speed = np.round(np.linspace(1, 1, 1), 3)
 ##################################################################
     
 class PDFoperations:
@@ -88,6 +88,7 @@ class PDFoperations:
         else:
             self.trial_dirname = 'TRIALS_2D/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
         os.makedirs(self.trial_dirname)
+        np.random.seed(210)
 
 #### SELECT KERNEL
     # def kernel(self, a, b):
@@ -204,7 +205,67 @@ class PDFoperations:
         return mu.reshape(tuple(self.param_dims)), var_post.reshape(tuple(self.param_dims))#/np.sum(var_post)
 
 
-    # Generate the next parameter vector to evaluate
+    # # Generate the next parameter vector to evaluate
+    # def generateSample(self, trial_list, f_eval_list):
+    #     # take only trials which produced correct labels
+    #     # if f_eval_list.size:
+    #     if not (f_eval_list==np.array(None)).all():
+    #         good_trials = f_eval_list[:,0]!=np.array(None)
+    #         self.trials = trial_list[good_trials]
+    #         self.f_evals = np.array(f_eval_list[good_trials,:], dtype=float)
+    #         # estimate the Angle GP
+    #         self.mu_alpha, self.var_alpha = self.updateGP(0)
+    #         # estimate the Distance GP
+    #         self.mu_L, self.var_L = self.updateGP(1)
+    #         # SAVE CURRENT MODEL
+    #         # with open('DATA_trial_checkpoint.dat', "wb") as f:
+    #         #         pickle.dump([self.trial_list,self.f_eval_list], f)
+    #         with open(self.trial_dirname+"/DATA_HCK_model_checkpoint.dat", "wb") as m:
+    #                 pickle.dump([self.mu_alpha, self.mu_L, self.var_alpha, self.penal_PDF, self.param_list], m)
+    #     # multiply the above's uncertainties to get the most informative point
+    #     # DO NOT NORMALIZE ?!
+    #     model_var = self.var_alpha
+    #     # model_var = (self.prior_init * self.var_alpha)/np.sum(self.prior_init * self.var_alpha)
+    #     info_pdf = 1.0 * model_var * (1-self.penal_PDF)#/np.sum(1-self.penal_PDF)
+       
+    #     # info_pdf /= np.sum(info_pdf)
+       
+    #     self.info_pdf = info_pdf
+    #     temp_good = []
+    #     cnt=1
+    #     while not len(temp_good):
+    #         # get positions of highest uncertainty 
+    #         # temp = np.argwhere(info_pdf==np.max(info_pdf))
+    #         # temp = np.argwhere((info_pdf==nlargest(cnt, info_pdf.ravel())).reshape(tuple(np.append(self.param_dims, -1))))[:,0:-1]
+    #         temp = np.argwhere(np.array([info_pdf==c for c in nlargest(cnt*100, info_pdf.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
+    #         # check and take those which have not been explored
+    #         temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_list))
+    #         temp_good = np.array(map(list, temp_good))            
+    #         cnt+=1
+    #         print "cnt: ", cnt-1
+    #         print "tmp: ", len(temp_good)
+    #         # # FILTER 2D
+    #         # temp_good = np.array([c for c in temp_good if c[0]==0 and c[1]==0 and c[3]==0 and c[5]==0])
+    #         # if cnt-1 > 100:
+    #         #     print 'ALL options exhausted...Quitting'
+    #         #     break
+    #         # print "\nsamples:"
+    #         # print len(temp)
+    #         # print cnt
+    #         # print len(self.coord_list)
+    #         # print 'selected:'
+    #         # print len(temp_good1),'---',len(temp_good),"\n"
+
+    #     self.coord = temp_good[np.random.choice(len(temp_good)),:]
+    #     self.coord_list.append(self.coord)
+    #     print "---info_pdf provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" 
+    #     print "---generated coords:", self.coord
+    #     # return the next sample vector
+    #     return np.array([self.param_list[i][self.coord[i]] for i in range(len(self.param_list))])
+
+####################################################################################################
+    ###### RANDOM MODEL
+     # Generate the next parameter vector to evaluate
     def generateSample(self, trial_list, f_eval_list):
         # take only trials which produced correct labels
         # if f_eval_list.size:
@@ -221,46 +282,26 @@ class PDFoperations:
             #         pickle.dump([self.trial_list,self.f_eval_list], f)
             with open(self.trial_dirname+"/DATA_HCK_model_checkpoint.dat", "wb") as m:
                     pickle.dump([self.mu_alpha, self.mu_L, self.var_alpha, self.penal_PDF, self.param_list], m)
-        # multiply the above's uncertainties to get the most informative point
-        # DO NOT NORMALIZE ?!
-        model_var = self.var_alpha
-        # model_var = (self.prior_init * self.var_alpha)/np.sum(self.prior_init * self.var_alpha)
-        info_pdf = 1.0 * model_var * (1-self.penal_PDF)#/np.sum(1-self.penal_PDF)
-       
-        # info_pdf /= np.sum(info_pdf)
-       
-        self.info_pdf = info_pdf
+
         temp_good = []
-        cnt=1
-        while not len(temp_good):
-            # get positions of highest uncertainty 
-            # temp = np.argwhere(info_pdf==np.max(info_pdf))
-            # temp = np.argwhere((info_pdf==nlargest(cnt, info_pdf.ravel())).reshape(tuple(np.append(self.param_dims, -1))))[:,0:-1]
-            temp = np.argwhere(np.array([info_pdf==c for c in nlargest(cnt, info_pdf.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
-            # check and take those which have not been explored
-            temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_list))
-            temp_good = np.array(map(list, temp_good))            
-            cnt+=1
-            print "cnt: ", cnt-1
-            print "tmp: ", len(temp_good)
-            # # FILTER 2D
-            # temp_good = np.array([c for c in temp_good if c[0]==0 and c[1]==0 and c[3]==0 and c[5]==0])
-            # if cnt-1 > 100:
-            #     print 'ALL options exhausted...Quitting'
-            #     break
-            # print "\nsamples:"
-            # print len(temp)
-            # print cnt
-            # print len(self.coord_list)
-            # print 'selected:'
-            # print len(temp_good1),'---',len(temp_good),"\n"
+        # get random points 
+        temp = np.array([xs for xs in itertools.product(range(self.param_dims[0]), range(self.param_dims[1]), range(self.param_dims[2]), range(self.param_dims[3]), range(self.param_dims[4]), range(self.param_dims[5]))])
+        # # check and take those which have not been explored
+        # temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_list))
+        # temp_good = np.array(map(list, temp_good))  
+        # Take whichever
+        temp_good = temp          
+        # cnt+=1
+        # print "cnt: ", cnt-1
+        print "tmp: ", len(temp_good)
 
         self.coord = temp_good[np.random.choice(len(temp_good)),:]
         self.coord_list.append(self.coord)
-        print "---info_pdf provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" 
+        print "---info_pdf provided:", len(temp),"of which", len(temp_good)#,"unexplored (among the top",cnt-1,")" 
         print "---generated coords:", self.coord
         # return the next sample vector
         return np.array([self.param_list[i][self.coord[i]] for i in range(len(self.param_list))])
+ ####################################################################################################      
 
 
     def returnModel(self):

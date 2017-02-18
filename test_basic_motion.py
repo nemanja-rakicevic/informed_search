@@ -129,17 +129,19 @@ def executeTest(left_dx, left_dy, right_dx, right_dy, w=0, speed=0.7):
 
 
 def executeTrial(left_dx, left_dy, right_dx, right_dy, w=0, speed=0.5):  
-    # Set tip hit angle
-    angle_left = limb_left.joint_angles()
-    angle_left['left_w2'] = w
-    limb_left.set_joint_position_speed(1)
-    limb_left.move_to_joint_positions(angle_left, timeout=1)
+    
     # Calculate joint angles
     joint_values_left, joint_values_right, new_pos_left, new_pos_right = getNewPose(left_dx, left_dy, right_dx, right_dy, speed)
     # joint_values_left['left_w2'] = w
     # Execute motion and track progress
     # while (not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) or \
     #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS))) and cnt <100000:
+    # Set tip hit angle
+    angle_left = limb_left.joint_angles()
+    angle_left['left_w2'] = w
+    limb_left.set_joint_position_speed(1)
+    limb_left.move_to_joint_positions(angle_left, timeout=1)
+    # EXECUTE
     cnt = 0
     while (not (tuple(np.array(joint_values_left.values())-THRSH_POS) <= tuple(limb_left.joint_angles().values()) <= tuple(np.array(joint_values_left.values())+THRSH_POS)) or \
         not (tuple(np.array(joint_values_right.values())-THRSH_POS) <= tuple(limb_right.joint_angles().values()) <= tuple(np.array(joint_values_right.values())+THRSH_POS))) and cnt <50000:
@@ -252,7 +254,6 @@ initial_left = {'left_w0': -1.9017526817809416, 'left_w1': -1.5098205904762185, 
 initial_right = {'right_s0': -0.18604712804257897, 'right_s1': 0.7366307125790943, 'right_w0': -1.6419219445615647, 'right_w1': 1.4053479234536634, 'right_w2': 1.0948321182211216, 'right_e0': 1.5301695974547347, 'right_e1': 1.8269783292751778}
 
 
-
 limb_left.move_to_joint_positions(initial_left, timeout=5)
 limb_right.move_to_joint_positions(initial_right, timeout=5)
 # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'System is ready!'\"") 
@@ -275,16 +276,16 @@ while not rospy.is_shutdown():
     ### TEST RANGE
     # executeTest(0, 0.1, 0 ,0)    # LEFT Y
     # executeTest(0.1, 0, 0 ,0)       # LEFT X
-    # executeTest(0, 0 , 0, 0.1)    # RIGHT Y
+    executeTest(0, 0 , 0, 0.1)    # RIGHT Y
     # executeTest(0, 0, 0.1 , 0)    # RIGHT X
-    # executeTest(-0.35 , 0.3, 0., 0., w=-0.97)    # LEFT WRIST
+    # executeTrial(0.0 , 0.0, 0.17, 0.35, w=-0.97)    # LEFT WRIST
 
 
     ### TEST SWING
     # # raw_input("Execute trial?")
-    WRIST_MIN = -0.97    #(max = -3.) lean front
-    WRIST_MAX = 0.4     #(max = +3.) lean back
-    s = 1
+    # WRIST_MIN = -0.97    #(max = -3.) lean front
+    # WRIST_MAX = 0.4     #(max = +3.) lean back
+    # s = 1
     # executeTrial(-0.3, 0.1, 0.05, 0.4, w=-0.97, speed=s)  # left angle
     # executeTrial(0.1, -0.1, 0.2, 1.2, w=0.3, speed=s)   # straight angle
     # executeTrial_separate(0.25, -0.2, 0.25, -0.10, w=0.45, speed=s)   # straight angle

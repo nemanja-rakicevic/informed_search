@@ -7,6 +7,8 @@ import rospy
 import cv2
 import pickle
 import numpy as np
+from imutils.video import VideoStream
+import imutils
 
 import itertools
 
@@ -18,26 +20,44 @@ from sensor_msgs.msg import Image
 # Blue filter
 # colorLower = (75, 138, 228)
 # colorUpper = (125, 255, 255)
-#
-colorLower = (73, 100, 190)
-colorUpper = (110, 255, 255)
+# #
+# colorLower = (73, 100, 190)
+# colorUpper = (110, 255, 255)
 #daylight
 # colorLower = (54, 73, 255)
 # colorUpper = (93, 150, 255)
+
+#BLUE filter
+colorLower = (85, 120, 200)       # (85, 150, 200)   
+colorUpper = (105, 255, 255)
 #RED filter
-colorLowerR = (160, 80, 235)    # (125, 80, 190)
-colorUpperR = (175, 255, 255)
+# colorLowerR = (160, 80, 235)    # (125, 80, 190)
+# colorUpperR = (175, 255, 255)
+#GREEN filter
+colorLowerR = (85, 40, 255)
+colorUpperR = (90, 100, 255)
 # # YELLOW filter
 # colorLowerR = (25, 80, 200)    # (125, 80, 190)
 # colorUpperR = (50, 200, 255)
 
 ball_x, ball_y = None, None
 
+
+
+FLAG = raw_input("ENTER (1) to SAVE VIDEO:\n")
+
+if FLAG=="1":
+    fourcc = cv2.cv.CV_FOURCC(*"MJPG")
+    (h, w) = (None, None)
+    zeros = None
+    writer = cv2.VideoWriter("cam_front.avi", fourcc, 10, (1920, 1080), True)
+
 #####################################################
 
 def cleanup_on_shutdown():
     # cleanup, close any open windows
     cv2.destroyAllWindows()
+    writer.release()
 
 
 def callback_cam(msg):
@@ -49,6 +69,7 @@ def callback_cam(msg):
         print(e)
     # Extract blob position
     height, width, _ = frame.shape
+
     blurred = cv2.GaussianBlur(frame, (11, 11), 0)
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     # construct a mask for the color "BLUE", then perform
@@ -110,43 +131,51 @@ def callback_cam(msg):
             # draw the circle and centroid on the frame,
             # then update the list of tracked points
             cv2.circle(frame, (int(xR), int(yR)), int(radiusR),
-                (0, 10, 255), 2)
+                (50, 160, 30), 2)
             cv2.circle(frame, centerR, 5, (0, 255, 255), -1)
     else:
         ballR_x = None
         ballR_y = None
 
 ##### # BLUE BALL
+    overlay = frame.copy()
+    cv2.rectangle(frame, (0, frame.shape[0] - 170), 
+        (570, frame.shape[0]-1), (255,255,255), -1)
+    cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
     # Add text for PIXEL position
     cv2.putText(frame, "x_px_pos: {}, y_px_pos: {}".format(ball_x, ball_y),
         (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
-        1, (10, 255, 10), 2)
+        1, (0, 0, 0), 2)
     # Add text for REAL position
     x_coord, y_coord = get_coord(ball_x, ball_y)
     cv2.putText(frame, "x_REAL: {}, y_REAL: {}".format(x_coord, y_coord),
         (10, frame.shape[0] - 50), cv2.FONT_HERSHEY_SIMPLEX,
-        1, (10, 255, 10), 2)
+        1, (0, 0, 0), 2)
     # Add text for LABELS
     angle, L = getLabels(x_coord, y_coord)
     cv2.putText(frame, "ANGLE: {}, DISTANCE: {}".format(angle, L),
         (10, frame.shape[0] - 130), cv2.FONT_HERSHEY_SIMPLEX,
         1, (255, 20, 0), 3)
 
-##### # RED BALL
+##### # GREEN BALL
+    overlay1 = frame.copy()
+    cv2.rectangle(frame, (frame.shape[1]-570, frame.shape[0] - 170), 
+        (frame.shape[1], frame.shape[0]), (255,255,255), -1)
+    cv2.addWeighted(overlay1, 0.5, frame, 0.5, 0, frame)
     # Add text for PIXEL position
     cv2.putText(frame, "x_px_pos: {}, y_px_pos: {}".format(ballR_x, ballR_y),
-        (frame.shape[1]-550, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
-        1, (10, 255, 10), 2)
+        (frame.shape[1]-540, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
+        1, (0, 0, 0), 2)
     # Add text for REAL position
     xR_coord, yR_coord = get_coord(ballR_x, ballR_y)
     cv2.putText(frame, "x_REAL: {}, y_REAL: {}".format(xR_coord, yR_coord),
-        (frame.shape[1]-550, frame.shape[0] - 50), cv2.FONT_HERSHEY_SIMPLEX,
-        1, (10, 255, 10), 2)
+        (frame.shape[1]-540, frame.shape[0] - 50), cv2.FONT_HERSHEY_SIMPLEX,
+        1, (0, 0, 0), 2)
     # Add text for LABELS
     angleR, LR = getLabels(xR_coord, yR_coord)
     cv2.putText(frame, "ANGLE: {}, DISTANCE: {}".format(angleR, LR),
-        (frame.shape[1]-550, frame.shape[0] - 130), cv2.FONT_HERSHEY_SIMPLEX,
-        1, (0, 20, 255), 3)
+        (frame.shape[1]-540, frame.shape[0] - 130), cv2.FONT_HERSHEY_SIMPLEX,
+        1, (10, 110, 10), 3)
 
     # PRINT LINES
     frame = frame.copy()
@@ -155,6 +184,10 @@ def callback_cam(msg):
     #     cv2.line(frame, (960 + x, 0), (960 + x, 1080), (100, 255, 0), 5)
     # for y in xrange(-400, 401, 200):
     #     cv2.line(frame, (0, 540 + y), (1920, 540 + y), (100, 255, 0), 5)
+    
+    # Record augmented image
+    if FLAG == "1":
+        writer.write(frame.copy())
 
     # Show augmented image
     cv2.imshow("Front Camera", frame)
@@ -218,7 +251,7 @@ def getLabels(x_coord, y_coord):
 rospy.init_node('HCK_watch_coord')
 sub_ball_img = rospy.Subscriber('/kinect2/hd/image_color_rect', Image, callback=callback_cam)
 # sub_ball_depth = rospy.Subscriber('/kinect2/sd/image_depth_rect', Image, callback=callback_depth)
-rate = rospy.Rate(100)
+rate = rospy.Rate(1000)
 
 msg_bridge = CvBridge()
 

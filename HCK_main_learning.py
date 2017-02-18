@@ -82,7 +82,7 @@ def checkStickConstraints(left_dx, left_dy, right_dx, right_dy, *_k):
     dx = abs((tmp_left.x + left_dx) - (tmp_right.x + right_dx))
     dy = abs((tmp_left.y + left_dy) - (tmp_right.y + right_dy))
     # print "/// STICK ", dx < STICK_X_MAX, dx < STICK_X_MAX and STICK_Y_MIN < dy < STICK_Y_MAX
-    # print "/// STICK ", round(dx,2), round(dy,2)
+    print "/// STICK ", round(dx,2), round(dy,2)
     if dx <= STICK_X_MAX and dy <= STICK_Y_MAX:
          # abs(left_dx)>10*THRSH_POS and abs(left_dy)>10*THRSH_POS and\
          # abs(right_dx)>10*THRSH_POS and abs(right_dy)>10*THRSH_POS:
@@ -127,6 +127,11 @@ def getNewPose(left_dx, left_dy, right_dx, right_dy, w, speed):
 def executeTrial(trialnum, params):  
     resp = -1
     while True:
+
+        if resp==5:
+            limb_right.move_to_joint_positions(initial_right, timeout=5)
+            limb_left.move_to_joint_positions(initial_left, timeout=5)
+
         trial = TrialInfo(trialnum)
         # CHECK 1) Stick constraints
         if checkStickConstraints(*params):
@@ -140,9 +145,6 @@ def executeTrial(trialnum, params):
         print "> TRIAL CHECK 1): OK Stick constraint"
 
         # GET IK SOLUTION
-        if resp==5:
-            limb_right.move_to_joint_positions(initial_right, timeout=5)
-            limb_left.move_to_joint_positions(initial_left, timeout=5)
         joint_values_left, joint_values_right, speed_left, speed_right, new_pos_left, new_pos_right = getNewPose(*params) 
         # joint_values_left['left_w2'] = params[4]
         # CHECK 2) Inverse Kinematic solution
@@ -169,7 +171,8 @@ def executeTrial(trialnum, params):
         # Set the speeds
         limb_left.set_joint_position_speed(speed_left)
         limb_right.set_joint_position_speed(speed_right)
-
+        #
+        # joint_values_left['left_w2'] = params[4]
         # ## EXECUTE MOTION and save/track progress
         # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
         #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
@@ -294,7 +297,7 @@ while True:
         ### if task has failed, remember where it failed
         model.updatePDF(trial_params)
 ######## VISUALISE PREDICTIONS
-    if tr%10==0 or trial_info.fail_status==0:
+    if tr%5==0 or trial_info.fail_status==0:
         print "<- CHECK PLOTS"     
         if len(model.mu_alpha) and len(model.mu_L):
             dim1 = model.param_list[2]
@@ -304,53 +307,58 @@ while True:
             fig.set_size_inches(fig.get_size_inches()[0]*2,fig.get_size_inches()[1]*2)
             # ANGLE MODEL
             ax = pl.subplot2grid((2,6),(0, 0), colspan=3, projection='3d')
-            # ax = fig.add_subplot(2, 2, 1, projection='3d')
             ax.set_title('ANGLE MODEL')
             ax.set_ylabel('right dx')
             ax.set_xlabel('wrist angle')
             ax.set_zlabel('[degrees]', rotation='vertical')
-            # ax.plot_surface(X, Y, model.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            ax.plot_surface(X, Y, model.mu_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            if model.param_dims[0]>1:
+                ax.plot_surface(X, Y, model.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            else:
+                ax.plot_surface(X, Y, model.mu_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             # fig.colorbar(surf, shrink=0.5, aspect=5)
             # DISTANCE MODEL
             ax = pl.subplot2grid((2,6),(0, 3), colspan=3, projection='3d')
-            # ax = fig.add_subplot(2, 2, 2, projection='3d')
             ax.set_title('DISTANCE MODEL')
             ax.set_ylabel('right dx')
             ax.set_xlabel('wrist angle')
             ax.set_zlabel('[cm]', rotation='vertical')
-            # ax.plot_surface(X, Y, model.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            ax.plot_surface(X, Y, model.mu_L[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            # PENALISATION PDF
-            ax = pl.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
-            # ax = fig.add_subplot(2, 2, 3, projection='3d')
-            ax.set_title('Penalisation PDF: '+str(len(model.failed_params))+' points')
-            ax.set_ylabel('right dx')
-            ax.set_xlabel('wrist angle')
-            # ax.plot_surface(X, Y, model.penal_PDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
-            ax.plot_surface(X, Y, model.penal_PDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
+            if model.param_dims[0]>1:
+                ax.plot_surface(X, Y, model.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            else:
+                ax.plot_surface(X, Y, model.mu_L[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            # # PENALISATION PDF
+            # ax = pl.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
+            # ax.set_title('Penalisation function: '+str(len(model.failed_params))+' points')
+            # ax.set_ylabel('right dx')
+            # ax.set_xlabel('wrist angle')
+            # if model.param_dims[0]>1:
+            #     ax.plot_surface(X, Y, model.penal_PDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
+            # else:
+            #     ax.plot_surface(X, Y, (1-model.penal_PDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2))), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
             # UNCERTAINTY
             ax = pl.subplot2grid((2,6),(1, 2), colspan=2, projection='3d')
-            # ax = fig.add_subplot(2, 2, 4, projection='3d')
             ax.set_ylabel('right dx')
             ax.set_xlabel('wrist angle')
-            ax.set_title('Model uncertainty: '+str(round(avar,4)))
-            # ax.plot_surface(X, Y, model.var_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
-            ax.plot_surface(X, Y, model.var_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
-            # PENALISATION PDF
-            ax = pl.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
-            # ax = fig.add_subplot(2, 2, 3, projection='3d')
-            ax.set_title('Selection function')
-            ax.set_ylabel('right dx')
-            ax.set_xlabel('wrist angle')
-            # ax.plot_surface(X, Y, model.info_pdf[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
-            ax.plot_surface(X, Y, model.info_pdf[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
+            ax.set_title('Model uncertafrinty: '+str(round(avar,4)))
+            if model.param_dims[0]>1:
+                ax.plot_surface(X, Y, model.var_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
+            else:
+                ax.plot_surface(X, Y, model.var_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
+            # # SELECTION FUNCTION
+            # ax = pl.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
+            # ax.set_title('Selection function')
+            # ax.set_ylabel('right dx')
+            # ax.set_xlabel('wrist angle')
+            # if model.param_dims[0]>1:
+            #     ax.plot_surface(X, Y, model.info_pdf[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
+            # else:
+            #     ax.plot_surface(X, Y, model.info_pdf[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
             # SAVEFIG
             pl.savefig(model.trial_dirname+"/IMG_HCK_distributions_step"+str(tr)+".png")
             pl.show()
 
 ##### SAVE FEATURES and LABELS
-    if tr%5==0:
+    if tr%1==0:
         print "\nSaving progress...\n"
         with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint.dat", "wb") as f:
             pickle.dump((trials_list, labels_list, info_list, model.failed_params), f)

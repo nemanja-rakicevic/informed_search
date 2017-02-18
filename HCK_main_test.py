@@ -95,7 +95,7 @@ def executeTrial(params):
     # CHECK 1) Stick constraints
     if checkStickConstraints(*params):
         print '>> FAILED (Error 1: Stick constraints)'   
-        print "Repeating..."
+        print "Repeating...\n"
         return 0
     print "> TRIAL CHECK 1): OK Stick constraint"
 
@@ -105,7 +105,7 @@ def executeTrial(params):
     # CHECK 2) Inverse Kinematic solution
     if joint_values_left == -1 or joint_values_right == -1:
         print '>> TRIAL # - FAILED (Error 2: No IK solution)'
-        print "Repeating..."
+        print "Repeating...\n"
         return 0
     print "> TRIAL CHECK 2): OK IK solution"
 
@@ -122,6 +122,8 @@ def executeTrial(params):
     # Set the speeds
     limb_left.set_joint_position_speed(speed_left)
     limb_right.set_joint_position_speed(speed_right)
+    #
+    # joint_values_left['left_w2'] = params[4]
     # EXECUTE MOTION and save/track progress
     # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
     #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
@@ -186,7 +188,7 @@ elif test_v==2:
     test_num = input("\nEnter number of model to load > ")
     trialname = "TRIALS_FULL/"+list_models[test_num]
     print "Loading: ",trialname
-    
+
 (M_angle, M_dist, var_angle, penal_PDF, param_list) = pickle.load(open(trialname+'/DATA_HCK_model_checkpoint.dat', "rb"))
 
 # The dimensions which are plotted
@@ -194,6 +196,8 @@ p1 = 2
 p2 = 4
 
 while True:
+    limb_left.move_to_joint_positions(initial_left, timeout=5)
+    limb_right.move_to_joint_positions(initial_right, timeout=5)
     limb_left.move_to_joint_positions(initial_left, timeout=5)
     limb_right.move_to_joint_positions(initial_right, timeout=5)
     ### Do paired cartesian sqrt distance
@@ -206,19 +210,19 @@ while True:
     cnt = 0
     while not done:
         cnt += 1
-        # Get the indices of closest
-        print "-"*30
-        print "VERSION EQUAL (green):"
-        best_fit = nsmallest(cnt, M_meas.ravel())
-        coords = np.argwhere(M_meas==best_fit[cnt-1])[0]
-        exec_params = coord2vals(coords, param_list)
-        error_angle = M_angle[tuple(coords)] - angle_s
-        error_dist = M_dist[tuple(coords)] - dist_s
-        print coords
-        print "ERRORS>  "
-        print "\tangle:    chosen (",M_angle[tuple(coords)],") - desired (",angle_s,") = ", error_angle
-        print "\tdistance: chosen (",M_dist[tuple(coords)],") - desired (",dist_s,") =", error_dist
-        print "\tsquared: ", best_fit[cnt-1]
+        # # Get the indices of closest
+        # print "-"*30
+        # print "VERSION EQUAL (green):"
+        # best_fit = nsmallest(cnt, M_meas.ravel())
+        # coords = np.argwhere(M_meas==best_fit[cnt-1])[0]
+        # exec_params = coord2vals(coords, param_list)
+        # error_angle = M_angle[tuple(coords)] - angle_s
+        # error_dist = M_dist[tuple(coords)] - dist_s
+        # print coords
+        # print "ERRORS>  "
+        # print "\tangle:    chosen (",M_angle[tuple(coords)],") - desired (",angle_s,") = ", error_angle
+        # print "\tdistance: chosen (",M_dist[tuple(coords)],") - desired (",dist_s,") =", error_dist
+        # print "\tsquared: ", best_fit[cnt-1]
         # Get the indices of closest
         print
         print "VERSION NONSCALED (blue):"
@@ -247,47 +251,47 @@ while True:
             angle_2d = M_angle[0,3,:,3,:,4].reshape(len(dim1),len(dim2)).T
             dist_2d = M_dist[0,3,:,3,:,4].reshape(len(dim1),len(dim2)).T
 
-        X, Y = np.meshgrid(dim1, dim2)
-        fig = pl.figure("PREDICTION (equal weights)", figsize=None)
-        fig.set_size_inches(fig.get_size_inches()[0]*2,fig.get_size_inches()[1]*2)
-        #### ANGLE MODEL
-        ax = fig.add_subplot(1, 2, 1, projection='3d')
-        ax.set_title('ANGLE MODEL')
-        ax.set_xlabel('right dx')
-        ax.set_ylabel('wrist angle')
-        ax.set_zlabel('[degrees]', rotation='vertical')
-        ax.plot_surface(X, Y, angle_2d, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, alpha=0.4, antialiased=False)
-        # ax.plot_wireframe(X, Y, angle_2d, rstride=1, cstride=1)
-        ax.scatter(exec_params[p1], exec_params[p2], angle_2d[coords[p2], coords[p1]], s=100, c='g', marker='x', linewidth=2)
-        ax.scatter(exec_params1[p1], exec_params1[p2], angle_2d[coords1[p2], coords1[p1]], s=100, c='b', marker='+', linewidth=2)
-        ax.plot_surface(X, Y, angle_s*np.ones(X.shape), rstride=1, cstride=1, color='y', alpha=0.3, antialiased=False, linewidth=0)
-        ax.scatter(exec_params[p1], exec_params[p2], angle_s, s=50, c='y', marker='o')
-        ax.plot([exec_params[p1],exec_params[p1]], [exec_params[p2],exec_params[p2]], [angle_2d[coords[p2], coords[p1]], angle_s], linewidth=2, color='g')
-        ax.scatter(exec_params1[p1], exec_params1[p2], angle_s, s=50, c='y', marker='o')
-        ax.plot([exec_params1[p1],exec_params1[p1]], [exec_params1[p2],exec_params1[p2]], [angle_2d[coords1[p2], coords1[p1]], angle_s], linewidth=2, color='b')
+        # X, Y = np.meshgrid(dim1, dim2)
+        # fig = pl.figure("PREDICTION (equal weights)", figsize=None)
+        # fig.set_size_inches(fig.get_size_inches()[0]*2,fig.get_size_inches()[1]*2)
+        # #### ANGLE MODEL
+        # ax = fig.add_subplot(1, 2, 1, projection='3d')
+        # ax.set_title('ANGLE MODEL')
+        # ax.set_xlabel('right dx')
+        # ax.set_ylabel('wrist angle')
+        # ax.set_zlabel('[degrees]', rotation='vertical')
+        # ax.plot_surface(X, Y, angle_2d, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, alpha=0.4, antialiased=False)
+        # # ax.plot_wireframe(X, Y, angle_2d, rstride=1, cstride=1)
+        # ax.scatter(exec_params[p1], exec_params[p2], angle_2d[coords[p2], coords[p1]], s=100, c='g', marker='x', linewidth=2)
+        # ax.scatter(exec_params1[p1], exec_params1[p2], angle_2d[coords1[p2], coords1[p1]], s=100, c='b', marker='+', linewidth=2)
+        # ax.plot_surface(X, Y, angle_s*np.ones(X.shape), rstride=1, cstride=1, color='y', alpha=0.3, antialiased=False, linewidth=0)
+        # ax.scatter(exec_params[p1], exec_params[p2], angle_s, s=50, c='y', marker='o')
+        # ax.plot([exec_params[p1],exec_params[p1]], [exec_params[p2],exec_params[p2]], [angle_2d[coords[p2], coords[p1]], angle_s], linewidth=2, color='g')
+        # ax.scatter(exec_params1[p1], exec_params1[p2], angle_s, s=50, c='y', marker='o')
+        # ax.plot([exec_params1[p1],exec_params1[p1]], [exec_params1[p2],exec_params1[p2]], [angle_2d[coords1[p2], coords1[p1]], angle_s], linewidth=2, color='b')
 
-        ##### DISTANCE MODEL
-        ax = fig.add_subplot(1, 2, 2, projection='3d')
-        ax.set_title('DISTANCE MODEL')
-        ax.set_xlabel('right dx')
-        ax.set_ylabel('wrist angle')
-        ax.set_zlabel('[cm]', rotation='vertical')
-        ax.plot_surface(X, Y, dist_2d, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, alpha=0.4, antialiased=False)
-        # ax.plot_wireframe(X, Y, dist_2d, rstride=1, cstride=1)
-        ax.scatter(exec_params[p1], exec_params[p2], dist_2d[coords[p2], coords[p1]], s=100, c='g', marker='x', linewidth=2)
-        ax.scatter(exec_params1[p1], exec_params1[p2], dist_2d[coords1[p2], coords1[p1]], s=100, c='b', marker='+', linewidth=2)
-        ax.plot_surface(X, Y, dist_s*np.ones(X.shape), rstride=1, cstride=1, color='y', alpha=0.3, antialiased=False, linewidth=0)
-        ax.scatter(exec_params[p1], exec_params[p2], dist_s, s=50, c='y', marker='o')
-        ax.plot([exec_params[p1],exec_params[p1]], [exec_params[p2],exec_params[p2]], [dist_2d[coords[p2], coords[p1]], dist_s], linewidth=2, color='g')
-        ax.scatter(exec_params1[p1], exec_params1[p2], dist_s, s=50, c='y', marker='o')
-        ax.plot([exec_params1[p1],exec_params1[p1]], [exec_params1[p2],exec_params1[p2]], [dist_2d[coords1[p2], coords1[p1]], dist_s], linewidth=2, color='b')
-        pl.show()
+        # ##### DISTANCE MODEL
+        # ax = fig.add_subplot(1, 2, 2, projection='3d')
+        # ax.set_title('DISTANCE MODEL')
+        # ax.set_xlabel('right dx')
+        # ax.set_ylabel('wrist angle')
+        # ax.set_zlabel('[cm]', rotation='vertical')
+        # ax.plot_surface(X, Y, dist_2d, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, alpha=0.4, antialiased=False)
+        # # ax.plot_wireframe(X, Y, dist_2d, rstride=1, cstride=1)
+        # ax.scatter(exec_params[p1], exec_params[p2], dist_2d[coords[p2], coords[p1]], s=100, c='g', marker='x', linewidth=2)
+        # ax.scatter(exec_params1[p1], exec_params1[p2], dist_2d[coords1[p2], coords1[p1]], s=100, c='b', marker='+', linewidth=2)
+        # ax.plot_surface(X, Y, dist_s*np.ones(X.shape), rstride=1, cstride=1, color='y', alpha=0.3, antialiased=False, linewidth=0)
+        # ax.scatter(exec_params[p1], exec_params[p2], dist_s, s=50, c='y', marker='o')
+        # ax.plot([exec_params[p1],exec_params[p1]], [exec_params[p2],exec_params[p2]], [dist_2d[coords[p2], coords[p1]], dist_s], linewidth=2, color='g')
+        # ax.scatter(exec_params1[p1], exec_params1[p2], dist_s, s=50, c='y', marker='o')
+        # ax.plot([exec_params1[p1],exec_params1[p1]], [exec_params1[p2],exec_params1[p2]], [dist_2d[coords1[p2], coords1[p1]], dist_s], linewidth=2, color='b')
+        # pl.show()
 
     #### EXECUTION
-        test_e = input("\nEnter which parameters to execute:\n(1) for GREEN\n(2) for BLUE\n")
-        if test_e==2:
-            exec_params = exec_params1
-        done = executeTrial(exec_params)
+        # test_e = input("\nEnter which parameters to execute:\n(1) for GREEN\n(2) for BLUE\n")
+        # if test_e==2:
+        #     exec_params = exec_params1
+        done = executeTrial(exec_params1)
 
     print "\nEXECUTION DONE"
 
