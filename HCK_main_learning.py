@@ -326,15 +326,15 @@ while True:
                 ax.plot_surface(X, Y, model.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             else:
                 ax.plot_surface(X, Y, model.mu_L[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            # # PENALISATION PDF
-            # ax = pl.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
-            # ax.set_title('Penalisation function: '+str(len(model.failed_params))+' points')
-            # ax.set_ylabel('right dx')
-            # ax.set_xlabel('wrist angle')
-            # if model.param_dims[0]>1:
-            #     ax.plot_surface(X, Y, model.penal_PDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
-            # else:
-            #     ax.plot_surface(X, Y, (1-model.penal_PDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2))), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
+            # PENALISATION PDF
+            ax = pl.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
+            ax.set_title('Penalisation function: '+str(len(model.failed_params))+' points')
+            ax.set_ylabel('right dx')
+            ax.set_xlabel('wrist angle')
+            if model.param_dims[0]>1:
+                ax.plot_surface(X, Y, model.penal_PDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
+            else:
+                ax.plot_surface(X, Y, (1-model.penal_PDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2))), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
             # UNCERTAINTY
             ax = pl.subplot2grid((2,6),(1, 2), colspan=2, projection='3d')
             ax.set_ylabel('right dx')
@@ -344,15 +344,15 @@ while True:
                 ax.plot_surface(X, Y, model.var_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
             else:
                 ax.plot_surface(X, Y, model.var_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
-            # # SELECTION FUNCTION
-            # ax = pl.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
-            # ax.set_title('Selection function')
-            # ax.set_ylabel('right dx')
-            # ax.set_xlabel('wrist angle')
-            # if model.param_dims[0]>1:
-            #     ax.plot_surface(X, Y, model.info_pdf[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
-            # else:
-            #     ax.plot_surface(X, Y, model.info_pdf[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
+            # SELECTION FUNCTION
+            ax = pl.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
+            ax.set_title('Selection function')
+            ax.set_ylabel('right dx')
+            ax.set_xlabel('wrist angle')
+            if model.param_dims[0]>1:
+                ax.plot_surface(X, Y, model.info_pdf[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
+            else:
+                ax.plot_surface(X, Y, model.info_pdf[0,0,:,0,:,0].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
             # SAVEFIG
             pl.savefig(model.trial_dirname+"/IMG_HCK_distributions_step"+str(tr)+".png")
             pl.show()

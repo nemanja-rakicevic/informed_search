@@ -10,9 +10,9 @@ import baxter_interface as BI
 from heapq import nsmallest
 
 
-import matplotlib.pyplot as pl
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
+# import matplotlib.pyplot as pl
+# from mpl_toolkits.mplot3d import Axes3D
+# from matplotlib import cm
 
 from geometry_msgs.msg import (PoseStamped,Pose,Point,Quaternion)
 # from std_msgs.msg import (Float32MultiArray,UInt64MultiArray)

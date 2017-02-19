@@ -34,7 +34,7 @@ colorUpper = (105, 255, 255)
 # colorLowerR = (160, 80, 235)    # (125, 80, 190)
 # colorUpperR = (175, 255, 255)
 #GREEN filter
-colorLowerR = (85, 40, 255)
+colorLowerR = (70, 40, 255)
 colorUpperR = (90, 100, 255)
 # # YELLOW filter
 # colorLowerR = (25, 80, 200)    # (125, 80, 190)
@@ -47,17 +47,19 @@ ball_x, ball_y = None, None
 FLAG = raw_input("ENTER (1) to SAVE VIDEO:\n")
 
 if FLAG=="1":
+    fname = raw_input("ENTER FILENAME:\n")
     fourcc = cv2.cv.CV_FOURCC(*"MJPG")
     (h, w) = (None, None)
     zeros = None
-    writer = cv2.VideoWriter("cam_front.avi", fourcc, 10, (1920, 1080), True)
+    writer = cv2.VideoWriter(fname+".avi", fourcc, 10, (1920, 1080), True)
 
 #####################################################
 
 def cleanup_on_shutdown():
     # cleanup, close any open windows
     cv2.destroyAllWindows()
-    writer.release()
+    if FLAG=="1":
+        writer.release()
 
 
 def callback_cam(msg):
