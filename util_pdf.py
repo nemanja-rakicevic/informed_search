@@ -31,22 +31,22 @@ COV = 1000
 
 # ##################################################################
 # ## max length of combination vector should be 25000 - 8/7/8/7/8
-# # ### FULL MOTION SPACE
-range_l_dx = np.round(np.linspace(LEFT_X_MIN, LEFT_X_MAX, 5), 3)
-range_l_dy = np.round(np.linspace(LEFT_Y_MIN, LEFT_Y_MAX, 5), 3)
-range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 5), 3)
-range_r_dy = np.round(np.linspace(RIGHT_Y_MIN, RIGHT_Y_MAX, 5), 3)
-range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 6), 3)
-range_speed = np.round(np.linspace(SPEED_MIN, SPEED_MAX, 5), 3)
+# # # ### FULL MOTION SPACE
+# range_l_dx = np.round(np.linspace(LEFT_X_MIN, LEFT_X_MAX, 5), 3)
+# range_l_dy = np.round(np.linspace(LEFT_Y_MIN, LEFT_Y_MAX, 5), 3)
+# range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 5), 3)
+# range_r_dy = np.round(np.linspace(RIGHT_Y_MIN, RIGHT_Y_MAX, 5), 3)
+# range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 6), 3)
+# range_speed = np.round(np.linspace(SPEED_MIN, SPEED_MAX, 5), 3)
 #################################################################(-0.3, 0.1, 0.05, 0.4, w=-0.97, speed=s) #(-0.1,0, 0.2,0, s)
 
-# # ### PARTIAL JOINT SPACE
-# range_l_dx = np.round(np.linspace(-0.3, -0.3, 1), 3)
-# range_l_dy = np.round(np.linspace(0.1, 0.1, 1), 3)
-# range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 10), 3)
-# range_r_dy = np.round(np.linspace(0.4, 0.4, 1), 3)
-# range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 10), 3)
-# range_speed = np.round(np.linspace(1, 1, 1), 3)
+# ### PARTIAL JOINT SPACE
+range_l_dx = np.round(np.linspace(-0.3, -0.3, 1), 3)
+range_l_dy = np.round(np.linspace(0.1, 0.1, 1), 3)
+range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 5), 3)
+range_r_dy = np.round(np.linspace(0.4, 0.4, 1), 3)
+range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 6), 3)
+range_speed = np.round(np.linspace(1, 1, 1), 3)
 ##################################################################
     
 class PDFoperations:
@@ -155,11 +155,11 @@ class PDFoperations:
             ### VERSION 1
             # Make the ones that change often change less (make cov smaller and wider), 
             # and the ones which don't push to change more (make cov larger and narrower)
-            cov_coeff = 1+(fl_var-fl_var.mean())/(fl_var.max())
+            # cov_coeff = 1+(fl_var-fl_var.mean())/(fl_var.max())
             # ### VERSION 2
             # # Leave the ones that change often as they are (leave cov as is),
             # # and the ones which don't push to change more (make cov larger and narrower)
-            # cov_coeff = 1+(fl_var1-fl_var1.min())/fl_var1.max()
+            cov_coeff = 1+(fl_var-fl_var.min())/fl_var.max()
 
         ### Update covariance diagonal elements
         for idx, cc in enumerate(cov_coeff):
@@ -237,7 +237,7 @@ class PDFoperations:
             # get positions of highest uncertainty 
             # temp = np.argwhere(info_pdf==np.max(info_pdf))
             # temp = np.argwhere((info_pdf==nlargest(cnt, info_pdf.ravel())).reshape(tuple(np.append(self.param_dims, -1))))[:,0:-1]
-            temp = np.argwhere(np.array([info_pdf==c for c in nlargest(cnt*100, info_pdf.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
+            temp = np.argwhere(np.array([info_pdf==c for c in nlargest(cnt*1, info_pdf.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
             # check and take those which have not been explored
             temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_list))
             temp_good = np.array(map(list, temp_good))            

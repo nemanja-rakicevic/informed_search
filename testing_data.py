@@ -4,7 +4,7 @@
 model_err = -1*np.ones((4,7))
 rand_err = -1*np.ones((5,4,7))
 
-human_err = -1*np.ones((8,4,7))
+human_err = -1*np.ones((10,4,7))
 pro_err = -1*np.ones((5,4,7))
 
 # MODEL
@@ -77,6 +77,21 @@ human_err[6,0,:] = np.array([25, 7.5, 8, 19, 18, 32, 65])
 human_err[6,1,:] = np.array([5, 4, 18.5, 17, 23, 47, 9])
 human_err[6,2,:] = np.array([3, 19, 8.5, 44, 13.5, 9, 56])
 human_err[6,3,:] = np.array([1, 19, 17, 30, 12, 60, 19])
+#8 tom2
+human_err[7,0,:] = np.array([9, 14, 13, 130, 54, 8, 53])
+human_err[7,1,:] = np.array([17, 1, 66, 45, 12, 119, 50])
+human_err[7,2,:] = np.array([22, 18, 23, 56, 68, 34, 17])
+human_err[7,3,:] = np.array([1, 28, 14, 25.5, 50, 52, 77])
+#9 nathan
+human_err[8,0,:] = np.array([15, 18, 14, 24, 12, 30, 9])
+human_err[8,1,:] = np.array([18, 4.5, 20, 43, 29, 64, 2])
+human_err[8,2,:] = np.array([38, 21, 18, 24.5, 2, 8, 8.5])
+human_err[8,3,:] = np.array([30, 13, 46, 60, 24, 74, 62])
+#10 lucy
+human_err[9,0,:] = np.array([23, 28, 62, 13, 75, 55, 26])
+human_err[9,1,:] = np.array([5, 10, 32, 17, 29, 44, 40])
+human_err[9,2,:] = np.array([20, 27, 21, 81.5, 115, 9, 3.5])
+human_err[9,3,:] = np.array([14, 51.5, 28, 20, 99, 2, 140])
 
 
 #EXPERTS
@@ -85,11 +100,11 @@ pro_err[0,0,:] = np.array([2, 18, 42, 28, 13, 86, 60])
 pro_err[0,1,:] = np.array([12, 14, 27, 15, 40, 36, 40])
 pro_err[0,2,:] = np.array([20, 0, 18, 4, 5, 73, 40])
 pro_err[0,3,:] = np.array([4, 29.5, 6, 19, 25, 3, 19])
-#2 
-pro_err[1,0,:] = np.array([])
-pro_err[1,1,:] = np.array([])
-pro_err[1,2,:] = np.array([])
-pro_err[1,3,:] = np.array([])
+#2 matthias
+pro_err[1,0,:] = np.array([14, 8, 4, 11, 42, 38, 57])
+pro_err[1,1,:] = np.array([27, 27, 14, 22, 24, 24, 6])
+pro_err[1,2,:] = np.array([6, 29, 11, 49, 46, 46, 18])
+pro_err[1,3,:] = np.array([16, 25, 60, 22, 9.5, 41, 44])
 #3 
 pro_err[2,0,:] = np.array([])
 pro_err[2,1,:] = np.array([])
