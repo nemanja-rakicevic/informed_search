@@ -105,11 +105,11 @@ pro_err[1,0,:] = np.array([14, 8, 4, 11, 42, 38, 57])
 pro_err[1,1,:] = np.array([27, 27, 14, 22, 24, 24, 6])
 pro_err[1,2,:] = np.array([6, 29, 11, 49, 46, 46, 18])
 pro_err[1,3,:] = np.array([16, 25, 60, 22, 9.5, 41, 44])
-#3 
-pro_err[2,0,:] = np.array([])
-pro_err[2,1,:] = np.array([])
-pro_err[2,2,:] = np.array([])
-pro_err[2,3,:] = np.array([])
+#3 gus
+pro_err[2,0,:] = np.array([7, 5, 16, 10, 13.5, 35, 16])
+pro_err[2,1,:] = np.array([12, 4.5, 11, 23, 28, 15, 15])
+pro_err[2,2,:] = np.array([2, 5, 10, 10, 32, 35, 6])
+pro_err[2,3,:] = np.array([14, 4, 15, 35, 8, 21, 74])
 #4 
 pro_err[3,0,:] = np.array([])
 pro_err[3,1,:] = np.array([])
