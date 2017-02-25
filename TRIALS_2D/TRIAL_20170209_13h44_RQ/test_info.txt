@@ -1,9 +1,0 @@
-
-# TRIALS: 
-20
-
-# PARAMETERS:
-""" GP rational quadratic kernel """
-sigsq = np.exp(1)
-siglensq = np.exp(1)
-alpha = np.exp(1)

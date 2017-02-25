@@ -1,9 +1,0 @@
-
-# TRIALS: 
-20
-
-# PARAMETERS:
-""" GP rational quadratic kernel """
-sigsq = 1
-siglensq = 0.3
-alpha = a.shape[1]/2. 

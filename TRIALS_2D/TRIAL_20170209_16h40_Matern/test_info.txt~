@@ -1,8 +1,0 @@
-
-# TRIALS: 
-20
-
-# PARAMETERS:
-""" GP Matern 5/2 kernel: """
-sigsq = 1
-siglensq = 0.03
