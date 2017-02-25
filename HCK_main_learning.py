@@ -174,22 +174,22 @@ def executeTrial(trialnum, params):
         #
         # joint_values_left['left_w2'] = params[4]
 
-        # # ## EXECUTE MOTION and save/track progress
-        # # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
-        # #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
-        # cnt = 0
-        # while (not (tuple(np.array(joint_values_left.values())-THRSH_POS) <= tuple(limb_left.joint_angles().values()) <= tuple(np.array(joint_values_left.values())+THRSH_POS)) or \
-        #     not (tuple(np.array(joint_values_right.values())-THRSH_POS) <= tuple(limb_right.joint_angles().values()) <= tuple(np.array(joint_values_right.values())+THRSH_POS))) and cnt <20000:
-        #     cnt+=1
-        #     # send joint commands
-        #     limb_left.set_joint_positions(joint_values_left)
-        #     limb_right.set_joint_positions(joint_values_right)
-        #     # save joint movements
-        #     trial.traj_jnt[0].append(limb_left.joint_angles())
-        #     trial.traj_jnt[1].append(limb_right.joint_angles())
-        #     # save end-effector movements
-        #     trial.traj_cart[0].append(limb_left.endpoint_pose()['position'][0:3])
-        #     trial.traj_cart[1].append(limb_right.endpoint_pose()['position'][0:3])
+        # ## EXECUTE MOTION and save/track progress
+        # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
+        #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
+        cnt = 0
+        while (not (tuple(np.array(joint_values_left.values())-THRSH_POS) <= tuple(limb_left.joint_angles().values()) <= tuple(np.array(joint_values_left.values())+THRSH_POS)) or \
+            not (tuple(np.array(joint_values_right.values())-THRSH_POS) <= tuple(limb_right.joint_angles().values()) <= tuple(np.array(joint_values_right.values())+THRSH_POS))) and cnt <20000:
+            cnt+=1
+            # send joint commands
+            limb_left.set_joint_positions(joint_values_left)
+            limb_right.set_joint_positions(joint_values_right)
+            # save joint movements
+            trial.traj_jnt[0].append(limb_left.joint_angles())
+            trial.traj_jnt[1].append(limb_right.joint_angles())
+            # save end-effector movements
+            trial.traj_cart[0].append(limb_left.endpoint_pose()['position'][0:3])
+            trial.traj_cart[1].append(limb_right.endpoint_pose()['position'][0:3])
 
 
         # CHECK 3) PHYSICAL EFFECT
@@ -331,7 +331,6 @@ while True:
             ax = pl.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
             ax.set_title('Penalisation function: '+str(len(model.failed_params))+' points')
             ax.set_ylabel('right dx')
-            ax.set_xlabel('wrist angle')
             if model.param_dims[0]>1:
                 ax.plot_surface(X, Y, model.penal_PDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2)), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
             else:

@@ -5,7 +5,7 @@ model_err = -1*np.ones((4,7))
 rand_err = -1*np.ones((5,4,7))
 
 human_err = -1*np.ones((10,4,7))
-pro_err = -1*np.ones((5,4,7))
+pro_err = -1*np.ones((4,4,7))
 
 # MODEL
 model_err[0,:] = np.array([56, 6.5, 14, 32, 17.5, 31, 75])
@@ -110,11 +110,11 @@ pro_err[2,0,:] = np.array([7, 5, 16, 10, 13.5, 35, 16])
 pro_err[2,1,:] = np.array([12, 4.5, 11, 23, 28, 15, 15])
 pro_err[2,2,:] = np.array([2, 5, 10, 10, 32, 35, 6])
 pro_err[2,3,:] = np.array([14, 4, 15, 35, 8, 21, 74])
-#4 
-pro_err[3,0,:] = np.array([])
-pro_err[3,1,:] = np.array([])
-pro_err[3,2,:] = np.array([])
-pro_err[3,3,:] = np.array([])
+#4 alex
+pro_err[3,0,:] = np.array([11, 21, 10, 57, 33, 53, 59])
+pro_err[3,1,:] = np.array([0, 9, 32, 6, 51, 58, 35])
+pro_err[3,2,:] = np.array([5, 22, 9, 11, 4, 38, 39])
+pro_err[3,3,:] = np.array([17, 4, 24, 6, 14, 14, 8])
 #5 
 pro_err[4,0,:] = np.array([])
 pro_err[4,1,:] = np.array([])

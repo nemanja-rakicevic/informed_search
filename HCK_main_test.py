@@ -294,6 +294,7 @@ while True:
         done = executeTrial(exec_params1)
 
     print "\nEXECUTION DONE"
+    print 
 
     test_q = raw_input("Enter to try again, or (x) to quit ")
     if test_q=='x':
@@ -304,10 +305,5 @@ while True:
 # pl.imshow(M_meas1.reshape(10,10))
 # pl.colorbar()
 # pl.show()
-
-
-
-
-
 
 
