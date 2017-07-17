@@ -1,7 +1,9 @@
 
 
-####################################################
+#####################################################
+# Dependencies: https://github.com/code-iai/iai_kinect2
 # First run: roslaunch kinect2_bridge kinect2_bridge.launch
+#####################################################
 
 import rospy
 import cv2
