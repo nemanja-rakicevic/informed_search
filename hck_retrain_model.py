@@ -208,8 +208,17 @@ def executeTrial(trialnum, params):
 #####################################################################
 #####################################################################
 # LOAD TRIAL INFO
-(trials_list, labels_list, info_list, model.failed_params) = pickle.load(open(trialname+'/DATA_HCK_trial_checkpoint.dat', "rb"))
+trialname = "/home/robin/robin_lab/PROJECTS/DENIRO_HOCKEY_DATA/TRIALS_FULL/TRIAL_20170217_17h23_RQ_plusrand50/"
+(trials_list, labels_list, info_list, failed_params) = pickle.load(open(trialname+'DATA_HCK_trial_checkpoint.dat', "rb"))
+trials_list = np.asarray(trials_list)
 
+idx = []
+for t in info_list:
+    if t.fail_status == 0:
+        idx.append(t.num)
+idx = np.asarray(idx)
+
+succ_trials = trials_list[idx]
 
 #####################################################################
 #####################################################################
