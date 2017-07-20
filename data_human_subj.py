@@ -2,16 +2,39 @@
 
 # DISTANCE
 model_err = -1*np.ones((4,7))
+model1_err = -1*np.ones((4,7))
+model2_err = -1*np.ones((4,7))
+model3_err = -1*np.ones((4,7))
 rand_err = -1*np.ones((5,4,7))
 
 human_err = -1*np.ones((10,4,7))
 pro_err = -1*np.ones((4,4,7))
 
-# MODEL
+# MODEL - hardwood floor, standard puck
 model_err[0,:] = np.array([56, 6.5, 14, 32, 17.5, 31, 75])
 model_err[1,:] = np.array([22.5, 22.5, 58, 41, 18, 4.5, 41])
 model_err[2,:] = np.array([18, 8, 37, 30, 37.5, 21.5, 22])
 model_err[3,:] = np.array([19, 26.5, 45, 9, 34.5, 42, 36])
+
+
+# RETRAINED MODEL - hardwood floor, wood puck
+model1_err[0,:] = np.array([11, 64, 13, 68, 125, 183, 184])
+model1_err[1,:] = np.array([60, 13, 37, 27, 55, 87, 98])
+model1_err[2,:] = np.array([29, 38, 60, 21, 72, 31, 125])
+model1_err[3,:] = np.array([36, 46, 66, 87, 18, 12, 8])
+
+# RETRAINED MODEL - marble floor, standard puck
+# model2_err[0,:] = np.array([56, 6.5, 14, 32, 17.5, 31, 75])
+# model2_err[1,:] = np.array([22.5, 22.5, 58, 41, 18, 4.5, 41])
+# model2_err[2,:] = np.array([18, 8, 37, 30, 37.5, 21.5, 22])
+# model2_err[3,:] = np.array([19, 26.5, 45, 9, 34.5, 42, 36])
+
+# RETRAINED MODEL - marble floor, wood puck
+# model3_err[0,:] = np.array([56, 6.5, 14, 32, 17.5, 31, 75])
+# model3_err[1,:] = np.array([22.5, 22.5, 58, 41, 18, 4.5, 41])
+# model3_err[2,:] = np.array([18, 8, 37, 30, 37.5, 21.5, 22])
+# model3_err[3,:] = np.array([19, 26.5, 45, 9, 34.5, 42, 36])
+
 
 #RANDOM
 #seed1

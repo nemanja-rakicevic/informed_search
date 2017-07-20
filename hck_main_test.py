@@ -173,13 +173,13 @@ limb_right = BI.Limb("right")
 ############################################################################################
 
 
-test_v = input("\nEnter which test to run:\n(1) for 2D\n(2) for FULL test\n")
+test_v = input("\nEnter which test to run:\n(1) for RETRAINED\n(2) for FULL models\n")
 if test_v==1:
-    list_models = [d for d in os.listdir('./TRIALS_2D') if d[0:6]=='TRIAL_']
+    list_models = [d for d in os.listdir('./TRIALS_RETRAINED') if d[0:6]=='TRIAL_']
     for idx, t in enumerate(list_models):
         print "("+str(idx)+")\t", t
     test_num = input("\nEnter number of model to load > ")
-    trialname = "TRIALS_2D/"+list_models[test_num]
+    trialname = "TRIALS_RETRAINED/"+list_models[test_num]
     print "Loading: ",trialname
 elif test_v==2:
     list_models = [d for d in os.listdir('./TRIALS_FULL') if d[0:6]=='TRIAL_']

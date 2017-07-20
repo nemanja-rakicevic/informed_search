@@ -29,18 +29,25 @@ from sensor_msgs.msg import Image
 # colorLower = (54, 73, 255)
 # colorUpper = (93, 150, 255)
 
-#BLUE filter
-colorLower = (85, 120, 200)       # (85, 150, 200)   
-colorUpper = (105, 255, 255)
+# #BLUE filter
+# colorLower = (85, 120, 200)       # (85, 150, 200)   
+# colorUpper = (105, 255, 255)
 #RED filter
 # colorLowerR = (160, 80, 235)    # (125, 80, 190)
 # colorUpperR = (175, 255, 255)
-#GREEN filter
-colorLowerR = (70, 40, 255)
-colorUpperR = (90, 100, 255)
-# # YELLOW filter
+colorLower = (165, 80, 190)
+colorUpper = (205, 135, 255)
+# #GREEN filter
+# colorLowerR = (70, 40, 255)
+# colorUpperR = (90, 100, 255)
+colorLowerR = (50, 60, 200)
+colorUpperR = (90, 130, 255)
+# YELLOW filter
 # colorLowerR = (25, 80, 200)    # (125, 80, 190)
 # colorUpperR = (50, 200, 255)
+# colorLower = (30, 60, 225)
+# colorUpper = (60, 255, 255)
+
 
 ball_x, ball_y = None, None
 
@@ -243,7 +250,8 @@ def get_coord(puck_x, puck_y):
 def getLabels(x_coord, y_coord):
     if not (x_coord and y_coord):
         return None, None
-    init_x = -22.0
+    # init_x = -22.0
+    init_x = -37.0
     init_y = -76.0
     L = np.sqrt((x_coord-init_x)**2 + (y_coord-init_y)**2)
     angle = np.rad2deg(np.arctan2(y_coord-init_y, x_coord-init_x))
@@ -275,9 +283,13 @@ msg_bridge = CvBridge()
 #                 [20., 30], [56.5, 36], [107.5, 43], [182., 52], [298., 67],
 #                 [20., 61], [57.5, 70.5], [111., 85], [187., 105], [307., 137]])
 
-
+#JULY
 m_pixels = np.array([[560., 740.], [1560., 940.], [1560., 140.], [960., 140.]], np.float32)
-m_meters = np.array([[188., 105.], [314.,-203.], [20.,-92.], [20., 0.]], np.float32)
+m_meters = np.array([[188., 105.], [321.,-215.], [17.,-93.], [17., 0.]], np.float32)
+# MARCH
+# m_pixels = np.array([[560., 740.], [1560., 940.], [1560., 140.], [960., 140.]], np.float32)
+# m_meters = np.array([[188., 105.], [314.,-203.], [20.,-92.], [20., 0.]], np.float32)
+# OLD
 # m_pixels = np.array([[960., 140., 1], [560., 740., 1], [1560., 140., 1], [1560., 940., 1]])
 # m_meters = np.array([[20., 0., 1],[188., 105., 1],[20.,-92., 1],[314.,-203., 1]])
 

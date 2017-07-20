@@ -83,11 +83,11 @@ class PDFoperations:
         self.var_alpha = np.ones(tuple(self.param_dims))
         self.var_L = np.ones(tuple(self.param_dims))
         # ###
-        self.trial_dirname = 'TRIALS_RETRAINED/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
-        # if self.param_dims[0]>1:
-        #     self.trial_dirname = 'TRIALS_FULL/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
-        # else:
-        #     self.trial_dirname = 'TRIALS_2D/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
+        # self.trial_dirname = 'TRIALS_RETRAINED/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
+        if self.param_dims[0]>1:
+            self.trial_dirname = 'TRIALS_FULL/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
+        else:
+            self.trial_dirname = 'TRIALS_2D/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
         os.makedirs(self.trial_dirname)
         np.random.seed(210)
 
@@ -221,7 +221,7 @@ class PDFoperations:
             # SAVE CURRENT MODEL
             # with open('DATA_trial_checkpoint.dat', "wb") as f:
             #         pickle.dump([self.trial_list,self.f_eval_list], f)
-            with open(self.trial_dirname+"/DATA_HCK_model_checkpoint_"+str(len(trial_list))+".dat", "wb") as m:
+            with open(self.trial_dirname+"/DATA_HCK_model_checkpoint.dat", "wb") as m:
                     pickle.dump([self.mu_alpha, self.mu_L, self.var_alpha, self.penal_PDF, self.param_list], m)
         # multiply the above's uncertainties to get the most informative point
         # DO NOT NORMALIZE ?!

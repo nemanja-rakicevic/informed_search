@@ -68,7 +68,7 @@ def checkStickConstraints(left_dx, left_dy, right_dx, right_dy, *_k):
     dx = abs((tmp_left.x + left_dx) - (tmp_right.x + right_dx))
     dy = abs((tmp_left.y + left_dy) - (tmp_right.y + right_dy))
     # print "/// STICK ", dx < STICK_X_MAX, dx < STICK_X_MAX and STICK_Y_MIN < dy < STICK_Y_MAX
-    print "/// STICK ", round(dx,2), round(dy,2)
+    # print "/// STICK ", round(dx,2), round(dy,2)
     if dx <= STICK_X_MAX and dy <= STICK_Y_MAX:
          # abs(left_dx)>10*THRSH_POS and abs(left_dy)>10*THRSH_POS and\
          # abs(right_dx)>10*THRSH_POS and abs(right_dy)>10*THRSH_POS:
@@ -208,14 +208,16 @@ def executeTrial(trialnum, params):
 #####################################################################
 #####################################################################
 # LOAD TRIAL INFO
-trialname = "/home/robin/robin_lab/PROJECTS/DENIRO_HOCKEY_DATA/TRIALS_FULL/TRIAL_20170217_17h23_RQ_plusrand50/"
+trialname = "TRIALS_FULL/TRIAL_20170217_17h23_RQ_plusrand50/"
+# trialname = "TRIALS_FULL/TRIAL_20170218_17h09_RQ_plusrand100/"
+print "LOADING TRIAL INFO: ", trialname
 (trials_list, labels_list, info_list, failed_params) = pickle.load(open(trialname+'DATA_HCK_trial_checkpoint.dat', "rb"))
 trials_list = np.asarray(trials_list)
 
 idx = []
 for t in info_list:
     if t.fail_status == 0:
-        idx.append(t.num)
+        idx.append(t.num-1)
 idx = np.asarray(idx)
 
 succ_trials = trials_list[idx]
@@ -223,7 +225,7 @@ succ_trials = trials_list[idx]
 #####################################################################
 #####################################################################
 # ROS Initialisation
-rospy.init_node('HCK_PC_main_node')
+rospy.init_node('HCK_PC_main_node_test')
 rate = rospy.Rate(1000)
 
 # Baxter initialisation
@@ -271,7 +273,9 @@ while True:
     print "==================="
     avar, lvar = model.returnUncertainty()
     print "- Generating new trial parameters...\n- Current model entropy:"+str(round(avar,4))
-    trial_params = model.generateSample(np.array(trials_list), np.array(labels_list))
+    # get sample from list
+    _ = model.generateSample(np.array(trials_list), np.array(labels_list))
+    trial_params = succ_trials[tr-1]
     trials_list.append(trial_params)
     print "---generated params:", trial_params
 
@@ -299,8 +303,10 @@ while True:
         model.updatePDF(trial_params)
 ######## VISUALISE PREDICTIONS
     if tr%1==0 or trial_info.fail_status==0:
+    # if True:
         print "<- CHECK PLOTS"     
         if len(model.mu_alpha) and len(model.mu_L):
+        # if True:
             dim1 = model.param_list[2]
             dim2 = model.param_list[4]
             X, Y = np.meshgrid(dim2, dim1)
@@ -360,7 +366,7 @@ while True:
 ##### SAVE FEATURES and LABELS
     if tr%1==0:
         print "\nSaving progress...\n"
-        with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint.dat", "wb") as f:
+        with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint_"+str(tr)+".dat", "wb") as f:
             pickle.dump((trials_list, labels_list, info_list, model.failed_params), f)
 
     # PROMPT for continuation
@@ -378,9 +384,11 @@ while True:
 #################################################################
 
 print '\nDONE! saving..'
-with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint.dat", "wb") as f:
+with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint_end.dat", "wb") as f:
     pickle.dump((trials_list, labels_list, info_list, model.failed_params), f)
-
+with open(model.trial_dirname+"/DATA_HCK_model_checkpoint_end.dat", "wb") as m:
+    pickle.dump([model.mu_alpha, model.mu_L, model.var_alpha, model.penal_PDF, model.param_list], m)
+        
 
 rospy.on_shutdown(cleanup_on_shutdown)
 # rate.sleep()

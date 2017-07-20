@@ -268,6 +268,7 @@ print "-"*50
 
 raw_input("Execute trial?")
 time.sleep(2)
+s = 1.
 
 while not rospy.is_shutdown():
 
@@ -276,7 +277,7 @@ while not rospy.is_shutdown():
     ### TEST RANGE
     # executeTest(0, 0.1, 0 ,0)    # LEFT Y
     # executeTest(0.1, 0, 0 ,0)       # LEFT X
-    executeTest(0, 0 , 0, 0.1)    # RIGHT Y
+    # executeTest(0, 0 , 0, 0.1)    # RIGHT Y
     # executeTest(0, 0, 0.1 , 0)    # RIGHT X
     # executeTrial(0.0 , 0.0, 0.17, 0.35, w=-0.97)    # LEFT WRIST
 
@@ -287,7 +288,7 @@ while not rospy.is_shutdown():
     # WRIST_MAX = 0.4     #(max = +3.) lean back
     # s = 1
     # executeTrial(-0.3, 0.1, 0.05, 0.4, w=-0.97, speed=s)  # left angle
-    # executeTrial(0.1, -0.1, 0.2, 1.2, w=0.3, speed=s)   # straight angle
+    executeTrial(-0.1, -0.1, 0.25, 0.2, w=0.3, speed=s)   # straight angle
     # executeTrial_separate(0.25, -0.2, 0.25, -0.10, w=0.45, speed=s)   # straight angle
 
     ### TEST FORCES
