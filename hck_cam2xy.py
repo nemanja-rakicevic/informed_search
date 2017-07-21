@@ -36,7 +36,7 @@ from sensor_msgs.msg import Image
 # colorLowerR = (160, 80, 235)    # (125, 80, 190)
 # colorUpperR = (175, 255, 255)
 colorLower = (165, 80, 190)
-colorUpper = (205, 135, 255)
+colorUpper = (169, 200, 255)
 # #GREEN filter
 # colorLowerR = (70, 40, 255)
 # colorUpperR = (90, 100, 255)

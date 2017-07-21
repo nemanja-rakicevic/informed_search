@@ -267,6 +267,10 @@ while True:
     limb_right.move_to_joint_positions(initial_right, timeout=3)
     limb_left.move_to_joint_positions(initial_left, timeout=3)
 
+    if tr-1==len(succ_trials):
+        print "ALL TRIALS DONE. EXITING..."
+        break
+        
 ##### GENERATE SAMPLE
     print "\n==================="
     print "===== Step", tr,"====="
