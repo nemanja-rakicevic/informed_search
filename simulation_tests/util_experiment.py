@@ -3,61 +3,60 @@ import numpy as np
 
 
 class SimulationExperiment:
-
 	import gym
-
-	__NUM_STEPS = 100
+	__NUM_STEPS = 50
 	__range1 = np.linspace(0, 2, 50)
 	__range2 = np.linspace(0, -1, 50)
 
-	def __init__(self):
+	def __init__(self, display=False):
 		self.parameter_list = np.array([self.__range1, self.__range2])
 		self.info_list = []
 		self.env = self.gym.make('ReacherOneShot-v0')
+		self.display = display
 
 	def executeTrial(self, t, coords, params):
-	    theta_list = np.array([np.linspace(0, params[0], self.__NUM_STEPS), np.linspace(0, params[1], self.__NUM_STEPS)]).T
-	    init_pos = self.env.reset()
-	    init_pos = init_pos[:2]
-	    # EXECUTE TRIAL
-	    contact_cnt = 0
-	    obs_list = []
-	    for i in range(self.__NUM_STEPS):
-	        self.env.render()
-	        control = init_pos + theta_list[i]
-	        observation, _, _, _ = self.env.step(control) 
-	        obs_list.append(observation)
-	        ball_xy = observation[2:4]
-	        # Check collision
-	        if self.env.unwrapped.data.ncon:
-	            contact_cnt+=1
-	            if contact_cnt > 5 and not sum(ball_xy)>0:
-	                # contact with wall
-	                fail_status = 1     
-	                break
-	    # Check ball movement and calculate polar coords
-	    if not sum(ball_xy)>0:
-	        # ball did not move
-	        fail_status = 2  
-	        ball_polar = np.array([0,0])   
-	    else:
-	        fail_status = 0  
-	        ball_polar = np.array([ np.rad2deg(np.arctan2(-ball_xy[0], ball_xy[1])), np.sqrt(ball_xy[0]**2 + ball_xy[1]**2) * 100])
-	    # Compile trial info
-	    all_info = {'trial_num': t+1,
-	                'parameters': params,
-	                'coordinates': coords,
-	                'fail': fail_status, 
-	                'ball_polar': ball_polar,
-	                'observations': np.array(obs_list) }
-	    # INFO
-	    # print("\nTRIAL #", t+1,"params",[param1,param2])
-	    # print("CTRL:\t",  control)
-	    # print("Q_POS:\t", ob[:2])
-	    # print("Q_VEL:\t", ob[4:6])
-	    # print("BALL:\t",  ball_xy, ball_polar)
-	    self.env.render(close=True)
-	    return all_info
+		theta_list = np.array([np.linspace(0, params[0], self.__NUM_STEPS), np.linspace(0, params[1], self.__NUM_STEPS)]).T
+		init_pos = self.env.reset()
+		init_pos = init_pos[:2]
+		# EXECUTE TRIAL
+		contact_cnt = 0
+		obs_list = []
+		for i in range(self.__NUM_STEPS):
+			if self.display:
+				self.env.render()
+			control = init_pos + theta_list[i]
+			observation, _, _, _ = self.env.step(control) 
+			obs_list.append(observation)
+			ball_xy = observation[2:4]
+			# Check collision
+			if self.env.unwrapped.data.ncon:
+				contact_cnt+=1
+				if contact_cnt > 5 and not sum(ball_xy)>0:
+					# contact with wall
+					fail_status = 1
+					break
+		# Check ball movement and calculate polar coords
+		if not sum(ball_xy)>0:
+			# ball did not move
+			fail_status = 2  
+			ball_polar = np.array([0,0])   
+		else:
+			fail_status = 0  
+		ball_polar = np.array([ np.rad2deg(np.arctan2(-ball_xy[0], ball_xy[1])), np.sqrt(ball_xy[0]**2 + ball_xy[1]**2) * 100])
+		# Compile trial info
+		all_info = {'trial_num': t+1,
+					'parameters': params,
+					'coordinates': coords,
+					'fail': fail_status, 
+					'ball_polar': ball_polar,
+					'observations': np.array(obs_list) }
+		# INFO
+		self.env.render(close=True)
+		if fail_status:
+			print("--- trial executed: FAIL (",fail_status,")")
+		else:
+			print("--- trial executed: SUCCESS\t-> labels:", ball_polar)
+		return all_info
 
 
 	def saveData(self):	
@@ -69,6 +68,8 @@ class SimulationExperiment:
 
 class RobotExperiment:
 
+	# import rospy
+	# import baxter_interface as BI
 	# CONSTANTS - speed 
 	SPEED_MIN = 0.5
 	SPEED_MAX = 1
@@ -136,6 +137,7 @@ class RobotExperiment:
 	    else:
 	        fail_status = 0  
 	        ball_polar = np.array([ np.rad2deg(np.arctan2(-ball_xy[0], ball_xy[1])), np.sqrt(ball_xy[0]**2 + ball_xy[1]**2) * 100])
+	    
 	    # Compile trial info
 	    all_info = {'trial_num': t+1,
 	                'parameters': params,
@@ -144,14 +146,14 @@ class RobotExperiment:
 	                'ball_polar': ball_polar,
 	                'observations': np.array(obs_list) }
 	    # INFO
-	    # print("\nTRIAL #", t+1,"params",[param1,param2])
-	    # print("CTRL:\t",  control)
-	    # print("Q_POS:\t", ob[:2])
-	    # print("Q_VEL:\t", ob[4:6])
-	    # print("BALL:\t",  ball_xy, ball_polar)
+	    if fail_status:
+	    	print("--- trial: FAIL")
+	    else:
+	    	print("--- trial: SUCCESS")
 	    return all_info
 
 
-	def saveData(self):	
-	    with open("./DATA/Simulation_data.dat", "wb") as m:
+	def saveData(self, trial_dirname):	
+	    with open(trial_dirname + "/data_simulation_info.dat", "wb") as m:
 	        pickle.dump(self.info_list, m, protocol=pickle.HIGHEST_PROTOCOL)
+

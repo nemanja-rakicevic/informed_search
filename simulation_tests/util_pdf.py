@@ -15,7 +15,7 @@ from matplotlib import cm
 
 
 # COVARIANCE
-COV = 1000
+COV = 100
 
 class InformedModel:
     def __init__(self, parameter_list):
@@ -31,18 +31,20 @@ class InformedModel:
         #
         self.coord_explored = []
         self.failed_coords = []
-        self.failed_params = []
-        self.good_params = []
-        self.good_fevals = []
+        # self.failed_params = []
+        # self.good_params = []
+        # self.good_fevals = []
         ###
         self.penal_IDF = self.prior_init
+        self.selection_IDF = self.prior_init
         ###
         self.mu_alpha = np.array([])
         self.mu_L = np.array([])
         self.var_alpha = np.ones(tuple(self.param_dims))
         self.var_L = np.ones(tuple(self.param_dims))
+        self.model_uncertainty = np.ones(tuple(self.param_dims))
         # ###
-        self.trial_dirname = 'DATA/SIMULATION/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
+        self.trial_dirname = './DATA/SIMULATION/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
         # if self.param_dims[0]>1:
         #     self.trial_dirname = 'TRIALS_FULL/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
         # else:
@@ -95,27 +97,43 @@ class InformedModel:
             # Successful trial
             if info_list[-1]['fail']==0:
                 good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail']==0])
-                self.good_params = good_trials[:,0]
-                self.good_fevals = good_trials[:,1]
+                good_params = good_trials[:,0]
+                good_fevals = good_trials[:,1]
                 # Estimate the Angle and Distance GPR models, as well as PIDF
-                self.mu_alpha, self.var_alpha = self.updateGP(0)
-                self.mu_L,     self.var_L     = self.updateGP(1)
+                self.mu_alpha, self.var_alpha = self.updateGPR(good_params, good_fevals, 0)
+                self.mu_L,     self.var_L     = self.updateGPR(good_params, good_fevals, 1)
                 self.updatePIDF(info_list[-1]['parameters'], failed=-1)
             # Failed trial
             elif info_list[-1]['fail']>0:
-                self.failed_coords = np.array([tr['coordinates'] for tr in info_list if tr['fail']>0])
+                self.failed_coords = [tr['coordinates'] for tr in info_list if tr['fail']>0]
                 self.updatePIDF(info_list[-1]['parameters'], failed=1)
+            # Update model uncertainty
+            all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
+            self.model_uncertainty = self.updateGPR(all_trials[:,0], all_trials[:,1], -1)
             # SAVE CURRENT MODEL
             self.saveModel()
 
 
-    def updateGP(self, label_indicator):
+    def updateGPR(self, Xtrain, Ytrain, label_indicator):
+        """
+        Update GPR uncertainty over the parameter space.
+        """
+        if label_indicator == -1:
+            Ytrain = Ytrain[:, 0].reshape(-1,1)
+            Xtest = self.param_space
+            # Calculate kernel matrices
+            K = self.kernel(Xtrain, Xtrain)
+            L = np.linalg.cholesky(K + self.eps_var*np.eye(len(Xtrain)))
+            Ks = self.kernel(Xtrain, Xtest)
+            Lk = np.linalg.solve(L, Ks)
+            # Get overall model uncertainty
+            return np.sqrt(np.diag(self.Kss) - np.sum(Lk**2, axis=0)).reshape(tuple(self.param_dims))
+
         """
         Perform Gaussian Process Regression using good performed trials as training points,
         and evaluate on the whole parameter space to get the new model and uncertainty estimates.
         """
-        Xtrain = self.good_params
-        Ytrain = self.good_fevals[:, label_indicator].reshape(-1,1)
+        Ytrain = Ytrain[:, label_indicator].reshape(-1,1)
         Xtest = self.param_space
         # Calculate kernel matrices
         K = self.kernel(Xtrain, Xtrain)
@@ -136,11 +154,10 @@ class InformedModel:
         corresponding to the movement vector of the failed trial.
         Similar is done for the successful trials with a positive Gaussian, but wider.
         """
-        pdf = self.penal_IDF.copy()
+        previous_pidf = self.penal_IDF.copy()
         # Modify the covariance matrix, depending on trial outcome  
         # Failed trial
         if failed == 1:
-            self.failed_coords.append(self.coord)
             """ VERSION 1
             Use most diverse samples. Make the parameters that change often change less (make cov smaller and wider), 
             and the ones which don't push to change more (make cov larger and narrower)
@@ -160,7 +177,7 @@ class InformedModel:
             # # Update the covariance matrix taking into account stationary parameters
             # if len(self.failed_coords)>0:
             #     good_coords = set(map(tuple, self.coord_explored)) - set(map(tuple,self.failed_coords))
-            #     good_coords = np.array(map(list, good_coords)) 
+            #     good_coords = np.array(list(good_coords)) 
             #     """VERSION 1: Get most diverse samples"""
             #     # fl_var = np.array([len(np.unique(np.array(self.failed_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)
             #     # cov_coeff = (1-(fl_var-fl_var.mean())/(fl_var.max()))
@@ -172,18 +189,15 @@ class InformedModel:
         # Update covariance diagonal elements
         for idx, cc in enumerate(cov_coeff):
             self.cov[idx,idx] = COV * cc
-        # Apply Bayes rule
-        likelihood = np.reshape(self.generatePDF_matrix(self.param_space, mu, self.cov), tuple(self.param_dims))
-        posterior = failed * (self.prior_init * likelihood)/np.sum(self.prior_init * likelihood)
-        # Normalise posterior distribution and add it to the previous one
-        shift = (self.prior_init + posterior)#/np.sum(self.prior_init+posterior)  
-        # Update with the penalisation IDF
-        self.penal_IDF = np.clip(pdf + shift, self.prior_init, 1.)
-
-        print("---check, penalisation updates: ")
-        print(fl_var)
-        print(np.diag(self.cov))
-        print("\n---penalised", len(np.argwhere(self.penal_IDF.round(2)==np.max(self.penal_IDF.round(2))))," ponts and",len(self.failed_coords),"combinations.")
+        # Estimate the contributing Gaussian
+        trial_gaussian = failed * np.reshape(self.generatePDF_matrix(self.param_space, mu, self.cov), tuple(self.param_dims))
+        trial_gaussian /= (trial_gaussian.max() + self.eps_var)
+        # Update the penalisation IDF
+        self.penal_IDF = np.clip(previous_pidf + trial_gaussian, self.prior_init, 1.)
+        # print("---check, penalisation updates: ")
+        # print(fl_var)
+        # print(np.diag(self.cov))
+        print("--- penalised", len(np.argwhere(self.penal_IDF.round(2)==np.max(self.penal_IDF.round(2)))),"peaks from",len(self.failed_coords),"combinations.")
         
 
     def generateInformedSample(self, info_list):
@@ -193,25 +207,26 @@ class InformedModel:
         """
         # Combine the model uncertainty with the penalisation IDF to get the most informative point   
         # DO NOT NORMALIZE ! LOG PROBABILITY ?
-        # model_var = (self.prior_init * self.var_alpha)/np.sum(self.prior_init * self.var_alpha)
-        selection_IDF = 1.0 * self.var_alpha * (1 - self.penal_IDF)#/np.sum(1-self.penal_IDF)
+        # model_var = (self.prior_init * self.model_uncertainty)/np.sum(self.prior_init * self.model_uncertainty)
+        selection_IDF = 1.0 * self.model_uncertainty * (1 - self.penal_IDF)#/np.sum(1-self.penal_IDF)
         # info_pdf /= np.sum(info_pdf)
         self.selection_IDF = selection_IDF
         # Check if the parameters have already been used
-        temp_good = []
+        temp_good = np.array([])
         cnt=1
-        while not len(temp_good):
+        while len(temp_good)==0:
             temp = np.argwhere(np.array([selection_IDF==c for c in nlargest(cnt*1, selection_IDF.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
             temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_explored))
-            temp_good = np.array(map(list, temp_good))            
+            temp_good = np.array(list(temp_good)) 
             cnt+=1
 
         selected_coord = temp_good[np.random.choice(len(temp_good)),:]
+        selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
         self.coord_explored.append(selected_coord)
-        print("---selection_IDF provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
-        print("---generated coords:", selected_coord)
+        # print("---selection_IDF provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
+        print("--- generated coords:", selected_coord, "-> parameters:", selected_params)
         # return the next sample vector
-        return selected_coord, np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
+        return selected_coord, selected_params
 
 
     def generateRandomSample(self):
@@ -221,11 +236,12 @@ class InformedModel:
         param_sizes = [range(i) for i in self.param_dims]
         temp = np.array([xs for xs in itertools.product(*param_sizes)])
         selected_coord = temp[np.random.choice(len(temp)),:]
+        selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
         self.coord_explored.append(selected_coord)
-        print("---random sampling provided:", len(temp),"of which", len(temp_good))#,"unexplored (among the top",cnt-1,")" 
-        print("---generated coords:", self.coord)
+        # print("---random sampling provided:", len(temp),"of which", len(temp_good))#,"unexplored (among the top",cnt-1,")" 
+        print("--- generated coords:", selected_coord, "-> parameters:", selected_params)
         # return the next sample vector
-        return selected_coord, np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
+        return selected_coord, selected_params
 
  
 
@@ -234,19 +250,76 @@ class InformedModel:
 
 
     def returnUncertainty(self):
-        return round(self.var_alpha.mean(), 4)
+        return round(self.model_uncertainty.mean(), 4)
 
 
     def saveModel(self):
-        with open(self.trial_dirname + "/DATA_HCK_model_checkpoint.dat", "wb") as m:
-            pickle.dump([self.mu_alpha, self.mu_L, self.var_alpha, self.penal_IDF, self.selection_IDF, self.param_list], m, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(self.trial_dirname + "/data_simulation_model.dat", "wb") as m:
+            pickle.dump([self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list], m, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+########### PUT TESTING AS SEPARATE INHERITED CLASS ???
+
+
+    def loadModel(self):
+        list_models = [d for d in os.listdir('./DATA/SIMULATION/') if d[0:6]=='TRIAL_']
+        for idx, t in enumerate(list_models):
+            print "("+str(idx)+")\t", t
+        test_num = input("\nEnter number of model to load > ")
+        trialname = "TRIALS_FULL/"+list_models[test_num]
+        print "Loading: ",trialname
+        with open(trialname + "/DATA_HCK_model_checkpoint.dat", "rb") as m:
+            (self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list) = pickle.load(m)
+        # Load history ?
+
+
+    def testModel(self, angle_s, dist_s):
+        # Helper functions
+        def sqdist(x,y):
+            return np.sqrt(x**2 + y**2)
+        def getMeas(M_angle, M_dist, angle_s, dist_s):
+            diff_angle = M_angle - angle_s
+            diff_angle = (diff_angle - diff_angle.min())/(diff_angle.max() - diff_angle.min())
+            diff_dist = M_dist - dist_s
+            diff_dist = (diff_dist - diff_dist.min())/(diff_dist.max() - diff_dist.min())
+            return sqdist(diff_angle, diff_dist)
+        # Calculate goodness measure
+        M_meas  = getMeas(M_angle, M_dist, angle_s, dist_s)
+        M_meas1 = sqdist(M_angle - angle_s, M_dist - dist_s)
+
+        # Get candidate movement parameter vector
+        best_fit1 = nsmallest(cnt, M_meas1.ravel())
+        coords1 = np.argwhere(M_meas1==best_fit1[cnt-1])[0]
+        exec_params1 = coord2vals(coords1, param_list)
+        error_angle1 = M_angle[tuple(coords1)] - angle_s
+        error_dist1 = M_dist[tuple(coords1)] - dist_s
+        
+        print("--- generated coords:", selected_coord, "-> parameters:", selected_params)
+        print("ESTIMATED ERRORS>  ")
+        print("\tangle:    chosen (", M_angle[tuple(coords1)],") - desired (",angle_s,") = ", error_angle1)
+        print("\tdistance: chosen (", M_dist[tuple(coords1)], ") - desired (",dist_s, ") = ", error_dist1)
+        print("\tsquared: ", best_fit1[cnt-1])
+
+
+        # Check for known constraints/failures
+        # if the values of the penal_IDF for the selected_coords are above a cetrain threshold
+        # this is probably a bad idea
+        if self.penal_IDF[tuple(coords1)] > thrsh:
+            # continue to the next smallest number
+
+        # return vector to execute
+        return selected_coord, selected_params
+
+
+
+
 
 
 
     def plotModel(self, trial_num, dimensions, param_names):
         # if trial_num%1==0 or trial_info.fail_status==0:
         # print "<- CHECK PLOTS"     
-        if len(self.mu_alpha) and len(self.mu_L):
+        if len(self.mu_alpha):
             fig = plt.figure("DISTRIBUTIONs at step: "+str(trial_num), figsize=None)
             fig.set_size_inches(fig.get_size_inches()[0]*2,fig.get_size_inches()[1]*2)
             dim1 = self.param_list[dimensions[0]]
@@ -258,25 +331,35 @@ class InformedModel:
                     model_alpha  = self.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                     model_L      = self.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                     model_PIDF   = self.penal_IDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
-                    model_var    = self.var_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    model_var    = self.model_uncertainty[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                     model_select = self.selection_IDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                 else:
                     model_alpha  = self.mu_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                     model_L      = self.mu_L[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                     model_PIDF   = self.penal_IDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
-                    model_var    = self.var_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
+                    model_var    = self.model_uncertainty[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                     model_select = self.selection_IDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
             else:
                 model_alpha  = self.mu_alpha
                 model_L      = self.mu_L
                 model_PIDF   = self.penal_IDF
-                model_var    = self.var_alpha
+                model_var    = self.model_uncertainty
                 model_select = self.selection_IDF
+            # Set ticks
+            xticks = np.linspace(min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 6).round(1)
+            xticks1 = np.linspace(min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 5).round(1)
+            yticks = np.linspace(min(dim1[0], dim1[-1]), max(dim1[0], dim1[-1]), 6).round(1)
+            zticks_alpha = np.linspace(self.mu_alpha.min(), self.mu_alpha.max(), 7).round(1)
+            zticks_L = np.linspace(self.mu_L.min(), self.mu_L.max(), 7).round(1)
+            # zticks_PIDF = np.linspace(self.penal_IDF.min(), self.penal_IDF.max(), 7).round(1)
             # ANGLE MODEL
             ax = plt.subplot2grid((2,6),(0, 0), colspan=3, projection='3d')
             ax.set_title('ANGLE MODEL')
             ax.set_ylabel(param_names[1])
             ax.set_xlabel(param_names[0])
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            ax.set_zticks(zticks_alpha)
             ax.set_zlabel('[degrees]', rotation='vertical')
             ax.plot_surface(X, Y, model_alpha, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             # fig.colorbar(surf, shrink=0.5, aspect=5)
@@ -285,26 +368,33 @@ class InformedModel:
             ax.set_title('DISTANCE MODEL')
             ax.set_ylabel(param_names[1])
             ax.set_xlabel(param_names[0])
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            ax.set_zticks(zticks_L)
             ax.set_zlabel('[cm]', rotation='vertical')
             ax.plot_surface(X, Y, model_L, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             # PENALISATION PDF
             ax = plt.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
-            ax.set_title('Penalisation function: '+str(len(self.failed_params))+' points')
+            ax.set_title('Penalisation function: '+str(len(self.failed_coords))+' points')
             ax.set_ylabel(param_names[1])
             ax.set_xlabel(param_names[0])
-            ax.plot_surface(X, Y, model_PIDF, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            ax.set_xticks(xticks1)
+            # ax.set_zticks(zticks_PIDF)
+            ax.plot_surface(X, Y, model_PIDF, rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
             # UNCERTAINTY
             ax = plt.subplot2grid((2,6),(1, 2), colspan=2, projection='3d')
             ax.set_title('Model uncertainty: '+str(self.returnUncertainty()))
             ax.set_ylabel(param_names[1])
             ax.set_xlabel(param_names[0])
-            ax.plot_surface(X, Y, model_var, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            ax.set_xticks(xticks1)
+            ax.plot_surface(X, Y, model_var, rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
             # SELECTION FUNCTION
             ax = plt.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
             ax.set_title('Selection function')
             ax.set_ylabel(param_names[1])
             ax.set_xlabel(param_names[0])
-            ax.plot_surface(X, Y, model_select, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            ax.set_xticks(xticks1)
+            ax.plot_surface(X, Y, model_select, rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
             # SAVEFIG
             plt.savefig(self.trial_dirname+"/IMG_HCK_distributions_trial#"+str(trial_num)+".png")
             plt.show()
