@@ -7,7 +7,7 @@ import numpy as np
 import scipy as sp
 import scipy.spatial
 import pickle
-from heapq import nlargest
+from heapq import nlargest, nsmallest
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -266,54 +266,50 @@ class InformedModel:
         for idx, t in enumerate(list_models):
             print "("+str(idx)+")\t", t
         test_num = input("\nEnter number of model to load > ")
-        trialname = "TRIALS_FULL/"+list_models[test_num]
+        trialname = "./DATA/SIMULATION/"+list_models[test_num]
         print "Loading: ",trialname
-        with open(trialname + "/DATA_HCK_model_checkpoint.dat", "rb") as m:
+        with open(trialname + "/data_simulation_model.dat", "rb") as m:
             (self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list) = pickle.load(m)
         # Load history ?
 
 
     def testModel(self, angle_s, dist_s):
         # Helper functions
+        thrsh = 0.5
         def sqdist(x,y):
             return np.sqrt(x**2 + y**2)
         def getMeas(M_angle, M_dist, angle_s, dist_s):
             diff_angle = M_angle - angle_s
             diff_angle = (diff_angle - diff_angle.min())/(diff_angle.max() - diff_angle.min())
-            diff_dist = M_dist - dist_s
-            diff_dist = (diff_dist - diff_dist.min())/(diff_dist.max() - diff_dist.min())
+            diff_dist  = M_dist - dist_s
+            diff_dist  = (diff_dist - diff_dist.min())/(diff_dist.max() - diff_dist.min())
             return sqdist(diff_angle, diff_dist)
-        # Calculate goodness measure
-        M_meas  = getMeas(M_angle, M_dist, angle_s, dist_s)
-        M_meas1 = sqdist(M_angle - angle_s, M_dist - dist_s)
-
-        # Get candidate movement parameter vector
-        best_fit1 = nsmallest(cnt, M_meas1.ravel())
-        coords1 = np.argwhere(M_meas1==best_fit1[cnt-1])[0]
-        exec_params1 = coord2vals(coords1, param_list)
-        error_angle1 = M_angle[tuple(coords1)] - angle_s
-        error_dist1 = M_dist[tuple(coords1)] - dist_s
-        
-        print("--- generated coords:", selected_coord, "-> parameters:", selected_params)
-        print("ESTIMATED ERRORS>  ")
-        print("\tangle:    chosen (", M_angle[tuple(coords1)],") - desired (",angle_s,") = ", error_angle1)
-        print("\tdistance: chosen (", M_dist[tuple(coords1)], ") - desired (",dist_s, ") = ", error_dist1)
-        print("\tsquared: ", best_fit1[cnt-1])
-
-
-        # Check for known constraints/failures
-        # if the values of the penal_IDF for the selected_coords are above a cetrain threshold
-        # this is probably a bad idea
-        if self.penal_IDF[tuple(coords1)] > thrsh:
-            # continue to the next smallest number
-
+        # Calculate goodness measure to select (angle, distance) pair which is closest to the desired one
+        # M_meas  = getMeas(M_angle, M_dist, angle_s, dist_s)
+        M_meas = sqdist(M_angle - angle_s, M_dist - dist_s)
+        """
+        Check for known constraints/failures if the values of the penal_IDF for the selected_coords 
+        are above a cetrain threshold this is probably a bad idea
+        """
+        cnt = 0
+        while True:
+            cnt += 1
+            # Continue to the next smallest number
+            print("--- BAD SAMPLE, resampling ...")
+            # Get candidate movement parameter vector
+            best_fit        = nsmallest(cnt, M_meas.ravel())
+            selected_coord  = np.argwhere(M_meas==best_fit[cnt-1])[0]
+            selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
+            error_angle     = M_angle[tuple(selected_coord)] - angle_s
+            error_dist      = M_dist[tuple(selected_coord)]  - dist_s
+            # print("--- generated coords:", selected_coord, "-> parameters:", selected_params)
+            # print("--- ESTIMATED ERRORS > chosen (", M_angle[tuple(coords1)],",",M_dist[tuple(coords1)],") - desired (",angle_s,",",dist_s,") = error (",error_angle1,",",error_dist1,")")
+            print("--- generated coords: {} -> parameters: {} ( goodness measure: {})".format(selected_coord, selected_params, best_fit[cnt-1]))
+            print("--- ESTIMATED ERRORS > chosen ({}, {}) - desired ({}, {}) = error ({}, {})".format(M_angle[tuple(selected_coord)], M_dist[tuple(selected_coord)], angle_s, dist_s, error_angle, error_dist))
+            if self.penal_IDF[tuple(selected_coord)] < thrsh:
+                break
         # return vector to execute
         return selected_coord, selected_params
-
-
-
-
-
 
 
     def plotModel(self, trial_num, dimensions, param_names):
