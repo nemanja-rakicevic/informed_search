@@ -25,7 +25,7 @@ for t in range(len(test_cases)):
     print("\nTEST #{} > angle, distance: ({},{})".format(t+1, angle_s, dist_s))
     # Generate movement parameter vector
     trial_coords, trial_params = model.testModel(float(angle_s), float(dist_s), verbose=0)
-    trial_info = experiment.executeTrial(0, trial_coords, trial_params)
+    trial_info = experiment.executeTrial(0, trial_coords, trial_params, test=[float(angle_s), float(dist_s)])
     # Compile test statistics
     sq_error = np.sqrt((trial_info['ball_polar'] - test_cases[t])**2)
     statistics.append({ 'trial_num':    t+1,

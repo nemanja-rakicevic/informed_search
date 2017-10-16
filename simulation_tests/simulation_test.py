@@ -21,7 +21,7 @@ while True:
              print(i)
              continue
     trial_coords, trial_params = model.testModel(float(angle_s), float(dist_s))
-    trial_info = experiment.executeTrial(0, trial_coords, trial_params)
+    trial_info = experiment.executeTrial(0, trial_coords, trial_params, test=[float(angle_s), float(dist_s)])
     # Continue
     if input("\nEXECUTION DONE. Enter to try again, or (x) to quit ") == 'x':
         break

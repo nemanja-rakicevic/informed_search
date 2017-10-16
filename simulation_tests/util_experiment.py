@@ -14,9 +14,16 @@ class SimulationExperiment:
 		self.display = display
 		self.__NUM_STEPS = display_steps
 
-	def executeTrial(self, t, coords, params):
+	def executeTrial(self, t, coords, params, test=False):
 		self.env.render(close=True)
 		theta_list = np.array([np.linspace(0, params[0], self.__NUM_STEPS), np.linspace(0, params[1], self.__NUM_STEPS)]).T
+		# Place target for testing or just hide it
+		if not isinstance(test, bool):
+			self.env.unwrapped.init_qpos[4] = - test[1] * np.sin(np.deg2rad(test[0])) / 100.
+			self.env.unwrapped.init_qpos[5] = test[1] * np.cos(np.deg2rad(test[0])) / 100.
+		else:
+			self.env.unwrapped.init_qpos[4] = 0.0
+			self.env.unwrapped.init_qpos[5] = 1.3
 		init_pos = self.env.reset()
 		init_pos = init_pos[:2]
 		# EXECUTE TRIAL
@@ -55,7 +62,10 @@ class SimulationExperiment:
 		if fail_status:
 			print("--- trial executed: FAIL ({})".format(fail_status))
 		else:
-			print("--- trial executed: SUCCESS\t-> labels: {}".format(ball_polar))
+			if not isinstance(test, bool):
+				print("--- trial executed: SUCCESS\t-> labels: {}".format(ball_polar))
+			else:
+				print("--- trial executed: SUCCESS\t-> achieved: {}, error: {}".format(ball_polar, observation[-3:]))
 		return all_info
 
 
@@ -63,7 +73,6 @@ class SimulationExperiment:
 		self.env.render(close=True)
 		with open("./DATA/Simulation_data.dat", "wb") as m:
 			pickle.dump(self.info_list, m, protocol=pickle.HIGHEST_PROTOCOL)
-
 
 
 
