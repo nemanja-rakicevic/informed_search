@@ -1,6 +1,6 @@
 
 import numpy as np
-import util_pdf as updf
+import util_modelling as umodel
 import util_experiment as uexp
 
 NUM_TRIALS = 10
@@ -8,7 +8,7 @@ NUM_TRIALS = 10
 # INITIALISE MODEL
 print("INITIALISING MODEL\n")
 experiment = uexp.SimulationExperiment(display=True)
-model      = updf.InformedModel(experiment.parameter_list)
+model      = umodel.InformedModel(experiment.parameter_list)
 
 # RUN TRAINING
 for t in range(NUM_TRIALS):
@@ -26,16 +26,17 @@ for t in range(NUM_TRIALS):
     if trial_info['fail']==0:
         model.plotModel(t+1, [0,1], ['joint_0', 'joint_1'])
     # Save experiment data
-    # experiment.saveData(model.trial_dirname)
+    experiment.saveData(model.trial_dirname)
 model.plotModel(t+1, [0,1], ['joint_0', 'joint_1'])
-    
+
 
 # RUN TESTS
+input("\nRUN TESTS?")  
 experiment.display = True
 while True:
     # Input goal position
-    angle_s, dist_s = input("\nEnter GOAL angle, distance: ")
-    trial_coords, trial_params = model.testModel(angle_s, dist_s)
+    angle_s, dist_s = input("\nEnter GOAL angle, distance: ").split(",")
+    trial_coords, trial_params = model.testModel(float(angle_s), float(dist_s))
     trial_info = experiment.executeTrial(0, trial_coords, trial_params)
     # Continue
     if input("\nEXECUTION DONE. Enter to try again, or (x) to quit ") == 'x':

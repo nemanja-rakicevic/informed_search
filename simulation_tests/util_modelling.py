@@ -17,39 +17,41 @@ from matplotlib import cm
 # COVARIANCE
 COV = 100
 
+
 class InformedModel:
-    def __init__(self, parameter_list):
-        self.param_list = parameter_list
-        self.param_space = np.array([xs for xs in itertools.product(*self.param_list)])
-        self.param_dims = np.array([len(i) for i in self.param_list])
-        # Initialise to uniform distribution
-        self.prior_init = np.ones(tuple(self.param_dims))/(np.product(self.param_dims))
-        self.cov = COV * np.eye(len(self.param_list))
-        self.eps_var = 0.00005
-        # Calculate Kernel for the whole parameter (test) spacece, self.param_space)
-        self.Kss = self.kernel(self.param_space, self.param_space)
-        #
-        self.coord_explored = []
-        self.failed_coords = []
-        # self.failed_params = []
-        # self.good_params = []
-        # self.good_fevals = []
-        ###
-        self.penal_IDF = self.prior_init
-        self.selection_IDF = self.prior_init
-        ###
-        self.mu_alpha = np.array([])
-        self.mu_L = np.array([])
-        self.var_alpha = np.ones(tuple(self.param_dims))
-        self.var_L = np.ones(tuple(self.param_dims))
-        self.model_uncertainty = np.ones(tuple(self.param_dims))
-        # ###
-        self.trial_dirname = './DATA/SIMULATION/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
-        # if self.param_dims[0]>1:
-        #     self.trial_dirname = 'TRIALS_FULL/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
-        # else:
-        #     self.trial_dirname = 'TRIALS_2D/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
-        os.makedirs(self.trial_dirname)
+    def __init__(self, parameter_list, test=False):
+        if not test:
+            self.param_list = parameter_list
+            self.param_space = np.array([xs for xs in itertools.product(*self.param_list)])
+            self.param_dims = np.array([len(i) for i in self.param_list])
+            # Initialise to uniform distribution
+            self.prior_init = np.ones(tuple(self.param_dims))/(np.product(self.param_dims))
+            self.cov = COV * np.eye(len(self.param_list))
+            self.eps_var = 0.00005
+            # Calculate Kernel for the whole parameter (test) spacece, self.param_space)
+            self.Kss = self.kernel(self.param_space, self.param_space)
+            #
+            self.coord_explored = []
+            self.failed_coords = []
+            # self.failed_params = []
+            # self.good_params = []
+            # self.good_fevals = []
+            ###
+            self.penal_IDF = self.prior_init
+            self.selection_IDF = self.prior_init
+            ###
+            self.mu_alpha = np.array([])
+            self.mu_L = np.array([])
+            self.var_alpha = np.ones(tuple(self.param_dims))
+            self.var_L = np.ones(tuple(self.param_dims))
+            self.model_uncertainty = np.ones(tuple(self.param_dims))
+            # ###
+            self.trial_dirname = './DATA/SIMULATION/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
+            # if self.param_dims[0]>1:
+            #     self.trial_dirname = 'TRIALS_FULL/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
+            # else:
+            #     self.trial_dirname = 'TRIALS_2D/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
+            os.makedirs(self.trial_dirname)
         np.random.seed(210)
 
 #### SELECT KERNEL ####
@@ -224,7 +226,7 @@ class InformedModel:
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
         self.coord_explored.append(selected_coord)
         # print("---selection_IDF provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
-        print("--- generated coords:", selected_coord, "-> parameters:", selected_params)
+        print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
         # return the next sample vector
         return selected_coord, selected_params
 
@@ -239,7 +241,7 @@ class InformedModel:
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
         self.coord_explored.append(selected_coord)
         # print("---random sampling provided:", len(temp),"of which", len(temp_good))#,"unexplored (among the top",cnt-1,")" 
-        print("--- generated coords:", selected_coord, "-> parameters:", selected_params)
+        print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
         # return the next sample vector
         return selected_coord, selected_params
 
@@ -254,7 +256,7 @@ class InformedModel:
 
 
     def saveModel(self):
-        with open(self.trial_dirname + "/data_simulation_model.dat", "wb") as m:
+        with open(self.trial_dirname + "/data_training_model.dat", "wb") as m:
             pickle.dump([self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list], m, protocol=pickle.HIGHEST_PROTOCOL)
 
 
@@ -262,18 +264,18 @@ class InformedModel:
 
 
     def loadModel(self):
-        list_models = [d for d in os.listdir('./DATA/SIMULATION/') if d[0:6]=='TRIAL_']
+        list_models = sorted([d for d in os.listdir('./DATA/SIMULATION/') if d[0:6]=='TRIAL_'])
         for idx, t in enumerate(list_models):
-            print "("+str(idx)+")\t", t
+            print("("+str(idx)+")\t", t)
         test_num = input("\nEnter number of model to load > ")
-        trialname = "./DATA/SIMULATION/"+list_models[test_num]
-        print "Loading: ",trialname
-        with open(trialname + "/data_simulation_model.dat", "rb") as m:
+        self.trial_dirname = "./DATA/SIMULATION/"+list_models[int(test_num)]
+        print("Loading: ",self.trial_dirname)
+        with open(self.trial_dirname + "/data_training_model.dat", "rb") as m:
             (self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list) = pickle.load(m)
         # Load history ?
 
 
-    def testModel(self, angle_s, dist_s):
+    def testModel(self, angle_s, dist_s, verbose=2):
         # Helper functions
         thrsh = 0.5
         def sqdist(x,y):
@@ -286,7 +288,7 @@ class InformedModel:
             return sqdist(diff_angle, diff_dist)
         # Calculate goodness measure to select (angle, distance) pair which is closest to the desired one
         # M_meas  = getMeas(M_angle, M_dist, angle_s, dist_s)
-        M_meas = sqdist(M_angle - angle_s, M_dist - dist_s)
+        M_meas = sqdist(self.mu_alpha - angle_s, self.mu_L - dist_s)
         """
         Check for known constraints/failures if the values of the penal_IDF for the selected_coords 
         are above a cetrain threshold this is probably a bad idea
@@ -294,20 +296,25 @@ class InformedModel:
         cnt = 0
         while True:
             cnt += 1
-            # Continue to the next smallest number
-            print("--- BAD SAMPLE, resampling ...")
             # Get candidate movement parameter vector
             best_fit        = nsmallest(cnt, M_meas.ravel())
             selected_coord  = np.argwhere(M_meas==best_fit[cnt-1])[0]
             selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
-            error_angle     = M_angle[tuple(selected_coord)] - angle_s
-            error_dist      = M_dist[tuple(selected_coord)]  - dist_s
-            # print("--- generated coords:", selected_coord, "-> parameters:", selected_params)
-            # print("--- ESTIMATED ERRORS > chosen (", M_angle[tuple(coords1)],",",M_dist[tuple(coords1)],") - desired (",angle_s,",",dist_s,") = error (",error_angle1,",",error_dist1,")")
-            print("--- generated coords: {} -> parameters: {} ( goodness measure: {})".format(selected_coord, selected_params, best_fit[cnt-1]))
-            print("--- ESTIMATED ERRORS > chosen ({}, {}) - desired ({}, {}) = error ({}, {})".format(M_angle[tuple(selected_coord)], M_dist[tuple(selected_coord)], angle_s, dist_s, error_angle, error_dist))
+            error_angle     = self.mu_alpha[tuple(selected_coord)] - angle_s
+            error_dist      = self.mu_L[tuple(selected_coord)]  - dist_s
             if self.penal_IDF[tuple(selected_coord)] < thrsh:
                 break
+            else:    
+                # Continue to the next smallest number
+                if verbose:
+                    # print("--- generated coords:", selected_coord, "-> parameters:", selected_params)
+                    # print("--- ESTIMATED ERRORS > chosen (", M_angle[tuple(coords1)],",",M_dist[tuple(coords1)],") - desired (",angle_s,",",dist_s,") = error (",error_angle1,",",error_dist1,")")
+                    print("--- generated coords: {} -> parameters: {} (goodness measure: {})".format(selected_coord, selected_params, round(best_fit[cnt-1], 4)))
+                    print("--- ESTIMATED ERRORS: chosen ({}, {}) - desired ({}, {}) = error ({}, {})".format(round(self.mu_alpha[tuple(selected_coord)], 4), round(self.mu_L[tuple(selected_coord)], 4), angle_s, dist_s, round(error_angle,4), round(error_dist,4)))
+                    print("--- BAD SAMPLE #{}, resampling ...".format(cnt))
+        if verbose>1:
+            print("--- generated coords: {} -> parameters: {} (goodness measure: {})".format(selected_coord, selected_params, round(best_fit[cnt-1], 4)))
+            print("--- ESTIMATED ERRORS: chosen ({}, {}) - desired ({}, {}) = error ({}, {})".format(round(self.mu_alpha[tuple(selected_coord)], 4), round(self.mu_L[tuple(selected_coord)], 4), angle_s, dist_s, round(error_angle,4), round(error_dist,4)))  
         # return vector to execute
         return selected_coord, selected_params
 
@@ -392,5 +399,5 @@ class InformedModel:
             ax.set_xticks(xticks1)
             ax.plot_surface(X, Y, model_select, rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
             # SAVEFIG
-            plt.savefig(self.trial_dirname+"/IMG_HCK_distributions_trial#"+str(trial_num)+".png")
+            plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}.png".format(num=trial_num))
             plt.show()
