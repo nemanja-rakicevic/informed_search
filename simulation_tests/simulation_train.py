@@ -3,12 +3,12 @@ import numpy as np
 import util_modelling as umodel
 import util_experiment as uexp
 
-NUM_TRIALS = 10
+NUM_TRIALS = 50
 
 # INITIALISE MODEL
 print("INITIALISING MODEL\n")
-experiment = uexp.SimulationExperiment(display=True)
-model      = umodel.InformedModel(experiment.parameter_list)
+experiment = uexp.SimulationExperiment(display=False)
+model      = umodel.InformedModel(experiment.parameter_list, experiment.type)
 
 # RUN TRAINING
 for t in range(NUM_TRIALS):
@@ -23,11 +23,12 @@ for t in range(NUM_TRIALS):
     # Update model
     model.updateModel(experiment.info_list)
     # Plot model progress
-    if trial_info['fail']==0:
-        model.plotModel(t+1, [0,1], ['joint_0', 'joint_1'])
+    if (t+1)%10 == 0:
+        model.plotModel(t+1, [0,1], ['joint_0', 'joint_1'], show=False, top_view=True)
     # Save experiment data
     experiment.saveData(model.trial_dirname)
-model.plotModel(t+1, [0,1], ['joint_0', 'joint_1'])
+model.plotModel('final_{}_top'.format(t+1), [0,1], ['joint_0', 'joint_1'], show=False, top_view=True)
+model.plotModel('final_{}_3d'.format(t+1),  [0,1], ['joint_0', 'joint_1'], show=False, top_view=False)
 
 
 # RUN TESTS

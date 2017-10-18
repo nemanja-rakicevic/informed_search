@@ -1,14 +1,17 @@
 
 import numpy as np 
+import pickle
 
 
 class SimulationExperiment:
 	import gym
-	__range1 = np.linspace(0, 2, 50)
-	__range2 = np.linspace(0, -1, 50)
+	RESOLUTION = 150
+	__range1 = np.linspace(0,  2, RESOLUTION)
+	__range2 = np.linspace(0, -1, RESOLUTION)
 
 	def __init__(self, display=False, display_steps=50):
 		self.parameter_list = np.array([self.__range1, self.__range2])
+		self.type = 'SIMULATION'
 		self.info_list = []
 		self.env = self.gym.make('ReacherOneShot-v0')
 		self.display = display
@@ -63,19 +66,22 @@ class SimulationExperiment:
 			print("--- trial executed: FAIL ({})".format(fail_status))
 		else:
 			if not isinstance(test, bool):
-				print("--- trial executed: SUCCESS\t-> labels: {}".format(ball_polar))
+				euclid_error = np.sqrt(np.sum(observation[-2:]**2))
+				print("--- trial executed: SUCCESS\t-> achieved: {}, euclidean error: {}".format(ball_polar, round(euclid_error,2)))
 			else:
-				print("--- trial executed: SUCCESS\t-> achieved: {}, error: {}".format(ball_polar, observation[-3:]))
+				print("--- trial executed: SUCCESS\t-> labels: {}".format(ball_polar))
 		return all_info
 
 
-	def saveData(self):	
+	def saveData(self, trial_dirname):	
 		self.env.render(close=True)
-		with open("./DATA/Simulation_data.dat", "wb") as m:
+		with open(trial_dirname + "/data_training_info.dat", "wb") as m:
 			pickle.dump(self.info_list, m, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-
+	##################################################################
+	#  FINISH THIS AND TEST ON ROBOT
+	##################################################################
 class RobotExperiment:
 
 	# import rospy
@@ -116,8 +122,59 @@ class RobotExperiment:
 	# ##################################################################
 
 	def __init__(self):
-		self.info_list = []
 		self.parameter_list = np.array([self.__range_l_dx, self.__range_l_dy, self.__range_r_dx, self.__range_r_dy, self.__range_wrist, self.__range_speed])
+		self.type = 'ROBOT'
+		self.info_list = []
+
+
+	# def executeTrial_ROBOT(params):  
+	#     # CHECK 1) Stick constraints
+	#     if checkStickConstraints(*params):
+	#         print '>> FAILED (Error 1: Stick constraints)'   
+	#         print "Repeating...\n"
+	#         return 0
+	#     print "> TRIAL CHECK 1): OK Stick constraint"
+
+	#     # GET IK SOLUTION
+	#     joint_values_left, joint_values_right, speed_left, speed_right, new_pos_left, new_pos_right = getNewPose(*params) 
+	#     # joint_values_left['left_w2'] = params[4]
+	#     # CHECK 2) Inverse Kinematic solution
+	#     if joint_values_left == -1 or joint_values_right == -1:
+	#         print '>> TRIAL # - FAILED (Error 2: No IK solution)'
+	#         print "Repeating...\n"
+	#         return 0
+	#     print "> TRIAL CHECK 2): OK IK solution"
+
+	#     # Passed constraint check ready to execute
+	#     raw_input(">>> Ready to execute configuration: "+str((params))+"?\n")
+	#     # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Stand clear'\"")   
+	#     time.sleep(1)
+	#     # EXECUTE MOTION
+	#     # Set tip hit angle
+	#     angle_left = limb_left.joint_angles()
+	#     angle_left['left_w2'] = params[4]
+	#     limb_left.set_joint_position_speed(1)
+	#     limb_left.move_to_joint_positions(angle_left, timeout=2)
+	#     # Set the speeds
+	#     limb_left.set_joint_position_speed(speed_left)
+	#     limb_right.set_joint_position_speed(speed_right)
+	#     #
+	#     # joint_values_left['left_w2'] = params[4]
+	#     # EXECUTE MOTION and save/track progress
+	#     # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
+	#     #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
+	#     cnt = 0
+	#     while (not (tuple(np.array(joint_values_left.values())-THRSH_POS) <= tuple(limb_left.joint_angles().values()) <= tuple(np.array(joint_values_left.values())+THRSH_POS)) or \
+	#         not (tuple(np.array(joint_values_right.values())-THRSH_POS) <= tuple(limb_right.joint_angles().values()) <= tuple(np.array(joint_values_right.values())+THRSH_POS))) and cnt <30000:
+	#         cnt+=1
+	#         # send joint commands
+	#         limb_left.set_joint_positions(joint_values_left)
+	#         limb_right.set_joint_positions(joint_values_right)
+
+	#     return 1
+
+
+
 
 	def executeTrial(t, params):
 		theta_list = np.array([np.linspace(0, params[0], NUM_STEPS), np.linspace(0, params[1], NUM_STEPS)]).T
@@ -161,6 +218,55 @@ class RobotExperiment:
 			print("--- trial executed: SUCCESS -> labels: {}".format(ball_polar))
 		return all_info
 
+
+	# def checkStickConstraints(left_dx, left_dy, right_dx, right_dy, *_k):
+ #    # Check if the parameters comply with stick dimension constraints  
+ #    tmp_left = limb_left.endpoint_pose()['position']
+ #    tmp_right = limb_right.endpoint_pose()['position']
+ #    dx = abs((tmp_left.x + left_dx) - (tmp_right.x + right_dx))
+ #    dy = abs((tmp_left.y + left_dy) - (tmp_right.y + right_dy))
+ #    # print "/// STICK ", dx < STICK_X_MAX, dx < STICK_X_MAX and STICK_Y_MIN < dy < STICK_Y_MAX
+ #    # print "/// STICK ", round(dx,2), round(dy,2)
+ #    if dx <= STICK_X_MAX and dy <= STICK_Y_MAX:
+ #         # abs(left_dx)>10*THRSH_POS and abs(left_dy)>10*THRSH_POS and\
+ #         # abs(right_dx)>10*THRSH_POS and abs(right_dy)>10*THRSH_POS:
+ #        return False
+ #    else:
+ #        return True
+
+
+
+	# def getNewPose(left_dx, left_dy, right_dx, right_dy, w, speed):   
+	#     # Get current position
+	#     pose_tmp_left = limb_left.endpoint_pose()
+	#     pose_tmp_right = limb_right.endpoint_pose()
+	#     # Set new position
+	#     new_pos_left = limb_left.Point( 
+	#         x = pose_tmp_left['position'].x + left_dx, 
+	#         y = pose_tmp_left['position'].y + left_dy, 
+	#         z = pose_tmp_left['position'].z ) 
+	#     new_pos_right = limb_right.Point( 
+	#         x = pose_tmp_right['position'].x + right_dx, 
+	#         y = pose_tmp_right['position'].y + right_dy, 
+	#         z = pose_tmp_right['position'].z ) 
+	#     # Get Joint positions
+	#     joint_values_left = ik_solver.ik_solve('left', new_pos_left, pose_tmp_left['orientation'], limb_left.joint_angles())
+	#     joint_values_right = ik_solver.ik_solve('right', new_pos_right, pose_tmp_right['orientation'], limb_right.joint_angles()) 
+	#     # Set joint speed
+	#     left_dL = sqdist(left_dx,left_dy)
+	#     right_dL = sqdist(right_dx,right_dy) 
+	#     if left_dL>right_dL:
+	#         speed_left = speed
+	#         try:
+	#             speed_right = speed*right_dL/left_dL
+	#         except:
+	#             speed_right = 0
+	#     else:
+	#         speed_right = speed
+	#         speed_left = speed*left_dL/right_dL
+	#     # print speed_left, speed_right
+	#     # return the joint values
+	#     return joint_values_left, joint_values_right, speed_left, speed_right, new_pos_left, new_pos_right
 
 
 	def saveData(self, trial_dirname):	
