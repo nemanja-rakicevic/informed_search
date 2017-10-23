@@ -5,11 +5,14 @@ model_err = -1*np.ones((4,7))
 model1_err = -1*np.ones((4,7))
 model2_err = -1*np.ones((4,7))
 model3_err = -1*np.ones((4,7))
+model02_err = -1*np.ones((4,7))
+model03_err = -1*np.ones((4,7))
 rand_err = -1*np.ones((5,4,7))
 human_err = -1*np.ones((10,4,7))
 pro_err = -1*np.ones((4,4,7))
 
 
+print "\nORIGINAL MODEL:"
 # PROPOSED MODEL
 # MODEL - blue puck, hardwood floor (TRIALS_FULL/TRIAL_20170217_17h23_RQ_plusrand50)
 model_err[0,:] = np.array([56, 6.5, 14, 32, 17.5, 31, 75])
@@ -17,25 +20,57 @@ model_err[1,:] = np.array([22.5, 22.5, 58, 41, 18, 4.5, 41])
 model_err[2,:] = np.array([18, 8, 37, 30, 37.5, 21.5, 22])
 model_err[3,:] = np.array([19, 26.5, 45, 9, 34.5, 42, 36])
 
+print "original in original environment (blue puck, hardwood floor):\t", model_err.mean(),model_err.std()
+
+# MODEL - NEW ENVIRONMENT 1 (blue puck, marble floor)
+# model02_err[0,:] = np.array([37, 40, 84, 39, 72, 200, 67])
+# model02_err[1,:] = np.array([17, 94, 8,  40, 43, 170, 210])
+# model02_err[2,:] = np.array([24, 65, 47, 56, 22, 55, 70])
+# model02_err[3,:] = np.array([60, 27, 29, 81, 26, 113, 95])
+
+model02_err[0,:] = np.array([37, 36, 83, 38, 72, 200, 65])
+model02_err[1,:] = np.array([15, 94, 6,  30, 43, 164, 210])
+model02_err[2,:] = np.array([24, 64, 46, 55, 22, 55, 70])
+model02_err[3,:] = np.array([59, 27, 27, 79, 26, 113, 93])
+print "original to new environment1 (blue puck, marble floor):\t", model02_err.mean(), model02_err.std()
+
+# MODEL - NEW ENVIRONMENT 2 (red puck, marble floor)
+# model03_err[0,:] = np.array([21, 32, 77, 58, 75, 73, 74])
+# model03_err[1,:] = np.array([19, 92, 30, 72, 17, 170, 177])
+# model03_err[2,:] = np.array([25, 55, 50, 55, 15, 105, 80])
+# model03_err[3,:] = np.array([60, 30, 30, 93, 28, 107, 115])
+
+model03_err[0,:] = np.array([21, 31, 75, 53, 74, 71, 65])
+model03_err[1,:] = np.array([17, 92, 27, 72, 15, 170, 177])
+model03_err[2,:] = np.array([19, 49, 50, 51, 14, 102, 80])
+model03_err[3,:] = np.array([58, 29, 30, 93, 28, 107, 105])
+print "original to new environment2 (red puck, marble floor):\t", model03_err.mean(), model03_err.std()
+
+
+print "\nRETRAINED MODELS:"
 # RETRAINED MODEL - red puck, hardwood floor (TRIALS_RETRAINED/TRIAL_20170719_14h42)
 model1_err[0,:] = np.array([11, 64, 13, 68, 125, 183, 184])
 model1_err[1,:] = np.array([60, 13, 37, 27, 55, 87, 98])
 model1_err[2,:] = np.array([29, 38, 60, 21, 72, 31, 125])
 model1_err[3,:] = np.array([36, 46, 66, 87, 18, 12, 8])
+print "retrained in new environment0 (red puck, marble floor): \t", model1_err.mean(), model1_err.std()
 
 # RETRAINED MODEL - blue puck, marble floor (TRIALS_RETRAINED/TRIAL_20170721_16h07)
 model2_err[0,:] = np.array([17, 35, 26, 50, 60, 80, 115])
 model2_err[1,:] = np.array([0.5, 17, 9, 32, 25, 173, 79])
 model2_err[2,:] = np.array([33, 28, 8, 43, 25, 113, 36])
 model2_err[3,:] = np.array([15, 33, 40, 23, 36, 42, 31])
+print "retrained in new environment1 (blue puck, marble floor):\t", model2_err.mean(), model2_err.std()
 
 # RETRAINED MODEL - red puck, marble floor (TRIALS_RETRAINED/TRIAL_20170721_19h34)
 model3_err[0,:] = np.array([18, 20, 39, 36, 36, 122, 97])
 model3_err[1,:] = np.array([8, 14, 57, 23, 12, 109, 40])
 model3_err[2,:] = np.array([9, 22, 25, 15, 14, 41, 13])
 model3_err[3,:] = np.array([3, 31, 42, 32, 86, 35, 74])
+print "retrained in new environment2 (red puck, marble floor): \t", model3_err.mean(), model3_err.std()
 
 
+print "\nRANDOM MODEL (5 seeds):"
 #RANDOM MODEL
 #seed1
 rand_err[0,0,:] = np.array([23.5, 59, 176, 26, 49, 166, 64])
@@ -62,17 +97,10 @@ rand_err[4,0,:] = np.array([23, 26, 50, 28.5, 71, 49, 62])
 rand_err[4,1,:] = np.array([45, 75, 194, 74, 99.5, 160, 45])
 rand_err[4,2,:] = np.array([34.5, 19.5, 21.5, 80, 15, 76, 188])
 rand_err[4,3,:] = np.array([45, 43, 55, 134, 97.5, 140, 165])
-
-print "\nMODELS:"
-print "blue puck, hardwood floor:", model_err.mean(),model_err.std()
-print "red puck, hardwood floor:", model1_err.mean(),model1_err.std()
-print "blue puck, marble floor:", model2_err.mean(),model2_err.std()
-print "red puck, marble floor:", model3_err.mean(),model3_err.std()
-
-print "Random:", rand_err.mean(), rand_err.std()
+print "random model in original environment (blue puck, hardwood floor):\t", rand_err.mean(), rand_err.std()
 
 
-
+print "\nHUMAN TESTS:"
 # HUMAN TESTS
 #INEXPERIENCED
 #1 tom
@@ -126,6 +154,8 @@ human_err[9,1,:] = np.array([5, 10, 32, 17, 29, 44, 40])
 human_err[9,2,:] = np.array([20, 27, 21, 81.5, 115, 9, 3.5])
 human_err[9,3,:] = np.array([14, 51.5, 28, 20, 99, 2, 140])
 
+print "Inexperienced humans in original environment (blue puck, hardwood floor):\t", human_err.mean(), human_err.std()
+
 #EXPERTS
 #1 jukka
 pro_err[0,0,:] = np.array([2, 18, 42, 28, 13, 86, 60])
@@ -148,14 +178,11 @@ pro_err[3,1,:] = np.array([0, 9, 32, 6, 51, 58, 35])
 pro_err[3,2,:] = np.array([5, 22, 9, 11, 4, 38, 39])
 pro_err[3,3,:] = np.array([17, 4, 24, 6, 14, 14, 8])
 #5 
-# pro_err[4,0,:] = np.array([])
+# pro_err[4,0,:] = np.array([]) 
 # pro_err[4,1,:] = np.array([])
 # pro_err[4,2,:] = np.array([])
 # pro_err[4,3,:] = np.array([])
 
-
-print "\nHUMANS:"
-print "Inexperienced:", human_err.mean(), human_err.std()
-print "Pro:", pro_err.mean(), pro_err.std()
-
+print "Experienced humans in original environment (blue puck, hardwood floor):   \t", pro_err.mean(), pro_err.std()
+print 
 
