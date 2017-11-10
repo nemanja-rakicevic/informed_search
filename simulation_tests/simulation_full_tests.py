@@ -13,7 +13,7 @@ experiment = uexp.SimulationExperiment(display=False, display_steps=100)
 model      = umodel.InformedModel(experiment.parameter_list, experiment.type, test=True)
 model.loadModel()
 
-# DEFINE TESTING POINS
+# DEFINE TESTING POINTS
 test_angles = np.arange(-60, 26, 5)
 test_dist   = np.arange(5, 36, 5)
 test_cases  = np.array([xs for xs in itertools.product(test_angles, test_dist)])

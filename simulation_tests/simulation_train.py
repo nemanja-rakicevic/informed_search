@@ -22,11 +22,12 @@ for t in range(NUM_TRIALS):
     experiment.info_list.append(trial_info)
     # Update model
     model.updateModel(experiment.info_list)
+    # Save experiment data
+    experiment.saveData(model.trial_dirname)
     # Plot model progress
     if (t+1)%10 == 0:
         model.plotModel(t+1, [0,1], ['joint_0', 'joint_1'], show=False, top_view=True)
-    # Save experiment data
-    experiment.saveData(model.trial_dirname)
+# FINAL MODEL PLOT
 model.plotModel('final_{}_top'.format(t+1), [0,1], ['joint_0', 'joint_1'], show=False, top_view=True)
 model.plotModel('final_{}_3d'.format(t+1),  [0,1], ['joint_0', 'joint_1'], show=False, top_view=False)
 

@@ -6,8 +6,12 @@ import pickle
 class SimulationExperiment:
 	import gym
 	RESOLUTION = 150
-	__range1 = np.linspace(0,  2, RESOLUTION)
-	__range2 = np.linspace(0, -1, RESOLUTION)
+	# PARTIAL RANGE
+	# __range1 = np.linspace(0,  2, RESOLUTION)
+	# __range2 = np.linspace(0, -1, RESOLUTION)
+	# FULL RANGE
+	__range1 = np.linspace(-1.57, 1.57, RESOLUTION)
+	__range2 = np.linspace(-3.14, 3.14, RESOLUTION)
 
 	def __init__(self, display=False, display_steps=50):
 		self.parameter_list = np.array([self.__range1, self.__range2])
@@ -17,7 +21,7 @@ class SimulationExperiment:
 		self.display = display
 		self.__NUM_STEPS = display_steps
 
-	def executeTrial(self, t, coords, params, test=False):
+	def executeTrial(self, t, coords, params, test=False, verbose=True):
 		self.env.render(close=True)
 		theta_list = np.array([np.linspace(0, params[0], self.__NUM_STEPS), np.linspace(0, params[1], self.__NUM_STEPS)]).T
 		# Place target for testing or just hide it
@@ -62,14 +66,15 @@ class SimulationExperiment:
 					'ball_polar': 	ball_polar,
 					'observations': np.array(obs_list) }
 		# INFO
-		if fail_status:
-			print("--- trial executed: FAIL ({})".format(fail_status))
-		else:
-			if not isinstance(test, bool):
-				euclid_error = np.sqrt(np.sum(observation[-2:]**2))
-				print("--- trial executed: SUCCESS\t-> achieved: {}, euclidean error: {}".format(ball_polar, round(euclid_error,2)))
+		if verbose:
+			if fail_status:
+				print("--- trial executed: FAIL ({})".format(fail_status))
 			else:
-				print("--- trial executed: SUCCESS\t-> labels: {}".format(ball_polar))
+				if not isinstance(test, bool):
+					euclid_error = np.sqrt(np.sum(observation[-2:]**2))
+					print("--- trial executed: SUCCESS\t-> achieved: {}, euclidean error: {}".format(ball_polar, round(euclid_error,2)))
+				else:
+					print("--- trial executed: SUCCESS\t-> labels: {}".format(ball_polar))
 		return all_info
 
 

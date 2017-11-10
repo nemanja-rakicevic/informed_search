@@ -16,7 +16,7 @@ from matplotlib import cm
 
 
 # COVARIANCE
-COV = 40
+COV = 10
 
 
 class InformedModel:
@@ -42,6 +42,7 @@ class InformedModel:
             self.penal_IDF = self.prior_init
             self.selection_IDF = self.prior_init
             ###
+            self.model_list = []
             self.mu_alpha = np.array([])
             self.mu_L = np.array([])
             self.var_alpha = np.ones(tuple(self.param_dims))
@@ -257,8 +258,9 @@ class InformedModel:
 
 
     def saveModel(self):
+        self.model_list.append([self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list])
         with open(self.trial_dirname + "/data_training_model.dat", "wb") as m:
-            pickle.dump([self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list], m, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(self.model_list, m, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 ########### TESTING 
@@ -271,8 +273,13 @@ class InformedModel:
         self.trial_dirname = './DATA/'+self.exp_type+'/'+list_models[int(test_num)]
         print("Loading: ",self.trial_dirname)
         with open(self.trial_dirname + "/data_training_model.dat", "rb") as m:
-            (self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list) = pickle.load(m)
-        # Load history ?
+            tmp = pickle.load(m)
+            if len(tmp)>6:
+                self.model_list = tmp
+                (self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list) = self.model_list[-1]
+            else:
+                # Load last from history 
+                (self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list) = tmp
 
 
     def testModel(self, angle_s, dist_s, verbose=2):
@@ -319,12 +326,15 @@ class InformedModel:
         return selected_coord, selected_params
 
 
-    def plotModel(self, trial_num, dimensions, param_names, show=True, top_view=True):
+    def plotModel(self, trial_num, dimensions, param_names, show=True, show_points=False):
         # if trial_num%1==0 or trial_info.fail_status==0:
         # print "<- CHECK PLOTS"     
+
+        mpl.rcParams.update({'font.size': 12})
+        
         if len(self.mu_alpha):
             fig = plt.figure("DISTRIBUTIONs at step: "+str(trial_num), figsize=None)
-            fig.set_size_inches(fig.get_size_inches()[0]*2,fig.get_size_inches()[1]*2)
+            fig.set_size_inches(fig.get_size_inches()[0]*3,fig.get_size_inches()[1]*2)
             dim1 = self.param_list[dimensions[0]]
             dim2 = self.param_list[dimensions[1]]
             X, Y = np.meshgrid(dim2, dim1)
@@ -349,15 +359,17 @@ class InformedModel:
                 model_var    = self.model_uncertainty
                 model_select = self.selection_IDF
             # Set ticks
-            xticks = np.linspace(min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 6).round(1)
-            xticks1 = np.linspace(min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 5).round(1)
-            yticks = np.linspace(min(dim1[0], dim1[-1]), max(dim1[0], dim1[-1]), 6).round(1)
+            xticks = np.linspace(min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 5).round(1)
+            yticks = np.linspace(min(dim1[0], dim1[-1]), max(dim1[0], dim1[-1]), 4).round(1)
+            # xticks1 = np.linspace(min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 5).round(1)
             yticks1 = np.linspace(min(dim1[0], dim1[-1]), max(dim1[0], dim1[-1]), 5).round(1)
-            zticks_alpha = np.linspace(self.mu_alpha.min(), self.mu_alpha.max(), 7).round(1)
-            zticks_L = np.linspace(self.mu_L.min(), self.mu_L.max(), 7).round(1)
+            #
+            zticks_alpha = np.linspace(self.mu_alpha.min(), self.mu_alpha.max(), 4).round()
+            zticks_L = np.linspace(self.mu_L.min(), self.mu_L.max(), 4).round()
+            zticks_unc = np.linspace(self.model_uncertainty.min(), self.model_uncertainty.max(), 4).round(2)
             # zticks_PIDF = np.linspace(self.penal_IDF.min(), self.penal_IDF.max(), 7).round(1)
             # ANGLE MODEL
-            ax = plt.subplot2grid((2,6),(0, 0), colspan=3, projection='3d')
+            ax = plt.subplot2grid((2,6),(0, 0), colspan=2, projection='3d')
             ax.set_title('ANGLE MODEL')
             ax.set_ylabel(param_names[1], labelpad=5)
             ax.set_xlabel(param_names[0], labelpad=5)
@@ -372,7 +384,7 @@ class InformedModel:
             ax.tick_params(axis='z', direction='out', pad=5)
             ax.plot_surface(X, Y, model_alpha, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             # DISTANCE MODEL
-            ax = plt.subplot2grid((2,6),(0, 3), colspan=3, projection='3d')
+            ax = plt.subplot2grid((2,6),(0, 2), colspan=2, projection='3d')
             ax.set_title('DISTANCE MODEL')
             ax.set_ylabel(param_names[1], labelpad=5)
             ax.set_xlabel(param_names[0], labelpad=5)
@@ -386,67 +398,80 @@ class InformedModel:
             ax.tick_params(axis='y', direction='out', pad=-3)
             ax.tick_params(axis='z', direction='out', pad=5)
             ax.plot_surface(X, Y, model_L, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            # PENALISATION PDF
+            # SELECTION FUNCTION - TOP VIEW
+            ax1 = plt.subplot2grid((2,6),(0, 4), colspan=2)
+            ax1.set_title('Selection function')
+            ax1.set_xlabel(param_names[0])
+            ax1.set_ylabel(param_names[1])
+            ax1.set_xlim(len(dim1), 0)
+            ax1.set_ylim(0, len(dim2))
+            ax1.set_xticks(np.linspace(len(dim1)-1, -1, 5)), 
+            ax1.set_yticks(np.linspace(-1, len(dim2)+1, 5))
+            ax1.set_xticklabels([str(x) for x in xticks]), 
+            ax1.set_yticklabels([str(y) for y in yticks1])
+            ax1.yaxis.tick_right()
+            ax1.yaxis.set_label_position("right")
+            sidf = ax1.imshow(model_select, cmap=cm.summer, origin='lower')
+            for spine in ax1.spines.values():
+                spine.set_visible(False)
+            # add also the trial points
+            for tr in self.coord_explored:
+                if list(tr) in [list(x) for x in self.failed_coords]:
+                    ax1.scatter(x=tr[1], y=tr[0], c='r', s=15)
+                else:
+                    ax1.scatter(x=tr[1], y=tr[0], c='c', s=15)
+            cbar = plt.colorbar(sidf, shrink=0.5, aspect=20, pad = 0.15, orientation='horizontal', ticks=[0.0, 0.5, 1.0])
+            sidf.set_clim(-0.001, 1.001)
+
+            # PENALISATION IDF
             ax = plt.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
             ax.set_title('Penalisation function: '+str(len(self.failed_coords))+' points')
             ax.set_ylabel(param_names[1], labelpad=5)
             ax.set_xlabel(param_names[0], labelpad=5)
-            ax.set_xticks(xticks1)
-            ax.set_xticklabels([str(x) for x in xticks1], rotation=50)
-            ax.set_yticklabels([str(x) for x in yticks1], rotation=-20)
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
             ax.tick_params(axis='x', direction='out', pad=-5)
             ax.tick_params(axis='y', direction='out', pad=-3)
             ax.tick_params(axis='z', direction='out', pad=2)
             # ax.set_zticks(zticks_PIDF)
-            ax.plot_surface(X, Y, model_PIDF, rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
-            # UNCERTAINTY
+            ax.plot_surface(X, Y, (1-model_PIDF), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
+            # UNCERTAINTY IDF
             ax = plt.subplot2grid((2,6),(1, 2), colspan=2, projection='3d')
             ax.set_title('Model uncertainty: '+str(self.returnUncertainty()))
             ax.set_ylabel(param_names[1], labelpad=5)
             ax.set_xlabel(param_names[0], labelpad=5)
-            ax.set_xticks(xticks1)
-            ax.set_xticklabels([str(x) for x in xticks1], rotation=50)
-            ax.set_yticklabels([str(x) for x in yticks1], rotation=-20)
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            ax.set_zticks(zticks_unc)
+            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
             ax.tick_params(axis='x', direction='out', pad=-5)
             ax.tick_params(axis='y', direction='out', pad=-3)
-            ax.tick_params(axis='z', direction='out', pad=10)
+            ax.tick_params(axis='z', direction='out', pad=5)
             ax.plot_surface(X, Y, model_var, rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
-            # SELECTION FUNCTION
-            if top_view:
-                ax1 = plt.subplot2grid((2,6),(1, 4), colspan=2)
-                ax1.set_title('Selection function')
-                ax1.set_xlabel(param_names[0])
-                ax1.set_ylabel(param_names[1])
-                ax1.set_xlim(len(dim1), 0)
-                ax1.set_ylim(0, len(dim2))
-                ax1.set_xticks(np.linspace(len(dim1)-1, -1, 5)), ax1.set_yticks(np.linspace(-1, len(dim2)+1, 5))
-                ax1.set_xticklabels([str(x) for x in xticks1]), ax1.set_yticklabels([str(y) for y in yticks1])
-                ax1.yaxis.tick_right()
-                ax1.yaxis.set_label_position("right")
-                sidf = ax1.imshow(model_select, cmap=cm.summer, origin='lower')
-                for spine in ax1.spines.values():
-                    spine.set_visible(False)
-                # add also the trial points
+            # SELECTION FUNCTION IDF
+            ax = plt.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
+            ax.set_title('Selection function')
+            ax.set_ylabel(param_names[1], labelpad=5)
+            ax.set_xlabel(param_names[0], labelpad=5)
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            ax.tick_params(axis='x', direction='out', pad=-5)
+            ax.tick_params(axis='y', direction='out', pad=-3)
+            ax.tick_params(axis='z', direction='out', pad=2)
+            surf = ax.plot_surface(X, Y, model_select, rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
+            # add also the trial points
+            if show_points:
                 for tr in self.coord_explored:
                     if list(tr) in [list(x) for x in self.failed_coords]:
-                        ax1.scatter(x=tr[1], y=tr[0], c='r', s=15)
+                        ax.plot([dim2[tr[1]], dim2[tr[1]]], [dim1[tr[0]], dim1[tr[0]]], [model_select.min(), model_select.max()], linewidth=1, color='k', alpha=0.7)
                     else:
-                        ax1.scatter(x=tr[1], y=tr[0], c='c', s=15)
-                cbar = plt.colorbar(sidf, shrink=0.7, aspect=20, pad = 0.15, orientation='horizontal', ticks=[0.0, 0.5, 1.0])
-                sidf.set_clim(-0.001, 1.001)
-            else:
-                ax1 = plt.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
-                ax1.set_title('Selection function')
-                ax1.set_ylabel(param_names[1])
-                ax1.set_xlabel(param_names[0])
-                ax1.set_xticks(xticks1)
-                surf = ax1.plot_surface(X, Y, model_select, rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
-                # add also the trial points
-                for tr in self.coord_explored:
-                    if list(tr) in [list(x) for x in self.failed_coords]:
-                        ax1.plot([dim2[tr[1]], dim2[tr[1]]], [dim1[tr[0]], dim1[tr[0]]], [model_select.min(), model_select.max()], linewidth=1, color='k', alpha=0.7)
-                    else:
-                        ax1.plot([dim2[tr[1]], dim2[tr[1]]], [dim1[tr[0]], dim1[tr[0]]], [model_select.min(), model_select.max()], linewidth=1, color='m', alpha=0.7)
+                        ax.plot([dim2[tr[1]], dim2[tr[1]]], [dim1[tr[0]], dim1[tr[0]]], [model_select.min(), model_select.max()], linewidth=1, color='m', alpha=0.7)
+            
             # SAVEFIG
             if isinstance(trial_num, str):
                 fig.suptitle("Models and IDFs (num_iter: {}, resolution: {})".format(trial_num, len(dim1)), fontsize=16)
