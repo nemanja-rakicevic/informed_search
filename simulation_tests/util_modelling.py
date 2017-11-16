@@ -16,18 +16,21 @@ from matplotlib import cm
 
 
 # COVARIANCE
-COV = 10
+COV = 5
 
 
 class InformedModel:
-    def __init__(self, parameter_list, experiment_type, test=False):
+    def __init__(self, parameter_list, experiment_type, test=False, show_plots=False, other=[5, 0.01, 1], folder_name=False):
         self.exp_type = experiment_type
+        self.show_plots = show_plots
+        self.other = other
         if not test:
             self.param_list = parameter_list
             self.param_space = np.array([xs for xs in itertools.product(*self.param_list)])
             self.param_dims = np.array([len(i) for i in self.param_list])
             # Initialise to uniform distribution
             self.prior_init = np.ones(tuple(self.param_dims))/(np.product(self.param_dims))
+            COV = other[0]
             self.cov = COV * np.eye(len(self.param_list))
             self.eps_var = 0.00005
             # Calculate Kernel for the whole parameter (test) spacece, self.param_space)
@@ -43,44 +46,44 @@ class InformedModel:
             self.selection_IDF = self.prior_init
             ###
             self.model_list = []
-            self.mu_alpha = np.array([])
-            self.mu_L = np.array([])
+            self.mu_alpha = np.zeros(tuple(self.param_dims))
+            self.mu_L = np.zeros(tuple(self.param_dims))
             self.var_alpha = np.ones(tuple(self.param_dims))
             self.var_L = np.ones(tuple(self.param_dims))
             self.model_uncertainty = np.ones(tuple(self.param_dims))
-            # ###
-            self.trial_dirname = './DATA/'+self.exp_type+'/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
-            # if self.param_dims[0]>1:
-            #     self.trial_dirname = 'TRIALS_FULL/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
-            # else:
-            #     self.trial_dirname = 'TRIALS_2D/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
+            ###
+            if folder_name:
+                self.trial_dirname = './DATA/'+self.exp_type+'/TRIAL__'+folder_name
+            else:
+                self.trial_dirname = './DATA/'+self.exp_type+'/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
             os.makedirs(self.trial_dirname)
-        np.random.seed(210)
+        np.random.seed(210*other[2]) #840 4
 
 #### SELECT KERNEL ####
 
-    # def kernel(self, a, b):
-    #     """ GP squared exponential kernel """
-    #     sigsq = 1
-    #     siglensq = 0.03
-    #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-    #     return sigsq*np.exp(-.5 *sqdist)
+    def kernel(self, a, b):
+        """ GP squared exponential kernel """
+        sigsq = 1
+        # siglensq = 0.01 # 1 0.5 0.3 0.1 
+        siglensq = self.other[1]
+        sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+        return sigsq*np.exp(-.5 *sqdist)
 
     # def kernel(self, a, b):
     #     """ GP Matern 5/2 kernel: """
     #     sigsq = 1
-    #     siglensq = 1
+    #     siglensq = 0.03 # 1
     #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
     #     return sigsq * (1 + np.sqrt(5*sqdist) + 5*sqdist/3.) * np.exp(-np.sqrt(5.*sqdist))
 
-    def kernel(self, a, b):
-        """ GP rational quadratic kernel """
-        sigsq = 1
-        siglensq = 1
-        alpha = a.shape[1]/2. #a.shape[1]/2. #np.exp(1) #len(a)/2.
-        # print alpha
-        sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-        return sigsq * np.power(1 + 0.5*sqdist/alpha, -alpha)
+    # def kernel(self, a, b):
+    #     """ GP rational quadratic kernel """
+    #     sigsq = 1
+    #     siglensq = 1
+    #     alpha = a.shape[1]/2. #a.shape[1]/2. #np.exp(1) #len(a)/2.
+    #     # print alpha
+    #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+    #     return sigsq * np.power(1 + 0.5*sqdist/alpha, -alpha)
 
 ######################## 
 
@@ -210,8 +213,7 @@ class InformedModel:
         Generate the movement parameter vector to evaluate next, 
         based on the GPR model uncertainty and the penalisation IDF.
         """
-        # Combine the model uncertainty with the penalisation IDF to get the most informative point   
-        # DO NOT NORMALIZE ! LOG PROBABILITY ?
+        # Combine the model uncertainty with the penalisation IDF to get the most informative point  
         # model_var = (self.prior_init * self.model_uncertainty)/np.sum(self.prior_init * self.model_uncertainty)
         selection_IDF = 1.0 * self.model_uncertainty * (1 - self.penal_IDF)#/np.sum(1-self.penal_IDF)
         # info_pdf /= np.sum(info_pdf)
@@ -224,6 +226,9 @@ class InformedModel:
             temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_explored))
             temp_good = np.array(list(temp_good)) 
             cnt+=1
+            if cnt > len(self.penal_IDF.ravel()):
+                print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
+                break
 
         selected_coord = temp_good[np.random.choice(len(temp_good)),:]
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
@@ -282,7 +287,7 @@ class InformedModel:
                 (self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list) = tmp
 
 
-    def testModel(self, angle_s, dist_s, verbose=2):
+    def testModel(self, angle_s, dist_s, verbose=False):
         # Helper functions
         thrsh = 0.1
         def sqdist(x,y):
@@ -300,33 +305,39 @@ class InformedModel:
         Check for known constraints/failures if the values of the penal_IDF for the selected_coords 
         are above a cetrain threshold this is probably a bad idea
         """
-        cnt = 0
-        while True:
-            cnt += 1
+        src = 0
+        for cnt in range(len(M_meas.ravel())):
+            src += 1
             # Get candidate movement parameter vector
-            best_fit        = nsmallest(cnt, M_meas.ravel())
-            selected_coord  = np.argwhere(M_meas==best_fit[cnt-1])[0]
+            best_fit        = nsmallest(src, M_meas.ravel())
+            selected_coord  = np.argwhere(M_meas==best_fit[src-1])[0]
             selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
             error_angle     = self.mu_alpha[tuple(selected_coord)] - angle_s
             error_dist      = self.mu_L[tuple(selected_coord)]  - dist_s
+            if cnt%50 == 0 and cnt > 100:
+                thrsh = cnt/1000.
+                src = 0
+            # print(self.penal_IDF[tuple(selected_coord)], "DIFF",thrsh)
             if self.penal_IDF[tuple(selected_coord)] < thrsh:
+                # print("BREAK")
                 break
             else:    
                 # Continue to the next smallest number
                 if verbose:
                     # print("--- generated coords:", selected_coord, "-> parameters:", selected_params)
                     # print("--- ESTIMATED ERRORS > chosen (", M_angle[tuple(coords1)],",",M_dist[tuple(coords1)],") - desired (",angle_s,",",dist_s,") = error (",error_angle1,",",error_dist1,")")
-                    print("--- generated coords: {} -> parameters: {} (goodness measure: {})".format(selected_coord, selected_params, round(best_fit[cnt-1], 4)))
+                    print("--- generated coords: {} -> parameters: {} (goodness measure: {})".format(selected_coord, selected_params, round(best_fit[src-1], 4)))
                     print("--- ESTIMATED ERRORS: chosen ({}, {}) - desired ({}, {}) = error ({}, {})".format(round(self.mu_alpha[tuple(selected_coord)], 4), round(self.mu_L[tuple(selected_coord)], 4), angle_s, dist_s, round(error_angle,4), round(error_dist,4)))
                     print("--- BAD SAMPLE #{}, resampling ...".format(cnt))
-        if verbose>1:
-            print("--- generated coords: {} -> parameters: {} (goodness measure: {})".format(selected_coord, selected_params, round(best_fit[cnt-1], 4)))
+    
+        if verbose:
+            print("--- generated coords: {} -> parameters: {} (goodness measure: {})".format(selected_coord, selected_params, round(best_fit[src-1], 4)))
             print("--- ESTIMATED ERRORS: chosen ({}, {}) - desired ({}, {}) = error ({}, {})".format(round(self.mu_alpha[tuple(selected_coord)], 4), round(self.mu_L[tuple(selected_coord)], 4), angle_s, dist_s, round(error_angle,4), round(error_dist,4)))  
         # return vector to execute
         return selected_coord, selected_params
 
 
-    def plotModel(self, trial_num, dimensions, param_names, show=True, show_points=False):
+    def plotModel(self, trial_num, dimensions, param_names, show_points=False):
         # if trial_num%1==0 or trial_info.fail_status==0:
         # print "<- CHECK PLOTS"     
 
@@ -403,10 +414,12 @@ class InformedModel:
             ax1.set_title('Selection function')
             ax1.set_xlabel(param_names[0])
             ax1.set_ylabel(param_names[1])
-            ax1.set_xlim(len(dim1), 0)
+            # ax1.set_xlim(len(dim1), 0)
+            ax1.set_xlim(0, len(dim1))
             ax1.set_ylim(0, len(dim2))
-            ax1.set_xticks(np.linspace(len(dim1)-1, -1, 5)), 
-            ax1.set_yticks(np.linspace(-1, len(dim2)+1, 5))
+            # ax1.set_xticks(np.linspace(len(dim1)-1, -1, 5))
+            ax1.set_xticks(np.linspace(-1, len(dim1), 5))
+            ax1.set_yticks(np.linspace(-1, len(dim2), 5))
             ax1.set_xticklabels([str(x) for x in xticks]), 
             ax1.set_yticklabels([str(y) for y in yticks1])
             ax1.yaxis.tick_right()
@@ -428,10 +441,10 @@ class InformedModel:
             ax.set_title('Penalisation function: '+str(len(self.failed_coords))+' points')
             ax.set_ylabel(param_names[1], labelpad=5)
             ax.set_xlabel(param_names[0], labelpad=5)
-            ax.set_xticks(xticks)
-            ax.set_yticks(yticks)
-            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
-            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            # ax.set_xticks(xticks)
+            # ax.set_yticks(yticks)
+            # ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            # ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
             ax.tick_params(axis='x', direction='out', pad=-5)
             ax.tick_params(axis='y', direction='out', pad=-3)
             ax.tick_params(axis='z', direction='out', pad=2)
@@ -442,11 +455,11 @@ class InformedModel:
             ax.set_title('Model uncertainty: '+str(self.returnUncertainty()))
             ax.set_ylabel(param_names[1], labelpad=5)
             ax.set_xlabel(param_names[0], labelpad=5)
-            ax.set_xticks(xticks)
-            ax.set_yticks(yticks)
-            ax.set_zticks(zticks_unc)
-            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
-            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            # ax.set_xticks(xticks)
+            # ax.set_yticks(yticks)
+            # ax.set_zticks(zticks_unc)
+            # ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            # ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
             ax.tick_params(axis='x', direction='out', pad=-5)
             ax.tick_params(axis='y', direction='out', pad=-3)
             ax.tick_params(axis='z', direction='out', pad=5)
@@ -454,12 +467,12 @@ class InformedModel:
             # SELECTION FUNCTION IDF
             ax = plt.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
             ax.set_title('Selection function')
-            ax.set_ylabel(param_names[1], labelpad=5)
-            ax.set_xlabel(param_names[0], labelpad=5)
-            ax.set_xticks(xticks)
-            ax.set_yticks(yticks)
-            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
-            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            # ax.set_ylabel(param_names[1], labelpad=5)
+            # ax.set_xlabel(param_names[0], labelpad=5)
+            # ax.set_xticks(xticks)
+            # ax.set_yticks(yticks)
+            # ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            # ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
             ax.tick_params(axis='x', direction='out', pad=-5)
             ax.tick_params(axis='y', direction='out', pad=-3)
             ax.tick_params(axis='z', direction='out', pad=2)
@@ -478,5 +491,8 @@ class InformedModel:
                 plt.savefig(self.trial_dirname+"/img_training_trial_{}.svg".format(trial_num), format="svg")
             else:
                 plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}.svg".format(num=trial_num), format="svg")
-            if show:
+            
+            if self.show_plots:
                 plt.show()
+            else:
+                plt.cla()

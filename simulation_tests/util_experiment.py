@@ -5,23 +5,25 @@ import pickle
 
 class SimulationExperiment:
 	import gym
-	RESOLUTION = 150
-	# PARTIAL RANGE
-	# __range1 = np.linspace(0,  2, RESOLUTION)
-	# __range2 = np.linspace(0, -1, RESOLUTION)
-	# FULL RANGE
-	__range1 = np.linspace(-1.57, 1.57, RESOLUTION)
-	__range2 = np.linspace(-3.14, 3.14, RESOLUTION)
 
-	def __init__(self, display=False, display_steps=50):
-		self.parameter_list = np.array([self.__range1, self.__range2])
+	def __init__(self, resolution, animation_steps=50, animate=False, verbose=False):
+
+		# PARTIAL RANGE
+		# __range1 = np.linspace(0,  2, RESOLUTION)
+		# __range2 = np.linspace(0, -1, RESOLUTION)
+		# FULL RANGE
+		__range1 = np.linspace(-1.57, 1.57, resolution)
+		__range2 = np.linspace(-3.14, 3.14, resolution)
+
+		self.parameter_list = np.array([__range1, __range2])
 		self.type = 'SIMULATION'
 		self.info_list = []
 		self.env = self.gym.make('ReacherOneShot-v0')
-		self.display = display
-		self.__NUM_STEPS = display_steps
+		self.__NUM_STEPS = animation_steps
+		self.animate = animate
+		self.verbose = verbose
 
-	def executeTrial(self, t, coords, params, test=False, verbose=True):
+	def executeTrial(self, t, coords, params, test=False):
 		self.env.render(close=True)
 		theta_list = np.array([np.linspace(0, params[0], self.__NUM_STEPS), np.linspace(0, params[1], self.__NUM_STEPS)]).T
 		# Place target for testing or just hide it
@@ -37,7 +39,7 @@ class SimulationExperiment:
 		contact_cnt = 0
 		obs_list = []
 		for i in range(self.__NUM_STEPS):
-			if self.display:
+			if self.animate:
 				self.env.render()
 			control = init_pos + theta_list[i]
 			observation, _, _, _ = self.env.step(control) 
@@ -66,7 +68,7 @@ class SimulationExperiment:
 					'ball_polar': 	ball_polar,
 					'observations': np.array(obs_list) }
 		# INFO
-		if verbose:
+		if self.verbose:
 			if fail_status:
 				print("--- trial executed: FAIL ({})".format(fail_status))
 			else:

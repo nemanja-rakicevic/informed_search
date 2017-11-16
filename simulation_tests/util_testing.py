@@ -5,8 +5,8 @@ import itertools
 import pickle
 
 class FullTest:
-	def __init__(self, show=False, verbose=False):
-		self.show = show
+	def __init__(self, show_plots=False, verbose=False):
+		self.show_plots = show_plots
 		self.verbose = verbose
 		self.results_list = []
 		self.test_angles = np.arange(-65, 31, 5)
@@ -14,7 +14,7 @@ class FullTest:
 		self.test_cases  = np.array([xs for xs in itertools.product(self.test_angles, self.test_dist)])
 
 
-	def runFullTests(self, tr_num, experiment, model):
+	def runFullTests(self, tr_num, experiment, model, save_progress=True, heatmap=True):
 		statistics = []
 		dist_plot = np.zeros((len(self.test_dist), len(self.test_angles)))
 		euclid_plot = np.zeros((len(self.test_dist), len(self.test_angles)))
@@ -25,7 +25,7 @@ class FullTest:
 				print("\nTRIAL {}\nTEST # {} > angle, distance: ({},{})".format(tr_num, t+1, angle_s, dist_s))
 			# Generate movement parameter vector
 			trial_coords, trial_params = model.testModel(float(angle_s), float(dist_s), verbose=self.verbose)
-			trial_info = experiment.executeTrial(0, trial_coords, trial_params, test=[float(angle_s), float(dist_s)], verbose=self.verbose)
+			trial_info = experiment.executeTrial(0, trial_coords, trial_params, test=[float(angle_s), float(dist_s)])
 			# Compile test statistics
 			dist_error = np.sqrt(np.sum((trial_info['ball_polar'] - self.test_cases[t])**2))
 			euclid_error = np.sqrt(np.sum(trial_info['observations'][-1][-2:]**2))
@@ -49,13 +49,15 @@ class FullTest:
 		errors_mean = errors_all.mean(axis=0)
 		errors_std  = errors_all.std(axis=0)
 		# Save statistics
-		self.saveResults(model.trial_dirname, [tr_num, statistics, errors_mean, errors_std, num_fails])
+		self.results_list.append([tr_num, statistics, errors_mean, errors_std, num_fails])
+		if save_progress:
+			self.saveResults(model.trial_dirname)
 		# Plot heatmaps
-		self.plotResults(model.trial_dirname, tr_num, euclid_plot, dist_plot, errors_mean)
+		if heatmap:
+			self.plotResults(model.trial_dirname, tr_num, euclid_plot, dist_plot, errors_mean)
 
 
-	def saveResults(self, savepath, stats):
-		self.results_list.append(stats)
+	def saveResults(self, savepath):
 		with open(savepath + "/data_test_statistics.dat", "wb") as m:
 			pickle.dump(self.results_list, m, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -110,5 +112,7 @@ class FullTest:
 		cbar = plt.colorbar(sidf, shrink=0.7, aspect=20, pad = 0.15, orientation='horizontal', ticks=[-1, errors_mean[1].round(2), dist_plot.max().round(2)])
 		sidf.set_clim(-1.001, dist_plot.max()+.005)
 		plt.savefig(savepath + "/img_test_plots_trial_#{}.svg".format(tr_num))
-		if self.show:
+		if self.show_plots:
 			plt.show()
+		else:
+			plt.cla()

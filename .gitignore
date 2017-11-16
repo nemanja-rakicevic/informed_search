@@ -5,3 +5,4 @@ TRIALS_2D/*
 TRIALS_FULL/*
 TRIALS_RETRAINED/*
 .ipynb_checkpoints/*
+simulation_tests/DATA/*
