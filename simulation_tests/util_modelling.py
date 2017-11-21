@@ -16,11 +16,11 @@ from matplotlib import cm
 
 
 # COVARIANCE
-COV = 5
+# COV = 5
 
 
 class InformedModel:
-    def __init__(self, parameter_list, experiment_type, test=False, show_plots=False, other=[5, 0.01, 1], folder_name=False):
+    def __init__(self, parameter_list, experiment_type, other, test=False, show_plots=False, folder_name=False):
         self.exp_type = experiment_type
         self.show_plots = show_plots
         self.other = other
@@ -30,8 +30,8 @@ class InformedModel:
             self.param_dims = np.array([len(i) for i in self.param_list])
             # Initialise to uniform distribution
             self.prior_init = np.ones(tuple(self.param_dims))/(np.product(self.param_dims))
-            COV = other[0]
-            self.cov = COV * np.eye(len(self.param_list))
+            self.COVARIANCE = other[0]
+            self.cov = self.COVARIANCE * np.eye(len(self.param_list))
             self.eps_var = 0.00005
             # Calculate Kernel for the whole parameter (test) spacece, self.param_space)
             self.Kss = self.kernel(self.param_space, self.param_space)
@@ -57,7 +57,7 @@ class InformedModel:
             else:
                 self.trial_dirname = './DATA/'+self.exp_type+'/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
             os.makedirs(self.trial_dirname)
-        np.random.seed(210*other[2]) #840 4
+        np.random.seed(210*int(other[2])) #840 4
 
 #### SELECT KERNEL ####
 
@@ -72,14 +72,16 @@ class InformedModel:
     # def kernel(self, a, b):
     #     """ GP Matern 5/2 kernel: """
     #     sigsq = 1
-    #     siglensq = 0.03 # 1
+    #     # siglensq = 0.03 # 1
+    #     siglensq = self.other[1]
     #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
     #     return sigsq * (1 + np.sqrt(5*sqdist) + 5*sqdist/3.) * np.exp(-np.sqrt(5.*sqdist))
 
     # def kernel(self, a, b):
     #     """ GP rational quadratic kernel """
     #     sigsq = 1
-    #     siglensq = 1
+    #     # siglensq = 1
+    #     siglensq = self.other[1]
     #     alpha = a.shape[1]/2. #a.shape[1]/2. #np.exp(1) #len(a)/2.
     #     # print alpha
     #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
@@ -102,22 +104,27 @@ class InformedModel:
         and the failed ones to update the penalisation IDF.
         """
         if len(info_list):
-            # Successful trial
+            # Successful trial: Update task models
             if info_list[-1]['fail']==0:
-                good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail']==0])
-                good_params = good_trials[:,0]
-                good_fevals = good_trials[:,1]
+                # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail']==0])
+                # good_params = good_trials[:,0]
+                # good_fevals = good_trials[:,1]
+                good_params = np.array([tr['parameters'] for tr in info_list if tr['fail']==0])
+                good_fevals = np.array([tr['ball_polar'] for tr in info_list if tr['fail']==0])
                 # Estimate the Angle and Distance GPR models, as well as PIDF
                 self.mu_alpha, self.var_alpha = self.updateGPR(good_params, good_fevals, 0)
                 self.mu_L,     self.var_L     = self.updateGPR(good_params, good_fevals, 1)
                 self.updatePIDF(info_list[-1]['parameters'], failed=-1)
-            # Failed trial
+            # Failed trial: Update PIDF
             elif info_list[-1]['fail']>0:
                 self.failed_coords = [tr['coordinates'] for tr in info_list if tr['fail']>0]
                 self.updatePIDF(info_list[-1]['parameters'], failed=1)
-            # Update model uncertainty
-            all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
-            self.model_uncertainty = self.updateGPR(all_trials[:,0], all_trials[:,1], -1)
+            # All trials: Update UIDF
+            all_trials = np.array([tr['parameters'] for tr in info_list])
+            self.model_uncertainty = self.updateGPR(all_trials, None, -1)
+            # There's some crazy bug here when using 5-link version, canot figure it out...
+            # all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
+            # self.model_uncertainty = self.updateGPR(all_trials[:,0], all_trials[:,1], -1)
             # SAVE CURRENT MODEL
             self.saveModel()
 
@@ -127,7 +134,7 @@ class InformedModel:
         Update GPR uncertainty over the parameter space.
         """
         if label_indicator == -1:
-            Ytrain = Ytrain[:, 0].reshape(-1,1)
+            # Xtrain = np.array(Xtrain).reshape(-1,len(self.param_list))
             Xtest = self.param_space
             # Calculate kernel matrices
             K = self.kernel(Xtrain, Xtrain)
@@ -196,7 +203,7 @@ class InformedModel:
             #     cov_coeff = 0.5*np.ones(len(self.param_list))
         # Update covariance diagonal elements
         for idx, cc in enumerate(cov_coeff):
-            self.cov[idx,idx] = COV * cc
+            self.cov[idx,idx] = self.COVARIANCE * cc
         # Estimate the contributing Gaussian
         trial_gaussian = failed * np.reshape(self.generatePDF_matrix(self.param_space, mu, self.cov), tuple(self.param_dims))
         trial_gaussian /= (trial_gaussian.max() + self.eps_var)
@@ -350,13 +357,19 @@ class InformedModel:
             dim2 = self.param_list[dimensions[1]]
             X, Y = np.meshgrid(dim2, dim1)
             # Values to plot
-            if len(dimensions)>2:
+            if len(self.param_dims)>2:
                 if self.param_dims[0]>1:
-                    model_alpha  = self.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
-                    model_L      = self.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
-                    model_PIDF   = self.penal_IDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
-                    model_var    = self.model_uncertainty[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
-                    model_select = self.selection_IDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    model_alpha  = self.mu_alpha[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                    model_L      = self.mu_L[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                    model_PIDF   = self.penal_IDF[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                    model_var    = self.model_uncertainty[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                    model_select = self.selection_IDF[:,:,3,3,4].reshape(len(dim1),len(dim2))
+
+                    # model_alpha  = self.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    # model_L      = self.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    # model_PIDF   = self.penal_IDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    # model_var    = self.model_uncertainty[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    # model_select = self.selection_IDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                 else:
                     model_alpha  = self.mu_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                     model_L      = self.mu_L[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
@@ -441,10 +454,10 @@ class InformedModel:
             ax.set_title('Penalisation function: '+str(len(self.failed_coords))+' points')
             ax.set_ylabel(param_names[1], labelpad=5)
             ax.set_xlabel(param_names[0], labelpad=5)
-            # ax.set_xticks(xticks)
-            # ax.set_yticks(yticks)
-            # ax.set_xticklabels([str(x) for x in xticks], rotation=41)
-            # ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
             ax.tick_params(axis='x', direction='out', pad=-5)
             ax.tick_params(axis='y', direction='out', pad=-3)
             ax.tick_params(axis='z', direction='out', pad=2)
@@ -455,11 +468,11 @@ class InformedModel:
             ax.set_title('Model uncertainty: '+str(self.returnUncertainty()))
             ax.set_ylabel(param_names[1], labelpad=5)
             ax.set_xlabel(param_names[0], labelpad=5)
-            # ax.set_xticks(xticks)
-            # ax.set_yticks(yticks)
-            # ax.set_zticks(zticks_unc)
-            # ax.set_xticklabels([str(x) for x in xticks], rotation=41)
-            # ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            ax.set_zticks(zticks_unc)
+            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
             ax.tick_params(axis='x', direction='out', pad=-5)
             ax.tick_params(axis='y', direction='out', pad=-3)
             ax.tick_params(axis='z', direction='out', pad=5)
@@ -467,12 +480,12 @@ class InformedModel:
             # SELECTION FUNCTION IDF
             ax = plt.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
             ax.set_title('Selection function')
-            # ax.set_ylabel(param_names[1], labelpad=5)
-            # ax.set_xlabel(param_names[0], labelpad=5)
-            # ax.set_xticks(xticks)
-            # ax.set_yticks(yticks)
-            # ax.set_xticklabels([str(x) for x in xticks], rotation=41)
-            # ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            ax.set_ylabel(param_names[1], labelpad=5)
+            ax.set_xlabel(param_names[0], labelpad=5)
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
             ax.tick_params(axis='x', direction='out', pad=-5)
             ax.tick_params(axis='y', direction='out', pad=-3)
             ax.tick_params(axis='z', direction='out', pad=2)

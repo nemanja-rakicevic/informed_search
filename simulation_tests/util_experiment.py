@@ -1,50 +1,64 @@
 
 import numpy as np 
 import pickle
+import time
 
 
 class SimulationExperiment:
+	import envs
 	import gym
 
-	def __init__(self, resolution, animation_steps=50, animate=False, verbose=False):
+	def __init__(self, agent, resolution, animation_steps=100, animate=False, verbose=False):
 
 		# PARTIAL RANGE
 		# __range1 = np.linspace(0,  2, RESOLUTION)
 		# __range2 = np.linspace(0, -1, RESOLUTION)
 		# FULL RANGE
-		__range1 = np.linspace(-1.57, 1.57, resolution)
+		__range0 = np.linspace(-1.57, 1.57, resolution)
+		__range1 = np.linspace(-3.14, 3.14, resolution)
 		__range2 = np.linspace(-3.14, 3.14, resolution)
+		__range3 = np.linspace(-3.14, 3.14, resolution)
+		__range4 = np.linspace(-3.14, 3.14, resolution)
+		if agent=='sim2link':
+			self._NUM_LINKS = 2
+			self.env = self.gym.make('ReacherOneShot-v0')
+		elif agent=='sim5link':
+			self._NUM_LINKS = 5
+			self.env = self.gym.make('ReacherOneShot-v1')
 
-		self.parameter_list = np.array([__range1, __range2])
+		self.parameter_list = np.array([__range0, __range1, __range2, __range3, __range4])[:self._NUM_LINKS]
+
 		self.type = 'SIMULATION'
 		self.info_list = []
-		self.env = self.gym.make('ReacherOneShot-v0')
 		self.__NUM_STEPS = animation_steps
 		self.animate = animate
 		self.verbose = verbose
 
 	def executeTrial(self, t, coords, params, test=False):
+
 		self.env.render(close=True)
-		theta_list = np.array([np.linspace(0, params[0], self.__NUM_STEPS), np.linspace(0, params[1], self.__NUM_STEPS)]).T
+		theta_list = np.array([ np.linspace(0, p, self.__NUM_STEPS) for p in params ]).T
 		# Place target for testing or just hide it
 		if not isinstance(test, bool):
-			self.env.unwrapped.init_qpos[4] = - test[1] * np.sin(np.deg2rad(test[0])) / 100.
-			self.env.unwrapped.init_qpos[5] = test[1] * np.cos(np.deg2rad(test[0])) / 100.
+		# if test:
+			self.env.unwrapped.init_qpos[-2] = - test[1] * np.sin(np.deg2rad(test[0])) / 100.
+			self.env.unwrapped.init_qpos[-1] = test[1] * np.cos(np.deg2rad(test[0])) / 100.
 		else:
-			self.env.unwrapped.init_qpos[4] = 0.0
-			self.env.unwrapped.init_qpos[5] = 1.3
+			self.env.unwrapped.init_qpos[-2] = 0.0
+			self.env.unwrapped.init_qpos[-1] = 1.3
 		init_pos = self.env.reset()
-		init_pos = init_pos[:2]
+		init_pos = init_pos[:self._NUM_LINKS]
 		# EXECUTE TRIAL
 		contact_cnt = 0
 		obs_list = []
 		for i in range(self.__NUM_STEPS):
-			if self.animate:
+			if self.animate and isinstance(test, bool):
 				self.env.render()
 			control = init_pos + theta_list[i]
+
 			observation, _, _, _ = self.env.step(control) 
 			obs_list.append(observation)
-			ball_xy = observation[2:4]
+			ball_xy = observation[self._NUM_LINKS:self._NUM_LINKS+2]
 			# Check collision
 			if self.env.unwrapped.data.ncon:
 				contact_cnt+=1
@@ -77,6 +91,9 @@ class SimulationExperiment:
 					print("--- trial executed: SUCCESS\t-> achieved: {}, euclidean error: {}".format(ball_polar, round(euclid_error,2)))
 				else:
 					print("--- trial executed: SUCCESS\t-> labels: {}".format(ball_polar))
+
+		# time.sleep(1)
+
 		return all_info
 
 

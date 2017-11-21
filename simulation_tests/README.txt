@@ -1,16 +1,8 @@
 
-# Adding the ReacherOneShotEnv to gym
+# Experiments available:
 
-1) Add the environment files to the gym directories
-$ cp reacher_oneshot.py ~/src/gym/gym/envs/mujoco/
-$ cp reacher_oneshot.xml ~/src/gym/gym/envs/mujoco/assets/
+1) Reacher environment with 2-link agent
 
-2) Add the entry to the  ~/src/gym/gym/envs/__init__.py
----
-register(
-    id='ReacherOneShot-v0',
-    entry_point='gym.envs.mujoco:ReacherOneShotEnv',
-    max_episode_steps=50,
-    reward_threshold=0,
-)
----
+2) Reacher environment with 5-link agent
+
+3) Baxter robot experiment (6 parameter)
