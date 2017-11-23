@@ -15,7 +15,7 @@ parser.add_argument('-m',   '--model',
 parser.add_argument('-e',   '--env',      
                     dest='env_type', 
                     help="Select which environment to use 'sim2link','sim5link' or 'robot'",
-                    default='sim2link')
+                    default='sim5link')
 parser.add_argument('-r',   '--resolution', 
                     dest='res',        
                     help="Select discretisation resolution",
@@ -46,20 +46,21 @@ parser.add_argument('-o',   '--other',
                     type=float,      
                     help="Additional model specs list\n"
                          "[COV, siglensq, seed]\n",
-                    default=[2, 0.01, 1])
+                    default=[5, 0.01, 1])
 args = parser.parse_args()
 
 print(args)
-folder_name = '_'.join( [args.model_type, 
+folder_name = '_'.join([args.env_type,
+                        args.model_type, 
                         'res'+str(args.res), 
                         'cov'+str(int(args.other[0])), 
-                        'kernelRQsl'+str(args.other[1])+'-seed'+str(int(args.other[2]))])
+                        'kernelSEsl'+str(args.other[1])+'-seed'+str(int(args.other[2]))])
 
 # INITIALISE MODEL
 print("INITIALISING MODEL: {}\n".format(folder_name))
 print(args)
-experiment = uexp.SimulationExperiment(agent=args.env_type, resolution=args.res, animate=True, verbose=args.verb&1)
-model      = umodel.InformedModel(experiment.parameter_list, experiment.type, show_plots=args.plots&1, other=args.other)#, folder_name=folder_name)
+experiment = uexp.SimulationExperiment(agent=args.env_type, resolution=args.res, animate=False, verbose=args.verb&1)
+model      = umodel.InformedModel(experiment.parameter_list, experiment.type, show_plots=args.plots&1, other=args.other, folder_name=folder_name)
 testing    = utest.FullTest(show_plots=args.plots&2, verbose=args.verb&2)
 
 # RUN FULL EXPERIMENT
@@ -76,7 +77,7 @@ for t in range(args.num_trial):
     trial_info = experiment.executeTrial(t, trial_coords, trial_params)
     experiment.info_list.append(trial_info)
     # Update model
-    model.updateModel(experiment.info_list)
+    model.updateModel(experiment.info_list, save_progress=(not (t+1)%100))
     # Save experiment data
     experiment.saveData(model.trial_dirname)
     # Plot model progress

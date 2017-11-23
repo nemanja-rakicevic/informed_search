@@ -20,7 +20,7 @@ from matplotlib import cm
 
 
 class InformedModel:
-    def __init__(self, parameter_list, experiment_type, other, test=False, show_plots=False, folder_name=False):
+    def __init__(self, parameter_list, experiment_type, other=[5, 0.1, 1], test=False, show_plots=False, folder_name=False):
         self.exp_type = experiment_type
         self.show_plots = show_plots
         self.other = other
@@ -62,7 +62,7 @@ class InformedModel:
 #### SELECT KERNEL ####
 
     def kernel(self, a, b):
-        """ GP squared exponential kernel """
+        """ SE squared exponential kernel """
         sigsq = 1
         # siglensq = 0.01 # 1 0.5 0.3 0.1 
         siglensq = self.other[1]
@@ -70,7 +70,7 @@ class InformedModel:
         return sigsq*np.exp(-.5 *sqdist)
 
     # def kernel(self, a, b):
-    #     """ GP Matern 5/2 kernel: """
+    #     """ MT Matern 5/2 kernel: """
     #     sigsq = 1
     #     # siglensq = 0.03 # 1
     #     siglensq = self.other[1]
@@ -78,7 +78,7 @@ class InformedModel:
     #     return sigsq * (1 + np.sqrt(5*sqdist) + 5*sqdist/3.) * np.exp(-np.sqrt(5.*sqdist))
 
     # def kernel(self, a, b):
-    #     """ GP rational quadratic kernel """
+    #     """ RQ rational quadratic kernel """
     #     sigsq = 1
     #     # siglensq = 1
     #     siglensq = self.other[1]
@@ -98,7 +98,7 @@ class InformedModel:
         return f 
 
 
-    def updateModel(self, info_list):
+    def updateModel(self, info_list, save_progress=True):
         """
         Select successful trials to estimate the GPR model mean and variance,
         and the failed ones to update the penalisation IDF.
@@ -126,7 +126,8 @@ class InformedModel:
             # all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
             # self.model_uncertainty = self.updateGPR(all_trials[:,0], all_trials[:,1], -1)
             # SAVE CURRENT MODEL
-            self.saveModel()
+            if save_progress:
+                self.saveModel()
 
 
     def updateGPR(self, Xtrain, Ytrain, label_indicator):
@@ -286,7 +287,7 @@ class InformedModel:
         print("Loading: ",self.trial_dirname)
         with open(self.trial_dirname + "/data_training_model.dat", "rb") as m:
             tmp = pickle.load(m)
-            if len(tmp)>6:
+            if len(tmp)<6:
                 self.model_list = tmp
                 (self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list) = self.model_list[-1]
             else:

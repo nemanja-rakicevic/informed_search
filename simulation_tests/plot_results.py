@@ -10,15 +10,16 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 
-# dirname = './DATA/SIMULATION/fullrange_validation/'
+# dirname = './DATA/SIMULATION/fullrange_useful/'
 
 dirname = './DATA/SIMULATION/'
 
 # Load all tests statistics
 # filt = 'TRIAL__informed_res150_cov20_'
-filt = ['informed', 'RQ','cov2']
-# filt = ['random', 'cov5', 'MT']
-filename = './DATA/SIMULATION/PLOTS_{}_kernel{}_{}.svg'.format(filt[0], filt[1], filt[2])
+# filt = ['informed', 'RQ','cov']
+filt = ['_', 'sl', 'cov']
+
+filename = dirname+'PLOTS_{}_kernel{}_{}.svg'.format(filt[0], filt[1], filt[2])
 
 list_models = sorted([d for d in os.listdir(dirname) if all(s in d for s in filt) and d[-3:]!='svg'])
 # list_models = sorted([d for d in os.listdir(dirname) if d[0:len(filt)]==filt])
@@ -66,7 +67,7 @@ f.set_size_inches(f.get_size_inches()[0]*2.5,f.get_size_inches()[1]*2)
 for a in all_stats:
 	mean = np.array(a['mean'][0])
 	std = np.array(a['mean'][1])
-	lb = a['model'].split('_')[2]+' '+a['model'].split('_')[4]+' '+a['model'].split('_')[-1]
+	lb = a['model'].split('_')[3]+' '+a['model'].split('_')[5]+' '+a['model'].split('_')[-1]
 	axarr[0].plot(mean, label=lb)
 	axarr[0].fill_between(range(len(mean)), mean-std, mean+std, alpha=0.5)
 axarr[0].set_ylabel('Test error mean') #(Euclidean distance)
@@ -77,7 +78,7 @@ axarr[0].set_xlim(0, 300)
 for a in all_stats:
 	mean = np.array(a['std'][0])
 	std = np.array(a['std'][1])
-	lb = a['model'].split('_')[2]+' '+a['model'].split('_')[4]+' '+a['model'].split('_')[-1]
+	lb = a['model'].split('_')[3]+' '+a['model'].split('_')[5]+' '+a['model'].split('_')[-1]
 	axarr[1].plot(mean, label=lb)
 	axarr[1].fill_between(range(len(mean)), mean-std, mean+std, alpha=0.5)
 axarr[1].set_ylabel('Test error std')
@@ -87,7 +88,7 @@ axarr[1].set_xlim(0, 300)
 for a in all_stats:
 	mean = np.array(a['fails'][0])
 	std = np.array(a['fails'][1])
-	lb = a['model'].split('_')[2]+' '+a['model'].split('_')[4]+' '+a['model'].split('_')[-1]
+	lb = a['model'].split('_')[3]+' '+a['model'].split('_')[5]+' '+a['model'].split('_')[-1]
 	axarr[2].plot(mean, label=lb)
 	axarr[2].fill_between(range(len(mean)), mean-std, mean+std, alpha=0.5)
 axarr[2].set_ylabel('Number of failed test')

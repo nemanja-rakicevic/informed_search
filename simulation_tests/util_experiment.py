@@ -52,7 +52,7 @@ class SimulationExperiment:
 		contact_cnt = 0
 		obs_list = []
 		for i in range(self.__NUM_STEPS):
-			if self.animate and isinstance(test, bool):
+			if self.animate and not isinstance(test, bool):
 				self.env.render()
 			control = init_pos + theta_list[i]
 

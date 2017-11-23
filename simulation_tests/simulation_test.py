@@ -5,7 +5,7 @@ import util_experiment as uexp
 
 # INITIALISE MODEL
 print("INITIALISING MODEL\n")
-experiment = uexp.SimulationExperiment(display=True, display_steps=100)
+experiment = uexp.SimulationExperiment(agent='sim5link', resolution=7, animation_steps=100, animate=True, verbose=False)
 model      = umodel.InformedModel(experiment.parameter_list, experiment.type, test=True)
 model.loadModel()
 # RUN TESTS
