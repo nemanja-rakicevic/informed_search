@@ -49,7 +49,7 @@ class FullTest:
 		errors_mean = errors_all.mean(axis=0)
 		errors_std  = errors_all.std(axis=0)
 		# Save statistics
-		self.results_list.append([tr_num, statistics, errors_mean, errors_std, num_fails])
+		self.results_list.append([tr_num, statistics, euclid_plot, dist_plot, errors_mean, errors_std, num_fails])
 		if save_progress:
 			self.saveResults(model.trial_dirname)
 		# Plot heatmaps

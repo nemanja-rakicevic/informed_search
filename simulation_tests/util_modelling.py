@@ -61,13 +61,13 @@ class InformedModel:
 
 #### SELECT KERNEL ####
 
-    def kernel(self, a, b):
-        """ SE squared exponential kernel """
-        sigsq = 1
-        # siglensq = 0.01 # 1 0.5 0.3 0.1 
-        siglensq = self.other[1]
-        sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-        return sigsq*np.exp(-.5 *sqdist)
+    # def kernel(self, a, b):
+    #     """ SE squared exponential kernel """
+    #     sigsq = 1
+    #     # siglensq = 0.01 # 1 0.5 0.3 0.1 
+    #     siglensq = self.other[1]
+    #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+    #     return sigsq*np.exp(-.5 *sqdist)
 
     # def kernel(self, a, b):
     #     """ MT Matern 5/2 kernel: """
@@ -77,15 +77,15 @@ class InformedModel:
     #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
     #     return sigsq * (1 + np.sqrt(5*sqdist) + 5*sqdist/3.) * np.exp(-np.sqrt(5.*sqdist))
 
-    # def kernel(self, a, b):
-    #     """ RQ rational quadratic kernel """
-    #     sigsq = 1
-    #     # siglensq = 1
-    #     siglensq = self.other[1]
-    #     alpha = a.shape[1]/2. #a.shape[1]/2. #np.exp(1) #len(a)/2.
-    #     # print alpha
-    #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-    #     return sigsq * np.power(1 + 0.5*sqdist/alpha, -alpha)
+    def kernel(self, a, b):
+        """ RQ rational quadratic kernel """
+        sigsq = 1
+        # siglensq = 1
+        siglensq = self.other[1]
+        alpha = a.shape[1]/2. #a.shape[1]/2. #np.exp(1) #len(a)/2.
+        # print alpha
+        sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+        return sigsq * np.power(1 + 0.5*sqdist/alpha, -alpha)
 
 ######################## 
 
@@ -249,11 +249,18 @@ class InformedModel:
 
     def generateRandomSample(self):
         """
-        Generate the random movement parameter vector to evaluate next.
+        Generate the random movement parameter vector to evaluate next. (with replacement)
         """
         param_sizes = [range(i) for i in self.param_dims]
         temp = np.array([xs for xs in itertools.product(*param_sizes)])
-        selected_coord = temp[np.random.choice(len(temp)),:]
+        
+        temp_good = np.array([])
+        while len(temp_good)==0:
+            temp_sel = np.array([temp[np.random.choice(len(temp)),:]])
+            temp_good = set(map(tuple, temp_sel)) - set(map(tuple,self.coord_explored))
+            temp_good = np.array(list(temp_good))
+
+        selected_coord = temp_good[0]
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
         self.coord_explored.append(selected_coord)
         # print("---random sampling provided:", len(temp),"of which", len(temp_good))#,"unexplored (among the top",cnt-1,")" 
@@ -447,7 +454,7 @@ class InformedModel:
                     ax1.scatter(x=tr[1], y=tr[0], c='r', s=15)
                 else:
                     ax1.scatter(x=tr[1], y=tr[0], c='c', s=15)
-            cbar = plt.colorbar(sidf, shrink=0.5, aspect=20, pad = 0.15, orientation='horizontal', ticks=[0.0, 0.5, 1.0])
+            cbar = plt.colorbar(sidf, shrink=0.5, aspect=20, pad = 0.17, orientation='horizontal', ticks=[0.0, 0.5, 1.0])
             sidf.set_clim(-0.001, 1.001)
 
             # PENALISATION IDF
@@ -505,6 +512,182 @@ class InformedModel:
                 plt.savefig(self.trial_dirname+"/img_training_trial_{}.svg".format(trial_num), format="svg")
             else:
                 plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}.svg".format(num=trial_num), format="svg")
+            
+            if self.show_plots:
+                plt.show()
+            else:
+                plt.cla()
+
+
+
+    def plotModelFig(self, trial_num, dimensions, param_names, show_points=False):
+        # if trial_num%1==0 or trial_info.fail_status==0:
+        # print "<- CHECK PLOTS"     
+
+        mpl.rcParams.update({'font.size': 14})
+        
+        if len(self.mu_alpha):
+            dim1 = self.param_list[dimensions[0]]
+            dim2 = self.param_list[dimensions[1]]
+            X, Y = np.meshgrid(dim2, dim1)
+            # Values to plot
+            if len(self.param_dims)>2:
+                if self.param_dims[0]>1:
+                    model_alpha  = self.mu_alpha[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                    model_L      = self.mu_L[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                    model_PIDF   = self.penal_IDF[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                    model_var    = self.model_uncertainty[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                    model_select = self.selection_IDF[:,:,3,3,4].reshape(len(dim1),len(dim2))
+
+                    # model_alpha  = self.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    # model_L      = self.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    # model_PIDF   = self.penal_IDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    # model_var    = self.model_uncertainty[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    # model_select = self.selection_IDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                else:
+                    model_alpha  = self.mu_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
+                    model_L      = self.mu_L[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
+                    model_PIDF   = self.penal_IDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
+                    model_var    = self.model_uncertainty[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
+                    model_select = self.selection_IDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
+            else:
+                model_alpha  = self.mu_alpha
+                model_L      = self.mu_L
+                model_PIDF   = self.penal_IDF
+                model_var    = self.model_uncertainty
+                model_select = self.selection_IDF
+            # Set ticks
+            xticks = np.linspace(min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 5).round(1)
+            yticks = np.linspace(min(dim1[0], dim1[-1]), max(dim1[0], dim1[-1]), 4).round(1)
+            # xticks1 = np.linspace(min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 5).round(1)
+            yticks1 = np.linspace(min(dim1[0], dim1[-1]), max(dim1[0], dim1[-1]), 5).round(1)
+            #
+            zticks_alpha = np.linspace(self.mu_alpha.min(), self.mu_alpha.max(), 4).round()
+            zticks_L = np.linspace(self.mu_L.min(), self.mu_L.max(), 4).round()
+            zticks_unc = np.linspace(self.model_uncertainty.min(), self.model_uncertainty.max(), 4).round(2)
+            # zticks_PIDF = np.linspace(self.penal_IDF.min(), self.penal_IDF.max(), 7).round(1)
+            
+
+            # ANGLE MODEL
+            fig = plt.figure("ANGLE MODEL"+str(trial_num), figsize=None)
+            fig.set_size_inches(fig.get_size_inches()[0],fig.get_size_inches()[1])
+            ax = fig.add_subplot(111, projection='3d')
+            ax.set_xlabel(param_names[0], labelpad=10)
+            ax.set_ylabel(param_names[1], labelpad=10)
+            ax.set_zlabel('[degrees]', rotation='vertical', labelpad=10)
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            ax.set_zticks(zticks_alpha)
+            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            ax.tick_params(axis='x', direction='out', pad=-5)
+            ax.tick_params(axis='y', direction='out', pad=-3)
+            ax.tick_params(axis='z', direction='out', pad=5)
+            ax.plot_surface(X, Y, model_alpha, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}_angle.svg".format(num=trial_num), format="svg")
+            
+            # DISTANCE MODEL
+            fig = plt.figure("DISTANCE MODEL"+str(trial_num), figsize=None)
+            fig.set_size_inches(fig.get_size_inches()[0],fig.get_size_inches()[1])
+            ax = fig.add_subplot(111, projection='3d')
+            ax.set_xlabel(param_names[0], labelpad=10)
+            ax.set_ylabel(param_names[1], labelpad=10)
+            ax.set_zlabel('[cm]', rotation='vertical', labelpad=10)
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            ax.set_zticks(zticks_L)
+            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            ax.tick_params(axis='x', direction='out', pad=-5)
+            ax.tick_params(axis='y', direction='out', pad=-3)
+            ax.tick_params(axis='z', direction='out', pad=5)
+            ax.plot_surface(X, Y, model_L, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}_dist.svg".format(num=trial_num), format="svg")
+            
+            # SELECTION FUNCTION - TOP VIEW
+            fig = plt.figure("SELECTION FCN"+str(trial_num), figsize=None)
+            fig.set_size_inches(fig.get_size_inches()[0],fig.get_size_inches()[1])
+            ax1 = fig.add_subplot(111)
+            ax1.set_xlabel(param_names[0])
+            ax1.set_ylabel(param_names[1])
+            # ax1.set_xlim(len(dim1), 0)
+            ax1.set_xlim(0, len(dim1))
+            ax1.set_ylim(0, len(dim2))
+            # ax1.set_xticks(np.linspace(len(dim1)-1, -1, 5))
+            ax1.set_xticks(np.linspace(-1, len(dim1), 5))
+            ax1.set_yticks(np.linspace(-1, len(dim2), 5))
+            ax1.set_xticklabels([str(x) for x in xticks]), 
+            ax1.set_yticklabels([str(y) for y in yticks1])
+            ax1.yaxis.tick_right()
+            ax1.yaxis.set_label_position("right")
+            sidf = ax1.imshow(model_select, cmap=cm.summer, origin='lower')
+            for spine in ax1.spines.values():
+                spine.set_visible(False)
+            # add also the trial points
+            for tr in self.coord_explored:
+                if list(tr) in [list(x) for x in self.failed_coords]:
+                    ax1.scatter(x=tr[1], y=tr[0], c='r', s=15)
+                else:
+                    ax1.scatter(x=tr[1], y=tr[0], c='c', s=15)
+            cbar = plt.colorbar(sidf, shrink=0.5, aspect=20, pad = 0.17, orientation='horizontal', ticks=[0.0, 0.5, 1.0])
+            sidf.set_clim(-0.001, 1.001)
+            plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}_select.svg".format(num=trial_num), format="svg")
+            
+            # # PENALISATION IDF
+            # ax = plt.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
+            # ax.set_title('Penalisation function: '+str(len(self.failed_coords))+' points')
+            # ax.set_ylabel(param_names[1], labelpad=5)
+            # ax.set_xlabel(param_names[0], labelpad=5)
+            # ax.set_xticks(xticks)
+            # ax.set_yticks(yticks)
+            # ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            # ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            # ax.tick_params(axis='x', direction='out', pad=-5)
+            # ax.tick_params(axis='y', direction='out', pad=-3)
+            # ax.tick_params(axis='z', direction='out', pad=2)
+            # # ax.set_zticks(zticks_PIDF)
+            # ax.plot_surface(X, Y, (1-model_PIDF), rstride=1, cstride=1, cmap=cm.copper, linewidth=0, antialiased=False)
+            # # UNCERTAINTY IDF
+            # ax = plt.subplot2grid((2,6),(1, 2), colspan=2, projection='3d')
+            # ax.set_title('Model uncertainty: '+str(self.returnUncertainty()))
+            # ax.set_ylabel(param_names[1], labelpad=5)
+            # ax.set_xlabel(param_names[0], labelpad=5)
+            # ax.set_xticks(xticks)
+            # ax.set_yticks(yticks)
+            # ax.set_zticks(zticks_unc)
+            # ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            # ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            # ax.tick_params(axis='x', direction='out', pad=-5)
+            # ax.tick_params(axis='y', direction='out', pad=-3)
+            # ax.tick_params(axis='z', direction='out', pad=5)
+            # ax.plot_surface(X, Y, model_var, rstride=1, cstride=1, cmap=cm.winter, linewidth=0, antialiased=False)
+            # # SELECTION FUNCTION IDF
+            # ax = plt.subplot2grid((2,6),(1, 4), colspan=2, projection='3d')
+            # ax.set_title('Selection function')
+            # ax.set_ylabel(param_names[1], labelpad=5)
+            # ax.set_xlabel(param_names[0], labelpad=5)
+            # ax.set_xticks(xticks)
+            # ax.set_yticks(yticks)
+            # ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            # ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            # ax.tick_params(axis='x', direction='out', pad=-5)
+            # ax.tick_params(axis='y', direction='out', pad=-3)
+            # ax.tick_params(axis='z', direction='out', pad=2)
+            # surf = ax.plot_surface(X, Y, model_select, rstride=1, cstride=1, cmap=cm.summer, linewidth=0, antialiased=False)
+            # # add also the trial points
+            # if show_points:
+            #     for tr in self.coord_explored:
+            #         if list(tr) in [list(x) for x in self.failed_coords]:
+            #             ax.plot([dim2[tr[1]], dim2[tr[1]]], [dim1[tr[0]], dim1[tr[0]]], [model_select.min(), model_select.max()], linewidth=1, color='k', alpha=0.7)
+            #         else:
+            #             ax.plot([dim2[tr[1]], dim2[tr[1]]], [dim1[tr[0]], dim1[tr[0]]], [model_select.min(), model_select.max()], linewidth=1, color='m', alpha=0.7)
+            
+            # SAVEFIG
+            # if isinstance(trial_num, str):
+            #     fig.suptitle("Models and IDFs (num_iter: {}, resolution: {})".format(trial_num, len(dim1)), fontsize=16)
+            #     plt.savefig(self.trial_dirname+"/img_training_trial_{}.svg".format(trial_num), format="svg")
+            # else:
+            #     plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}.svg".format(num=trial_num), format="svg")
             
             if self.show_plots:
                 plt.show()

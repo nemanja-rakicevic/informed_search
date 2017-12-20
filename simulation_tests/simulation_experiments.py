@@ -15,11 +15,11 @@ parser.add_argument('-m',   '--model',
 parser.add_argument('-e',   '--env',      
                     dest='env_type', 
                     help="Select which environment to use 'sim2link','sim5link' or 'robot'",
-                    default='sim5link')
+                    default='sim2link')
 parser.add_argument('-r',   '--resolution', 
                     dest='res',        
                     help="Select discretisation resolution",
-                    default=7)
+                    default=150)
 parser.add_argument('-v',   '--verbose',    
                     dest='verb',       
                     help="Define verbose level\n"
@@ -46,7 +46,7 @@ parser.add_argument('-o',   '--other',
                     type=float,      
                     help="Additional model specs list\n"
                          "[COV, siglensq, seed]\n",
-                    default=[5, 0.01, 1])
+                    default=[0.1, 0.01, 1])
 args = parser.parse_args()
 
 print(args)
@@ -54,7 +54,7 @@ folder_name = '_'.join([args.env_type,
                         args.model_type, 
                         'res'+str(args.res), 
                         'cov'+str(int(args.other[0])), 
-                        'kernelSEsl'+str(args.other[1])+'-seed'+str(int(args.other[2]))])
+                        'kernelRQsl'+str(args.other[1])+'-seed'+str(int(args.other[2]))])
 
 # INITIALISE MODEL
 print("INITIALISING MODEL: {}\n".format(folder_name))
@@ -81,13 +81,13 @@ for t in range(args.num_trial):
     # Save experiment data
     experiment.saveData(model.trial_dirname)
     # Plot model progress
-    if (t+1)%10 == 0:
-        model.plotModel(t+1, [0,1], ['joint_1', 'joint_0'])
+    if (t+1)%1 == 0:
+        model.plotModelFig(t+1, [0,1], ['joint_1', 'joint_0'])
 
     ##### TESTING STEP #####
     if (t+1) > 1:
         print("\n\nTESTING {} cases...".format(len(testing.test_cases)))
-        testing.runFullTests(t+1, experiment, model, save_progress=(not (t+1)%100), heatmap=(not (t+1)%10))
+        testing.runFullTests(t+1, experiment, model, save_progress=(not (t+1)%10), heatmap=(not (t+1)%1))
 
 # FINAL MODEL PLOT
 # model.plotModel('final_{}_top'.format(t+1), [0,1], ['joint_0', 'joint_1'], show=False, top_view=True)
