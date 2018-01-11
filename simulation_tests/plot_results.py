@@ -10,22 +10,24 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.ticker import FormatStrFormatter
 
+"""
+Check all lines to (un)comment 2-link or 5-link figure printing
+"""
 
-# dirname = './DATA/SIMULATION/'
-
-dirname = './DATA/SIMULATION/5-LINK/img_paper/'
-# dirname = './DATA/SIMULATION/5-LINK/selected_informed/'
-
-# dirname = './DATA/SIMULATION/img_paper_plot/low_error/'
+## 5-link
+# dirname = './DATA/SIMULATION/5-LINK/img_paper/'
+## 2-link
+dirname = './DATA/SIMULATION/2-LINK/img_paper/low_fails/'
+# dirname = './DATA/SIMULATION/2-LINK/img_paper/low_error/'
 
 # Load all tests statistics
 # filt = 'TRIAL__informed_res150_cov20_'
 # filt = ['informed', 'RQ','cov']
 filt = ['_', 'kernel', 'cov']
 CUTOFF = 300
-FNAME = 24
+FNAME = -6   # -6   24
 offset = 0
-filename = dirname+'PLOTS_{}_kernel{}_{}_ttt.svg'.format(filt[0], filt[1], filt[2])
+filename = dirname+'PLOTS_{}_kernel{}_{}_x.svg'.format(filt[0], filt[1], filt[2])
 
 list_models = sorted([d for d in os.listdir(dirname) if all(s in d for s in filt) and d[-3:]!='svg'])
 # list_models = sorted([d for d in os.listdir(dirname) if d[0:len(filt)]==filt])
@@ -66,16 +68,22 @@ for idx, t in enumerate(list_unique):
 									np.array(seeds_fail_mean).std(axis=0)])
 						})
 
+## 5-link colors
+# clrand = ['red','maroon','deeppink']
+# clinfo = ['blue', 'olive', 'indigo', 'teal', 'purple']
 
-clrand = ['red','maroon','deeppink']
-clinfo = ['blue', 'olive', 'indigo', 'teal', 'purple']
+# 2-link colors
+clrand = ['green','red','deeppink']
+clinfo = ['dodgerblue', 'darkorange', 'indigo', 'teal', 'purple']
 
 # plot all with std
-mpl.rcParams.update({'font.size': 12})
+mpl.rcParams.update({'font.size': 18})
 f, axarr = plt.subplots(3, sharex=True)
 # plt.grid(which='major', axis='both')
-# f.set_size_inches(f.get_size_inches()[0]*1.5,f.get_size_inches()[1]*3)
-f.set_size_inches(f.get_size_inches()[0]*3,f.get_size_inches()[1]*2)
+## 2-link
+f.set_size_inches(f.get_size_inches()[0]*1.5,f.get_size_inches()[1]*3)
+## 5-link
+# f.set_size_inches(f.get_size_inches()[0]*3,f.get_size_inches()[1]*2)
 
 # PLOT ERROR MEANS
 cc =[0,0]
@@ -87,7 +95,8 @@ for i,a in enumerate(all_stats):
 		axarr[0].plot(mean, label=lb)
 		axarr[0].fill_between(range(len(mean)), mean-std, mean+std, alpha=0.5)#, label=lb)
 	else:
-		lb = a['model'].split('_')[3]+' '+a['model'].split('_')[5]+' '+a['model'].split('_')[6]+' '+a['model'].split('_')[-1]
+		lb = a['model'].split('_')[3]+'; cov='+str(int(a['model'].split('_')[5][-2:]))+'; kernel='+a['model'].split('_')[6][-2:]+'; $\sigma_l^2$='+a['model'].split('_')[-1][-5:]
+		# lb = a['model'].split('_')[3]+' '+a['model'].split('_')[5]+' '+a['model'].split('_')[6]+' '+a['model'].split('_')[-1]
 		if a['model'].split('_')[3] == 'informed':
 			c = clinfo[cc[0]]
 			cc[0]+=1
@@ -96,7 +105,7 @@ for i,a in enumerate(all_stats):
 			cc[1]+=1
 		axarr[0].plot(mean, label=lb, color=c)
 		# axarr[0].fill_between(range(len(mean)), mean-std, mean+std, alpha=0.5)
-axarr[0].set_ylabel('Test error mean') #(Euclidean distance)
+axarr[0].set_ylabel('Test error mean', labelpad=14) #(Euclidean distance)
 axarr[0].grid(color='gray', linestyle=':', linewidth=0.8)
 axarr[0].set_xlim(0, CUTOFF)
 axarr[0].set_ylim(0, 21)
@@ -111,7 +120,8 @@ for i,a in enumerate(all_stats):
 		axarr[1].plot(mean, label=lb)
 		axarr[1].fill_between(range(len(mean)), mean-std, mean+std, alpha=0.5)#, label=lb)
 	else:
-		lb = a['model'].split('_')[3]+' '+a['model'].split('_')[5]+' '+a['model'].split('_')[6]+' '+a['model'].split('_')[-1]
+		lb = a['model'].split('_')[3]+'; cov='+str(int(a['model'].split('_')[5][-2:]))+'; kernel='+a['model'].split('_')[6][-2:]+'; $\sigma_l^2$='+a['model'].split('_')[-1][-5:]
+		# lb = a['model'].split('_')[3]+' '+a['model'].split('_')[5]+' '+a['model'].split('_')[6]+' '+a['model'].split('_')[-1]
 		if a['model'].split('_')[3] == 'informed':
 			c = clinfo[cc[0]]
 			cc[0]+=1
@@ -120,10 +130,10 @@ for i,a in enumerate(all_stats):
 			cc[1]+=1
 		axarr[1].plot(mean, label=lb, color=c)
 		# axarr[0].fill_between(range(len(mean)), mean-std, mean+std, alpha=0.5)
-axarr[1].set_ylabel('Test error std')
+axarr[1].set_ylabel('Test error std', labelpad=14)
 axarr[1].grid(color='gray', linestyle=':', linewidth=0.8)
 axarr[1].set_xlim(0, CUTOFF)
-axarr[1].set_ylim(0, 10.5)
+axarr[1].set_ylim(0, 16)
 axarr[1].yaxis.set_major_formatter(FormatStrFormatter('%i'))
 
 # PLOT FAILED TRIAL COUNT
@@ -136,7 +146,8 @@ for i,a in enumerate(all_stats):
 		axarr[2].plot(mean, label=lb)
 		axarr[2].fill_between(range(len(mean)), mean-std, mean+std, alpha=0.5)#, label=lb)
 	else:
-		lb = a['model'].split('_')[3]+' '+a['model'].split('_')[5]+' '+a['model'].split('_')[6]+' '+a['model'].split('_')[-1]
+		lb = a['model'].split('_')[3]+'; cov='+str(int(a['model'].split('_')[5][-2:]))+'; kernel='+a['model'].split('_')[6][-2:]+'; $\sigma_l^2$='+a['model'].split('_')[-1][-5:]
+		# lb = a['model'].split('_')[3]+' '+a['model'].split('_')[5]+' '+a['model'].split('_')[6]+' '+a['model'].split('_')[-1]
 		if a['model'].split('_')[3] == 'informed':
 			c = clinfo[cc[0]]
 			cc[0]+=1
@@ -148,13 +159,18 @@ for i,a in enumerate(all_stats):
 axarr[2].set_ylabel('Number of failed tests')	
 axarr[2].grid(color='gray', linestyle=':', linewidth=0.8)
 axarr[2].set_xlim(0, CUTOFF)
-axarr[2].set_ylim(-1, 150)
+axarr[2].set_ylim(-1, 50)
+axarr[2].set_xlabel('Trial number')	
 	
 
 handles, labels = axarr[2].get_legend_handles_labels()
 labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0], reverse=True))
-# axarr[2].legend(loc='lower left', bbox_to_anchor=(0.405,0.32))  #font16
-axarr[2].legend(handles, labels,loc='lower left', bbox_to_anchor=(0.8,0.54))		# font14 bbox_to_anchor=(0.675,0.165)
+# # 2-link
+# axarr[2].legend(loc='lower left', bbox_to_anchor=(0.45,0.339))  #font14
+# axarr[2].legend(loc='lower left', bbox_to_anchor=(0.388,0.4))  #font16
+axarr[2].legend(loc='lower left', bbox_to_anchor=(0.29,0.349))  #font18
+# # 5-link
+# axarr[2].legend(handles, labels,loc='lower left', bbox_to_anchor=(0.7,0.54))		# font14 bbox_to_anchor=(0.675,0.165)
 
 
 # plt.tight_layout(pad=0.1, w_pad=0.90, h_pad=0.90)
