@@ -116,9 +116,9 @@ class PDFoperations:
         return sigsq * np.power(1 + 0.5*sqdist/alpha, -alpha)
 
 
-    # Make a multinomial gaussian 
+    # Make a multivariate gaussian 
     def generatePDF_matrix(self, x_sample, mu, cov):
-        tmp = np.dot((x_sample - mu), cov)
+        tmp = np.dot((x_sample - mu), np.linalg.inv(cov))
         tmp_T = (x_sample - mu).T
         f = (1/np.sqrt(2*np.pi*np.linalg.det(cov)))*np.exp(-0.5*inner1d(tmp,tmp_T.T))
         return f 

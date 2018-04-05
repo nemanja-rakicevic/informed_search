@@ -91,11 +91,24 @@ class InformedModel:
 
 
     def generatePDF_matrix(self, x_sample, mu, cov):
-        """ Make a multinomial gaussian over the parameter space """
-        tmp = np.dot((x_sample - mu), cov)
+        """ Make a multivariate gaussian over the parameter space """
+        tmp = np.dot((x_sample - mu), np.linalg.inv(cov))
         tmp_T = (x_sample - mu).T
         f = (1/np.sqrt(2*np.pi*np.linalg.det(cov)))*np.exp(-0.5*inner1d(tmp,tmp_T.T))
         return f 
+
+    # # Make a multivariate gaussian 
+    # def mvGauss(x_sample, mu, cov):
+    #     sigma_det = np.linalg.det(cov)
+    #     sigma_inv = np.linalg.inv(cov)
+    #     diff = np.subtract(x_sample, mu)
+    #     tmp = np.dot(diff, sigma_inv)
+    #     # inner1d returns the diagonal of the outer product
+    # #     tmp_T = diff.T
+    # #     f = (1/np.sqrt((2*np.pi)**len(mu) * sigma_det)) * np.exp(-0.5 * np.dot(tmp, tmp_T))
+    # #     f = np.diag(f)
+    #     f = (1/np.sqrt((2*np.pi)**len(mu) * sigma_det)) * np.exp(-0.5 * inner1d(tmp, diff))
+    #     return f
 
 
     def updateModel(self, info_list, save_progress=True):
