@@ -3,18 +3,70 @@ import numpy as np
 import numpy as np
 import itertools
 import pickle
+import multiprocessing as mp
 
 class FullTest:
-	def __init__(self, show_plots=False, verbose=False):
+	def __init__(self, experiment, model, show_plots=False, verbose=False):
 		self.show_plots = show_plots
 		self.verbose = verbose
 		self.results_list = []
 		self.test_angles = np.arange(-65, 31, 5)
 		self.test_dist   = np.arange(5, 36, 5)
 		self.test_cases  = np.array([xs for xs in itertools.product(self.test_angles, self.test_dist)])
+		self.num_cpu = 4#mp.cpu_count() - 1
+		self.model = model
+		self.experiment = experiment
+
+# Try to make parallel
+	# def doTest(self, test_tuple):
+	# 	angle_s, dist_s = test_tuple
+	# 	trial_coords, trial_params = self.model.testModel(float(angle_s), float(dist_s), verbose=self.verbose)
+	# 	trial_info = self.experiment.executeTrial(0, trial_coords, trial_params, test=[float(angle_s), float(dist_s)])
+	# 	return trial_info
+
+	# def runFullTests(self, tr_num, save_progress=True, heatmap=True):
+	# 	statistics = []
+	# 	dist_plot = np.zeros((len(self.test_dist), len(self.test_angles)))
+	# 	euclid_plot = np.zeros((len(self.test_dist), len(self.test_angles)))
+
+	# 	with mp.Pool(processes=self.num_cpu) as pool:
+	# 		res_pool = pool.map(self.doTest, self.test_cases)
+
+	# 	for t, tst in enumerate(res_pool):
+	# 		# Compile test statistics
+	# 		dist_error = np.sqrt(np.sum((tst['ball_polar'] - self.test_cases[t])**2))
+	# 		euclid_error = np.sqrt(np.sum(tst['observations'][-1][-2:]**2))
+
+	# 		statistics.append({ 'trial_num':    t+1,
+	# 							'target_polar': self.test_cases[t],
+	# 							'ball_polar':   tst['ball_polar'],
+	# 							'fail':         tst['fail'],
+	# 							'dist_error':   dist_error,
+	# 							'euclid_error': euclid_error })
+	# 		if tst['fail']>0:
+	# 			dist_plot[len(self.test_dist) - np.argwhere(self.test_dist==int(dist_s))[0,0] - 1, len(self.test_angles) - np.argwhere(self.test_angles==int(angle_s))[0,0] - 1] = -1
+	# 			euclid_plot[len(self.test_dist) - np.argwhere(self.test_dist==int(dist_s))[0,0] - 1, len(self.test_angles) - np.argwhere(self.test_angles==int(angle_s))[0,0] - 1] = -1
+	# 		else:
+	# 			dist_plot[len(self.test_dist) - np.argwhere(self.test_dist==int(dist_s))[0,0] - 1, len(self.test_angles) - np.argwhere(self.test_angles==int(angle_s))[0,0] - 1] = dist_error
+	# 			euclid_plot[len(self.test_dist) - np.argwhere(self.test_dist==int(dist_s))[0,0] - 1, len(self.test_angles) - np.argwhere(self.test_angles==int(angle_s))[0,0] - 1] = euclid_error
+
+	# 	# Calculate error
+	# 	num_fails  = len([1 for x in statistics if x['fail']>0])
+	# 	errors_all = np.array([ [x['euclid_error'], x['dist_error']] for x in statistics])
+	# 	errors_mean = errors_all.mean(axis=0)
+	# 	errors_std  = errors_all.std(axis=0)
+	# 	# Save statistics
+	# 	self.results_list.append([tr_num, statistics, euclid_plot, dist_plot, errors_mean, errors_std, num_fails])
+	# 	if save_progress:
+	# 		self.saveResults(model.trial_dirname)
+	# 	# Plot heatmaps
+	# 	heatmap = False
+	# 	if heatmap:
+	# 		self.plotResults(model.trial_dirname, tr_num, euclid_plot, dist_plot, errors_mean)
 
 
-	def runFullTests(self, tr_num, experiment, model, save_progress=True, heatmap=True):
+
+	def runFullTests(self, tr_num, save_progress=True, heatmap=True):
 		statistics = []
 		dist_plot = np.zeros((len(self.test_dist), len(self.test_angles)))
 		euclid_plot = np.zeros((len(self.test_dist), len(self.test_angles)))
@@ -24,8 +76,8 @@ class FullTest:
 			if self.verbose:
 				print("\nTRIAL {}\nTEST # {} > angle, distance: ({},{})".format(tr_num, t+1, angle_s, dist_s))
 			# Generate movement parameter vector
-			trial_coords, trial_params = model.testModel(float(angle_s), float(dist_s), verbose=self.verbose)
-			trial_info = experiment.executeTrial(0, trial_coords, trial_params, test=[float(angle_s), float(dist_s)])
+			trial_coords, trial_params = self.model.testModel(float(angle_s), float(dist_s), verbose=self.verbose)
+			trial_info = self.experiment.executeTrial(0, trial_coords, trial_params, test=[float(angle_s), float(dist_s)])
 			# Compile test statistics
 			dist_error = np.sqrt(np.sum((trial_info['ball_polar'] - self.test_cases[t])**2))
 			euclid_error = np.sqrt(np.sum(trial_info['observations'][-1][-2:]**2))
@@ -51,10 +103,11 @@ class FullTest:
 		# Save statistics
 		self.results_list.append([tr_num, statistics, euclid_plot, dist_plot, errors_mean, errors_std, num_fails])
 		if save_progress:
-			self.saveResults(model.trial_dirname)
+			self.saveResults(self.model.trial_dirname)
 		# Plot heatmaps
+		# heatmap = False
 		if heatmap:
-			self.plotResults(model.trial_dirname, tr_num, euclid_plot, dist_plot, errors_mean)
+			self.plotResults(self.model.trial_dirname, tr_num, euclid_plot, dist_plot, errors_mean)
 
 
 	def saveResults(self, savepath):

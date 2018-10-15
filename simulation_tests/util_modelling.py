@@ -1,4 +1,8 @@
 
+### TODO:   rewrite the class, 
+#           - make different sample generations approaches as separate classes
+#           implement logigng with wrappers?
+
 import os
 import time
 from numpy.core.umath_tests import inner1d
@@ -14,7 +18,10 @@ import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
+from scipy.stats import norm
 
+# from sklearn.gaussian_process import GaussianProcessClassifier
+# from sklearn.gaussian_process.kernels import RBF
 # COVARIANCE
 # COV = 5
 
@@ -52,6 +59,14 @@ class InformedModel:
             self.var_L = np.ones(tuple(self.param_dims))
             self.model_uncertainty = np.ones(tuple(self.param_dims))
             ###
+            # self.gp_class = GaussianProcessClassifier(kernel=1.0 * RBF(length_scale=1.0))
+            self.mu_pidf = 0.5*np.ones(tuple(self.param_dims))
+            self.var_pidf = np.ones(tuple(self.param_dims))
+            self.current_uncertainty = self.returnUncertainty()
+            self.delta_uncertainty = []
+            self.mu_uncert = 0*np.ones(tuple(self.param_dims))
+            self.var_uncert = np.ones(tuple(self.param_dims))
+            ###
             if folder_name:
                 self.trial_dirname = './DATA/'+self.exp_type+'/TRIAL__'+folder_name
             else:
@@ -61,13 +76,13 @@ class InformedModel:
 
 #### SELECT KERNEL ####
 
-    # def kernel(self, a, b):
-    #     """ SE squared exponential kernel """
-    #     sigsq = 1
-    #     # siglensq = 0.01 # 1 0.5 0.3 0.1 
-    #     siglensq = self.other[1]
-    #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-    #     return sigsq*np.exp(-.5 *sqdist)
+    def kernel(self, a, b):
+        """ SE squared exponential kernel """
+        sigsq = 1
+        # siglensq = 0.01 # 1 0.5 0.3 0.1 
+        siglensq = self.other[1]
+        sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+        return sigsq*np.exp(-.5 *sqdist)
 
     # def kernel(self, a, b):
     #     """ MT Matern 5/2 kernel: """
@@ -77,15 +92,15 @@ class InformedModel:
     #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
     #     return sigsq * (1 + np.sqrt(5*sqdist) + 5*sqdist/3.) * np.exp(-np.sqrt(5.*sqdist))
 
-    def kernel(self, a, b):
-        """ RQ rational quadratic kernel """
-        sigsq = 1
-        # siglensq = 1
-        siglensq = self.other[1]
-        alpha = a.shape[1]/2. #a.shape[1]/2. #np.exp(1) #len(a)/2.
-        # print alpha
-        sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-        return sigsq * np.power(1 + 0.5*sqdist/alpha, -alpha)
+    # def kernel(self, a, b):
+    #     """ RQ rational quadratic kernel """
+    #     sigsq = 1
+    #     # siglensq = 1
+    #     siglensq = self.other[1]
+    #     alpha = a.shape[1]/2. #a.shape[1]/2. #np.exp(1) #len(a)/2.
+    #     # print alpha
+    #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+    #     return sigsq * np.power(1 + 0.5*sqdist/alpha, -alpha)
 
 ######################## 
 
@@ -109,6 +124,100 @@ class InformedModel:
     # #     f = np.diag(f)
     #     f = (1/np.sqrt((2*np.pi)**len(mu) * sigma_det)) * np.exp(-0.5 * inner1d(tmp, diff))
     #     return f
+
+    def updateModel_reviewer(self, info_list, save_progress=True):
+        """
+        Select successful trials to estimate the GPR model mean and variance,
+        and the failed ones to update the penalisation IDF.
+        """
+        if len(info_list):
+            # Successful trial: Update task models
+            if info_list[-1]['fail']==0:
+                # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail']==0])
+                # good_params = good_trials[:,0]
+                # good_fevals = good_trials[:,1]
+                good_params = np.array([tr['parameters'] for tr in info_list if tr['fail']==0])
+                good_fevals = np.array([tr['ball_polar'] for tr in info_list if tr['fail']==0])
+                # Estimate the Angle and Distance GPR models, as well as PIDF
+                self.mu_alpha, self.var_alpha = self.updateGPR(good_params, good_fevals, 0)
+                self.mu_L,     self.var_L     = self.updateGPR(good_params, good_fevals, 1)
+                # self.updatePIDF(info_list[-1]['parameters'], failed=-1)
+            # Failed trial: Update PIDF
+            # elif info_list[-1]['fail']>0:
+            #     self.failed_coords = [tr['coordinates'] for tr in info_list if tr['fail']>0]
+                # self.updatePIDF(info_list[-1]['parameters'], failed=1)
+
+            # All trials: Update UIDF
+            all_trials = np.array([tr['parameters'] for tr in info_list])
+            self.model_uncertainty = self.updateGPR(all_trials, None, -1)
+            # GPC for fail/success 
+            all_nonfails = np.array([ 1 if tr['fail']>0 else 0 for tr in info_list])
+            self.mu_pidf,     self.var_pidf     = self.updateGPR_reviewer(all_trials, all_nonfails)
+
+            temp = self.returnUncertainty()
+            self.delta_uncertainty.append(self.current_uncertainty - temp)
+            self.current_uncertainty = temp
+            assert len(self.delta_uncertainty)==len(info_list)
+            self.mu_uncert,     self.var_uncert     = self.updateGPR_reviewer(all_trials, np.array(self.delta_uncertainty))
+
+
+            # SAVE CURRENT MODEL
+            if save_progress:
+                self.saveModel()
+
+
+    def updateGPR_reviewer(self, Xtrain, Ytrain):
+        Xtest = self.param_space
+        # Calculate kernel matrices
+        K = self.kernel(Xtrain, Xtrain)
+        L = np.linalg.cholesky(K + self.eps_var*np.eye(len(Xtrain)))
+        Ks = self.kernel(Xtrain, Xtest)
+        Lk = np.linalg.solve(L, Ks)
+        # Get posterior MU and SIGMA
+        mu_post = np.dot(Lk.T, np.linalg.solve(L, Ytrain))
+        var_post = np.sqrt(np.diag(self.Kss) - np.sum(Lk**2, axis=0))
+        # Return the matrix version
+        return mu_post.reshape(tuple(self.param_dims)), var_post.reshape(tuple(self.param_dims))#/np.sum(var_post)
+
+
+    def generateInformedSample_reviewer(self, info_list):
+        """
+        - calculate only PI for samples classified as successful, 
+        - for those on border, use their variance
+        """
+        selection_IDF = np.zeros(tuple(self.param_dims))
+        if len(self.delta_uncertainty)>0:
+            part_PI = norm.cdf((self.mu_uncert - np.array(self.delta_uncertainty).max()) / np.sqrt(self.var_uncert))
+        else:
+            part_PI = norm.cdf((self.mu_uncert) / np.sqrt(self.var_uncert))
+
+        part_PI[part_PI<=0.5] = 0.
+        part_Vgs = self.var_pidf.copy()
+        part_Vgs[self.mu_pidf != 0.5] = 0
+
+        selection_IDF += part_PI
+        selection_IDF += part_Vgs
+        # info_pdf /= np.sum(info_pdf)
+        self.selection_IDF = selection_IDF #/(selection_IDF.max() + self.eps_var)
+        # Check if the parameters have already been used
+        temp_good = np.array([])
+        cnt=1
+        while len(temp_good)==0:
+            temp = np.argwhere(np.array([selection_IDF==c for c in nlargest(cnt*1, selection_IDF.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
+            temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_explored))
+            temp_good = np.array(list(temp_good)) 
+            cnt+=1
+            if cnt > len(self.penal_IDF.ravel()):
+                print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
+                break
+
+        selected_coord = temp_good[np.random.choice(len(temp_good)),:]
+        selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
+        self.coord_explored.append(selected_coord)
+        # print("---selection_IDF provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
+        print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
+        # return the next sample vector
+        return selected_coord, selected_params
 
 
     def updateModel(self, info_list, save_progress=True):
@@ -229,6 +338,7 @@ class InformedModel:
         print("--- penalised", len(np.argwhere(self.penal_IDF.round(2)==np.max(self.penal_IDF.round(2)))),"peaks from",len(self.failed_coords),"combinations.")
         
 
+
     def generateInformedSample(self, info_list):
         """
         Generate the movement parameter vector to evaluate next, 
@@ -237,6 +347,69 @@ class InformedModel:
         # Combine the model uncertainty with the penalisation IDF to get the most informative point  
         # model_var = (self.prior_init * self.model_uncertainty)/np.sum(self.prior_init * self.model_uncertainty)
         selection_IDF = 1.0 * self.model_uncertainty * (1 - self.penal_IDF)#/np.sum(1-self.penal_IDF)
+        # info_pdf /= np.sum(info_pdf)
+        self.selection_IDF = selection_IDF /(selection_IDF.max() + self.eps_var)
+        # Check if the parameters have already been used
+        temp_good = np.array([])
+        cnt=1
+        while len(temp_good)==0:
+            temp = np.argwhere(np.array([selection_IDF==c for c in nlargest(cnt*1, selection_IDF.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
+            temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_explored))
+            temp_good = np.array(list(temp_good)) 
+            cnt+=1
+            if cnt > len(self.penal_IDF.ravel()):
+                print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
+                break
+
+        selected_coord = temp_good[np.random.choice(len(temp_good)),:]
+        selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
+        self.coord_explored.append(selected_coord)
+        # print("---selection_IDF provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
+        print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
+        # return the next sample vector
+        return selected_coord, selected_params
+
+
+
+    def generateUIDFSample(self, info_list):
+        """
+        Generate the movement parameter vector to evaluate next, 
+        based ONLY on the GPR model uncertainty.
+        """
+        # Combine the model uncertainty with the penalisation IDF to get the most informative point  
+        # model_var = (self.prior_init * self.model_uncertainty)/np.sum(self.prior_init * self.model_uncertainty)
+        selection_IDF = 1.0 * self.model_uncertainty #* (1 - self.penal_IDF)#/np.sum(1-self.penal_IDF)
+        # info_pdf /= np.sum(info_pdf)
+        self.selection_IDF = selection_IDF /(selection_IDF.max() + self.eps_var)
+        # Check if the parameters have already been used
+        temp_good = np.array([])
+        cnt=1
+        while len(temp_good)==0:
+            temp = np.argwhere(np.array([selection_IDF==c for c in nlargest(cnt*1, selection_IDF.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
+            temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_explored))
+            temp_good = np.array(list(temp_good)) 
+            cnt+=1
+            if cnt > len(self.penal_IDF.ravel()):
+                print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
+                break
+
+        selected_coord = temp_good[np.random.choice(len(temp_good)),:]
+        selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
+        self.coord_explored.append(selected_coord)
+        # print("---selection_IDF provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
+        print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
+        # return the next sample vector
+        return selected_coord, selected_params
+
+
+    def generateEntropySample(self, info_list):
+        """
+        Generate the movement parameter vector to evaluate next, 
+        based ONLY on the posterior distributions entropy
+        """
+        # Combine the model uncertainty with the penalisation IDF to get the most informative point  
+        # model_var = (self.prior_init * self.model_uncertainty)/np.sum(self.prior_init * self.model_uncertainty)
+        selection_IDF = 0.5 * np.log(2 * np.pi * np.e * self.model_uncertainty )#* (1 - self.penal_IDF)#/np.sum(1-self.penal_IDF)
         # info_pdf /= np.sum(info_pdf)
         self.selection_IDF = selection_IDF /(selection_IDF.max() + self.eps_var)
         # Check if the parameters have already been used
@@ -280,6 +453,8 @@ class InformedModel:
         print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
         # return the next sample vector
         return selected_coord, selected_params
+
+
 
 
     def returnModel(self):
@@ -532,7 +707,6 @@ class InformedModel:
                 plt.cla()
 
 
-
     def plotModelFig(self, trial_num, dimensions, param_names, show_points=False):
         # if trial_num%1==0 or trial_info.fail_status==0:
         # print "<- CHECK PLOTS"     
@@ -706,3 +880,11 @@ class InformedModel:
                 plt.show()
             else:
                 plt.cla()
+
+
+# class RandomModel(InformedModel):
+
+# 	def gen
+
+
+################################################################

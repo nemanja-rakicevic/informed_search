@@ -8,7 +8,7 @@ class SimulationExperiment:
 	import envs
 	import gym
 
-	def __init__(self, agent, resolution, animation_steps=100, animate=False, verbose=False):
+	def __init__(self, agent, resolution, animation_steps=100, animate=False, verbose=False, display=False):
 
 		# PARTIAL RANGE
 		# __range1 = np.linspace(0,  2, RESOLUTION)
@@ -33,6 +33,7 @@ class SimulationExperiment:
 		self.__NUM_STEPS = animation_steps
 		self.animate = animate
 		self.verbose = verbose
+		self.display = display
 
 	def executeTrial(self, t, coords, params, test=False):
 
@@ -103,9 +104,10 @@ class SimulationExperiment:
 			pickle.dump(self.info_list, m, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-	##################################################################
-	#  FINISH THIS AND TEST ON ROBOT
-	##################################################################
+
+##################################################################
+#  FINISH THIS AND TEST ON ROBOT
+##################################################################
 class RobotExperiment:
 
 	# import rospy

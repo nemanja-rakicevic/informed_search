@@ -1,7 +1,7 @@
 import itertools
 import os
 
-model = ['informed', 'random']
+model = ['uidf', 'entropy']
 
 covs = [5, 10, 20]
 # sqlen = [0.001, 0.01, 0.1, 0.5]

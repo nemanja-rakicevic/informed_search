@@ -1,3 +1,9 @@
+"""
+Author: Nemanja Rakicevic
+Date  : January 2018
+
+Loads a learned model from file and performs full tests
+"""
 
 import numpy as np
 import itertools
