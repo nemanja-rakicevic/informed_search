@@ -7,6 +7,7 @@ import pickle
 import numpy as np
 
 # Load data
+from data_test_results import model_err, rand_err, human_err, pro_err
 
 test_angles = [0, 10, 15, 20]
 test_dist = [100, 120, 150, 175, 200, 250, 300]
