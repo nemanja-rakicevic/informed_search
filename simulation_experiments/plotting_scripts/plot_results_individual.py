@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.ticker import FormatStrFormatter, MaxNLocator, MultipleLocator
 
-dirname = './DATA/SIMULATION/5-LINK/img_paper/'
+_DIRNAME = './DATA/SIMULATION/5-LINK/img_paper/'
 
 # Load all tests statistics
 # filt = 'TRIAL__sim5link_uidf_res7_cov5_kernelRQsl0.1'
@@ -32,10 +32,10 @@ FNAME = -6   # -6   24
 # FNAME = 24 
 ### for new data
 offset = 0
-filename = dirname+'PLOTS_test_{}_kernel{}_{}_x.svg'.format(filt[0], filt[1], filt[2])
+filename = _DIRNAME+'PLOTS_test_{}_kernel{}_{}_x.svg'.format(filt[0], filt[1], filt[2])
 
-list_models = sorted([d for d in os.listdir(dirname) if all(s in d for s in filt) and d[-3:]!='svg'])
-# list_models = sorted([d for d in os.listdir(dirname) if d[0:len(filt)]==filt])
+list_models = sorted([d for d in os.listdir(_DIRNAME) if all(s in d for s in filt) and d[-3:]!='svg'])
+# list_models = sorted([d for d in os.listdir(_DIRNAME) if d[0:len(filt)]==filt])
 list_unique = np.unique([d[:FNAME] for d in list_models])
 
 
@@ -47,7 +47,7 @@ for idx, t in enumerate(list_unique):
     seeds_fail_mean = []
     for a in list_models:
         if t == a[:FNAME]:
-            trial_dirname = dirname + a
+            trial_dirname = _DIRNAME + a
             if 'rand' in a or 'informed' in a:
                 offset = 0
             else:
@@ -78,7 +78,6 @@ for idx, t in enumerate(list_unique):
                         })
 
 
-
 ### PLOT DATA
 lw = 1
 ## 5-link colors
@@ -93,6 +92,7 @@ f, axarr = plt.subplots(3, sharex=True)
 # plt.grid(which='major', axis='both')
 ## 5-link
 f.set_size_inches(f.get_size_inches()[0]*3,f.get_size_inches()[1]*2)
+
 
 # PLOT ERROR MEANS
 cc =[0,0]

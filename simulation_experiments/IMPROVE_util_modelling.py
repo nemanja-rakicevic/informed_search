@@ -1,3 +1,10 @@
+"""
+Author: Nemanja Rakicevic
+Date  : January 2018
+Description:
+            Classes containing model functionalities
+
+"""
 
 import os
 import time
@@ -14,9 +21,71 @@ import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
+# TODO separate model class versions into multiple classes
+# TODO make nice private methods with unitary functionalities
+# TODO make nice callables
+
+_EPS = 1e-8
 
 class BaseModel:
 
+    def __init__(self, parameter_list, experiment_type,
+                kernel_kwargs,
+                kernel_type='SE',   # SE, MT, RQ
+                seed=1,
+                model_kwargs,
+                is_training=False,
+                show_plots=False,
+                ):
+
+        # fix seed
+        np.random.seed(seed)
+        # copy into private variables
+        self._param_list = parameter_list
+        self._is_training = is_training
+        # create save_path
+        self._save_path = './DATA/'+self.exp_type+'/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
+
+        # start initialising stuff
+        self._build_model(kernel_kwargs, model_kwargs)
+
+
+    self._kernel_fn = self._build_kernel(kernel_kwargs)
+
+
+    def _build_kernel(self, kernel_kwargs):
+
+        def kernel_function(self, a, b):
+            """ SE squared exponential kernel """
+            sigsq = 1
+            # siglensq = 0.01 # 1 0.5 0.3 0.1 
+            siglensq = self.other[1]
+            sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+            return sigsq*np.exp(-.5 *sqdist)
+
+        return kernel_function
+
+
+    def _build_model(self, kernel_kwargs, model_kwargs):
+        self._cov_const = model_kwargs['cov_const']
+        self._cov = self._cov_const * np.eye(len(self._param_list))
+        ## build penalisation
+        ## build uncertainty
+        ## build selection
+
+
+    def update_model():
+        pass
+
+
+    def generate_sample():
+        pass
+
+
+
+
+
+#################################################################
     def loadModel(self):
         list_models = sorted([d for d in os.listdir('./DATA/'+self.exp_type+'/') if d[0:6]=='TRIAL_'])
         for idx, t in enumerate(list_models):

@@ -1,3 +1,11 @@
+"""
+Author: Nemanja Rakicevic
+Date  : January 2018
+Description:
+            Plot heatmaps of multiple models
+
+"""
+
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -5,10 +13,8 @@ import matplotlib as mpl
 import pickle
 import numpy as np
 
-# Load data
 
-
-# 5link
+### Load data
 filename = []
 # filenameinfo
 filename.append('/home/robin/robin_lab/nemanja_scripts/phd_projects/puckpass_hockey/simulation_tests/DATA/SIMULATION/5-LINK/selected_informed/TRIAL__sim5link_informed_res7_cov10_kernelRQ_sl0.001-seed1/data_test_statistics.dat')
@@ -20,18 +26,16 @@ filename.append('/home/robin/robin_lab/nemanja_scripts/phd_projects/puckpass_hoc
 filename.append('/home/robin/robin_lab/nemanja_scripts/phd_projects/puckpass_hockey/simulation_tests/DATA/SIMULATION/TRIAL__sim5link_BO_res7_cov5_kernelRQ_sl0.01-seed1/data_test_statistics.dat')
 
 
+_TIMESTEP = 29  # 29 49  99 299
 
-### START ### 
-
-TIMESTEP = 29  # 29 49  99 299
-
+### STEP 1
 euclid_plot = []
 for ff in filename:
     ### STEP 1: run this for all filenames
     with open(ff, "rb") as m:
         tmp = pickle.load(m)
 
-    dl = tmp[TIMESTEP][1]
+    dl = tmp[_TIMESTEP][1]
     test_angles = np.arange(-65, 31, 5)
     test_dist   = np.arange(5, 36, 5)
     tmp_plot = np.zeros((len(test_dist), len(test_angles)))
@@ -66,7 +70,7 @@ yticks = np.arange(0, len(test_dist), 2)
 fig, axes = plt.subplots(nrows=len(filename), ncols=1, figsize=None, dpi=150)
 fig.set_size_inches(fig.get_size_inches()[0]*1,fig.get_size_inches()[1]*1.4)
 # fig.set_size_inches(fig.get_size_inches()[0], fig.get_size_inches()[1])
-axes[0].set_title("Trial #{}".format(TIMESTEP+1))
+axes[0].set_title("Trial #{}".format(_TIMESTEP+1))
 
 for t, ax in enumerate(axes):
     if t==len(filename)-1:
