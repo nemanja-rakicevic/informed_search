@@ -4,14 +4,13 @@
 # MOBILE BASE
 # ssh pi@192.168.2.105
 # cd ~/ros_catkin_ws/src/mob_base_controls/src
-# python movement_control.py 
+# python movement_control.py
 #################################################
 # LAPTOP
 # ssh petar@192.168.0.2
 # cd ~/ros_ws/robin_lab/nemanja/hockey_demo
-# python HCK_DENIRO_camera.py 
+# python HCK_DENIRO_camera.py
 #################################################
-
 
 
 import matplotlib.pyplot as pl

@@ -25,7 +25,7 @@ import time
 import cPickle as pickle
 import numpy as np
 # import ik_solver
-# import baxter_interface as BI
+import baxter_interface as BI
 
 # from geometry_msgs.msg import (PoseStamped,Pose,Point,Quaternion)
 # from std_msgs.msg import (Float32MultiArray,UInt64MultiArray)
@@ -47,9 +47,22 @@ STICK_Y_MAX = 0.7
 ##################################################################
 # INITIAL POSE 
 # # v6C, bigger angle span
-initial_left = {'left_w0': -1.9017526817809416, 'left_w1': -1.5098205904762185, 'left_w2': 0.0, 'left_e0': -2.111141059327301, 'left_e1': 1.5926555530220308, 'left_s0': 0.3861796633501529, 'left_s1': 0.25349032519806464}
+initial_left = {'left_w0': -1.9017526817809416,
+                'left_w1': -1.5098205904762185, 
+                'left_w2': 0.0, 
+                'left_e0': -2.111141059327301, 
+                'left_e1': 1.5926555530220308, 
+                'left_s0': 0.3861796633501529, 
+                'left_s1': 0.25349032519806464}
 # initial_right = {'right_s0': -0.37155194764034827, 'right_s1': 0.947, 'right_w0': -1.9226134104693988, 'right_w1': 1.2720872783823325, 'right_w2': 0.9336995649992517, 'right_e0': 1.4905379406793826, 'right_e1': 1.8962337509333822}
-initial_right = {'right_s0': -0.18604712804257897, 'right_s1': 0.7366307125790943, 'right_w0': -1.6419219445615647, 'right_w1': 1.4053479234536634, 'right_w2': 1.0948321182211216, 'right_e0': 1.5301695974547347, 'right_e1': 1.8269783292751778}
+initial_right = {'right_s0': -0.18604712804257897, 
+                 'right_s1': 0.7366307125790943, 
+                 'right_w0': -1.6419219445615647, 
+                 'right_w1': 1.4053479234536634,
+                 'right_w2': 1.0948321182211216, 
+                 'right_e0': 1.5301695974547347, 
+                 'right_e1': 1.8269783292751778}
+
 
 #####################################################################
 #####################################################################
@@ -65,7 +78,10 @@ def cleanup_on_shutdown():
     # cleanup, close any open windows
     print "\nSaving at exit...\n"
     with open(model.trial_dirname+"/DATA_HCK_trial_checkpoint.dat", "wb") as f:
-        pickle.dump((trials_list, labels_list, info_list, model.failed_params), f)
+        pickle.dump((trials_list, 
+                     labels_list, 
+                     info_list, 
+                     model.failed_params), f)
 
     BI.RobotEnable().disable()
     cv2.destroyAllWindows()

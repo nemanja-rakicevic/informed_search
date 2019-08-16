@@ -1,13 +1,12 @@
-import argparse
-import sys
+
 
 import rospy
 
 from geometry_msgs.msg import (
     PoseStamped,
     Pose,
-    Point,
-    Quaternion,
+    # Point,
+    # Quaternion,
 )
 from std_msgs.msg import Header
 
@@ -20,17 +19,16 @@ from baxter_core_msgs.srv import (
 
 
 def ik_solve(limb, pos, orient, curr_jnt_angles):
-    #~ rospy.init_node("rsdk_ik_service_client")
+    # ~ rospy.init_node("rsdk_ik_service_client")
     ns = "ExternalTools/" + limb + "/PositionKinematicsNode/IKService"
     iksvc = rospy.ServiceProxy(ns, SolvePositionIK)
     ikreq = SolvePositionIKRequest()
     # print "iksvc: ", iksvc
     # print "ikreq: ", ikreq
     hdr = Header(stamp=rospy.Time.now(), frame_id='base')
-    poses = {
-        str(limb): PoseStamped(header=hdr,
-            pose=Pose(position=pos, orientation=orient))}
-            
+    poses = {str(limb): PoseStamped(header=hdr,
+                                    pose=Pose(position=pos,
+                                              orientation=orient))}
     ikreq.pose_stamp.append(poses[limb])
 
     seed_msg = JointState()

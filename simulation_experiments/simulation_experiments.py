@@ -8,7 +8,7 @@ import util_testing as utest
 
 parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 
-parser.add_argument('-m',   '--model',      
+parser.add_argument('-m',   '--model',   
                     dest='model_type', 
                     help="Select which model to use 'random', 'informed', 'uidf', 'entropy' or 'reviewer'",
                     default='reviewer')
