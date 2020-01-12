@@ -7,3 +7,5 @@ TRIALS_RETRAINED/*
 .ipynb_checkpoints/*
 simulation_experiments/DATA/*
 simulation_experiments/DATA_SAVE/*
+*__pycache__*
+*.pyc
