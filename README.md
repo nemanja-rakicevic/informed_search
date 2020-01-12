@@ -3,9 +3,9 @@
 
 Implementation of the Informed Search approach to parameter space exploration. For more details see:
 
-- [Full paper](https://link.springer.com/article/10.1007%2Fs10514-019-09842-7)
+[Full paper](https://link.springer.com/article/10.1007%2Fs10514-019-09842-7)
 
-- [Project website](https://sites.google.com/view/informedsearch)
+[Project website](https://sites.google.com/view/informedsearch)
 
 
 ## Motivation and Method Description
