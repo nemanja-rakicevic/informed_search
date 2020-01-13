@@ -5,7 +5,8 @@ TRIALS_2D/*
 TRIALS_FULL/*
 TRIALS_RETRAINED/*
 .ipynb_checkpoints/*
-simulation_experiments/DATA/*
-simulation_experiments/DATA_SAVE/*
+informed_search/simulation_experiments/DATA/*
+informed_search/simulation_experiments/DATA_SAVE/*
+informed_search/experiment_data/*
 *__pycache__*
 *.pyc

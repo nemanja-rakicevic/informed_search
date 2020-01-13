@@ -68,10 +68,12 @@ class InformedModel:
             self.var_uncert = np.ones(tuple(self.param_dims))
             ###
             if folder_name:
-                self.trial_dirname = './DATA/'+self.exp_type+'/TRIAL__'+folder_name
+                self.trial_dirname = folder_name
             else:
                 self.trial_dirname = './DATA/'+self.exp_type+'/TRIAL_'+time.strftime("%Y%m%d_%Hh%M")
-            os.makedirs(self.trial_dirname)
+
+            os.makedirs(self.trial_dirname+'/plots')
+
         np.random.seed(210*int(other[2])) #840 4
 
 #### SELECT KERNEL ####
@@ -479,6 +481,8 @@ class InformedModel:
             print("("+str(idx)+")\t", t)
         test_num = input("\nEnter number of model to load > ")
         self.trial_dirname = './DATA/'+self.exp_type+'/'+list_models[int(test_num)]
+
+
         print("Loading: ",self.trial_dirname)
         with open(self.trial_dirname + "/data_training_model.dat", "rb") as m:
             tmp = pickle.load(m)
@@ -697,9 +701,9 @@ class InformedModel:
             # SAVEFIG
             if isinstance(trial_num, str):
                 fig.suptitle("Models and IDFs (num_iter: {}, resolution: {})".format(trial_num, len(dim1)), fontsize=16)
-                plt.savefig(self.trial_dirname+"/img_training_trial_{}.svg".format(trial_num), format="svg")
+                plt.savefig(self.trial_dirname+"/plots/models_trial_{}.svg".format(trial_num), format="svg")
             else:
-                plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}.svg".format(num=trial_num), format="svg")
+                plt.savefig(self.trial_dirname+"/plots/models_trial_{num:03d}.svg".format(num=trial_num), format="svg")
             
             if self.show_plots:
                 plt.show()
@@ -771,7 +775,7 @@ class InformedModel:
             ax.tick_params(axis='y', direction='out', pad=-3)
             ax.tick_params(axis='z', direction='out', pad=5)
             ax.plot_surface(X, Y, model_alpha, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}_angle.svg".format(num=trial_num), format="svg")
+            plt.savefig(self.trial_dirname+"/plots/IDFs_trial_{num:03d}_angle.svg".format(num=trial_num), format="svg")
             
             # DISTANCE MODEL
             fig = plt.figure("DISTANCE MODEL"+str(trial_num), figsize=None)
@@ -789,7 +793,7 @@ class InformedModel:
             ax.tick_params(axis='y', direction='out', pad=-3)
             ax.tick_params(axis='z', direction='out', pad=5)
             ax.plot_surface(X, Y, model_L, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}_dist.svg".format(num=trial_num), format="svg")
+            plt.savefig(self.trial_dirname+"/plots/IDFs_trial_{num:03d}_dist.svg".format(num=trial_num), format="svg")
             
             # SELECTION FUNCTION - TOP VIEW
             fig = plt.figure("SELECTION FCN"+str(trial_num), figsize=None)
@@ -818,7 +822,7 @@ class InformedModel:
                     ax1.scatter(x=tr[1], y=tr[0], c='c', s=15)
             cbar = plt.colorbar(sidf, shrink=0.5, aspect=20, pad = 0.17, orientation='horizontal', ticks=[0.0, 0.5, 1.0])
             sidf.set_clim(-0.001, 1.001)
-            plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}_select.svg".format(num=trial_num), format="svg")
+            plt.savefig(self.trial_dirname+"/plots/IDFs_trial_{num:03d}_select.svg".format(num=trial_num), format="svg")
             
             # # PENALISATION IDF
             # ax = plt.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')

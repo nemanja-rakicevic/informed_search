@@ -75,11 +75,96 @@ class BaseModel:
 
 
     def update_model():
-        pass
+        raise NotImplementedError
 
 
     def generate_sample():
+        raise NotImplementedError
+
+
+
+    def uncertainty(self):
+        return round(self.model_uncertainty.mean(), 4)
+
+
+### MOVE TO TESTING??
+    def test_model(self):
+        """ Generate test parameter coordinates for performance evaluation """
+
+
+
+
+    def save_model(self):
+        self.model_list.append([self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list])
+        with open(self.trial_dirname + "/data_training_model.dat", "wb") as m:
+            pickle.dump(self.model_list, m, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+    def load_model(self):
+        list_models = sorted([d for d in os.listdir('./DATA/'+self.exp_type+'/') if d[0:6]=='TRIAL_'])
+        for idx, t in enumerate(list_models):
+            print("("+str(idx)+")\t", t)
+        test_num = input("\nEnter number of model to load > ")
+        self.trial_dirname = './DATA/'+self.exp_type+'/'+list_models[int(test_num)]
+
+
+        print("Loading: ",self.trial_dirname)
+        with open(self.trial_dirname + "/data_training_model.dat", "rb") as m:
+            tmp = pickle.load(m)
+            if len(tmp)<6:
+                self.model_list = tmp
+                (self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list) = self.model_list[-1]
+            else:
+                # Load last from history 
+                (self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list) = tmp
+
+
+
+
+
+##############################################################################
+
+
+class InformedSearch(BaseModel):
+
+    def __init__(self):
         pass
+
+
+
+class UIDFonlySearch(BaseModel):
+
+    def __init__(self):
+        pass
+
+
+class EntropySearch(BaseModel):
+
+    def __init__(self):
+        pass
+
+
+class RandomSearch(BaseModel):
+
+    def __init__(self):
+        pass
+
+
+class REVIEWERSearch(BaseModel):
+
+    def __init__(self):
+        pass
+
+
+
+
+
+
+
+
+
+
+
 
 
 
