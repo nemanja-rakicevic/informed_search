@@ -21,14 +21,14 @@ class SimulationExperiment:
     import gym
 
     def __init__(self, environment, resolution, 
-                 animation_steps=100, verbose=False, display=False):
+                 animation_steps=100, verbose=False, display=False, **kwargs):
 
         if environment=='sim2link':
             self.env = self.gym.make('ReacherOneShot-v0', resolution=resolution)
         elif environment=='sim5link':
             self.env = self.gym.make('ReacherOneShot-v1', resolution=resolution)
         
-        self.parameter_list = self.env.parameter_list
+        self.parameter_list = self.env.unwrapped.parameter_list
         self._num_links = len(self.parameter_list)
         self.verbose = verbose
         self.display = display
@@ -100,7 +100,7 @@ class SimulationExperiment:
         trial_info = {'trial_num':    num_trial+1,
                       'parameters':   param_vals,
                       'coordinates':  param_coords,
-                      'fail':         fail_status, 
+                      'fail_status':  fail_status, 
                       'ball_polar':   ball_polar,
                       'target_dist':  observation[-1],
                       'observations': np.vstack(obs_list)}

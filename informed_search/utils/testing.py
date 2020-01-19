@@ -26,7 +26,7 @@ class FullTest:
   # def doTest(self, test_tuple):
   #   angle_s, dist_s = test_tuple
   #   trial_coords, trial_params = self.model.testModel(float(angle_s), float(dist_s), verbose=self.verbose)
-  #   trial_info = self.experiment.executeTrial(0, trial_coords, trial_params, test=[float(angle_s), float(dist_s)])
+  #   trial_info = self.experiment.execute_trial(0, trial_coords, trial_params, test=[float(angle_s), float(dist_s)])
   #   return trial_info
 
   # def runFullTests(self, tr_num, save_progress=True, heatmap=True):
@@ -45,10 +45,10 @@ class FullTest:
   #     statistics.append({ 'trial_num':    t+1,
   #               'target_polar': self.test_cases[t],
   #               'ball_polar':   tst['ball_polar'],
-  #               'fail':         tst['fail'],
+  #               'fail_status':         tst['fail_status'],
   #               'dist_error':   dist_error,
   #               'euclid_error': euclid_error })
-  #     if tst['fail']>0:
+  #     if tst['fail_status']>0:
   #       dist_plot[len(self.test_dist) - np.argwhere(self.test_dist==int(dist_s))[0,0] - 1, len(self.test_angles) - np.argwhere(self.test_angles==int(angle_s))[0,0] - 1] = -1
   #       euclid_plot[len(self.test_dist) - np.argwhere(self.test_dist==int(dist_s))[0,0] - 1, len(self.test_angles) - np.argwhere(self.test_angles==int(angle_s))[0,0] - 1] = -1
   #     else:
@@ -56,7 +56,7 @@ class FullTest:
   #       euclid_plot[len(self.test_dist) - np.argwhere(self.test_dist==int(dist_s))[0,0] - 1, len(self.test_angles) - np.argwhere(self.test_angles==int(angle_s))[0,0] - 1] = euclid_error
 
   #   # Calculate error
-  #   num_fails  = len([1 for x in statistics if x['fail']>0])
+  #   num_fails  = len([1 for x in statistics if x['fail_status']>0])
   #   errors_all = np.array([ [x['euclid_error'], x['dist_error']] for x in statistics])
   #   errors_mean = errors_all.mean(axis=0)
   #   errors_std  = errors_all.std(axis=0)
@@ -84,18 +84,18 @@ class FullTest:
         print("\nTRIAL {}\nTEST # {} > angle, distance: ({},{})".format(tr_num, t+1, angle_s, dist_s))
       # Generate movement parameter vector
       trial_coords, trial_params = self.model.testModel(float(angle_s), float(dist_s), verbose=self.verbose)
-      trial_info = self.experiment.executeTrial(0, trial_coords, trial_params, test=[float(angle_s), float(dist_s)])
+      trial_info = self.experiment.execute_trial(0, trial_coords, trial_params, test_params=[float(angle_s), float(dist_s)])
       # Compile test statistics
       dist_error = np.sqrt(np.sum((trial_info['ball_polar'] - self.test_cases[t])**2))
       euclid_error = np.sqrt(np.sum(trial_info['observations'][-1][-2:]**2))
 
       statistics.append({ 'trial_num':    t+1,
-                'target_polar': self.test_cases[t],
-                'ball_polar':   trial_info['ball_polar'],
-                'fail':         trial_info['fail'],
-                'dist_error':   dist_error,
-                'euclid_error': euclid_error })
-      if trial_info['fail']>0:
+                            'target_polar': self.test_cases[t],
+                            'ball_polar':   trial_info['ball_polar'],
+                            'fail_status':  trial_info['fail_status'],
+                            'dist_error':   dist_error,
+                            'euclid_error': euclid_error })
+      if trial_info['fail_status']>0:
         dist_plot[len(self.test_dist) - np.argwhere(self.test_dist==int(dist_s))[0,0] - 1, len(self.test_angles) - np.argwhere(self.test_angles==int(angle_s))[0,0] - 1] = -1
         euclid_plot[len(self.test_dist) - np.argwhere(self.test_dist==int(dist_s))[0,0] - 1, len(self.test_angles) - np.argwhere(self.test_angles==int(angle_s))[0,0] - 1] = -1
       else:
@@ -103,7 +103,7 @@ class FullTest:
         euclid_plot[len(self.test_dist) - np.argwhere(self.test_dist==int(dist_s))[0,0] - 1, len(self.test_angles) - np.argwhere(self.test_angles==int(angle_s))[0,0] - 1] = euclid_error
 
     # Calculate error
-    num_fails  = len([1 for x in statistics if x['fail']>0])
+    num_fails  = len([1 for x in statistics if x['fail_status']>0])
     errors_all = np.array([ [x['euclid_error'], x['dist_error']] for x in statistics])
     errors_mean = errors_all.mean(axis=0)
     errors_std  = errors_all.std(axis=0)

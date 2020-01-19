@@ -15,7 +15,7 @@ import datetime
 import numpy as np
 
 import util_modelling as umodel
-import utils.experiments as uexp
+import utils.environments as uenv
 import utils.testing as utest
 
 
@@ -89,7 +89,7 @@ def _start_logging():
               datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S"))
     os.makedirs(dirname)
     task_kwargs = vars(args)
-    task_kwargs[dirname] = dirname
+    task_kwargs['dirname'] = dirname
     # Start logging info
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(name)-10s '
@@ -116,19 +116,19 @@ def main_run():
     # experiment = mm.ExperimentManager(task_kwargs)
 
 
-    experiment = uexp.SimulationExperiment(**task_kwargs)
+    experiment = uenv.SimulationExperiment(**task_kwargs)
     model = umodel.InformedModel(experiment.parameter_list, 
                                  experiment.type, 
-                                 show_plots=args.plots&1, 
-                                 other=[args.other], 
+                                 show_plots=0, 
+                                 other=[0.1, 0.01, 1], 
                                  folder_name=task_kwargs['dirname'])
-    
+
     testing = utest.FullTest(experiment, model, 
-                             show_plots=args.plots&2, 
-                             verbose=args.verbose&2)
+                             show_plots=0, 
+                             verbose=1)
 
     # RUN FULL EXPERIMENT
-    for t in range(args.num_trial):
+    for t in range(task_kwargs['num_trial']):
         # Display trial information
         logger.info("\n\nTRIAL #{} (failed: {}; successful: {})".format(
                         t+1, len(model.failed_coords),
@@ -137,26 +137,26 @@ def main_run():
                         model.returnUncertainty()))
 
         # Generate sample trial
-        if args.model_type == 'informed':
+        if task_kwargs['model_type'] == 'informed':
             trial_coords, trial_params = model.generateInformedSample(experiment.info_list)
-        elif args.model_type == 'random':
+        elif task_kwargs['model_type'] == 'random':
             trial_coords, trial_params = model.generateRandomSample()
-        elif args.model_type == 'uidf':
+        elif task_kwargs['model_type'] == 'uidf':
             trial_coords, trial_params = model.generateUIDFSample(experiment.info_list)
-        elif args.model_type == 'entropy':
+        elif task_kwargs['model_type'] == 'entropy':
             trial_coords, trial_params = model.generateEntropySample(experiment.info_list)
-        elif args.model_type == 'reviewer':
+        elif task_kwargs['model_type'] == 'reviewer':
             trial_coords, trial_params = model.generateInformedSample_reviewer(experiment.info_list)
      
         # Execute trial
-        trial_info = experiment.executeTrial(t, trial_coords, trial_params)
+        trial_info = experiment.execute_trial(t, trial_coords, trial_params)
         experiment.info_list.append(trial_info)
 
         # Update model
         # model.updateModel(experiment.info_list, save_progress=(not (t+1)%100))
         model.updateModel_reviewer(experiment.info_list, save_progress=(not (t+1)%100))
         # Save experiment data and plot  progress
-        experiment.saveData(model.trial_dirname)
+        experiment.save_data(model.trial_dirname)
         if (t+1)%10 == 0:
             logger.info("\n\nPLOTTING")
             model.plotModelFig(t+1, [0,1], ['joint_1', 'joint_0'])

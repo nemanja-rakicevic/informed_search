@@ -134,26 +134,26 @@ class InformedModel:
         """
         if len(info_list):
             # Successful trial: Update task models
-            if info_list[-1]['fail']==0:
-                # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail']==0])
+            if info_list[-1]['fail_status']==0:
+                # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail_status']==0])
                 # good_params = good_trials[:,0]
                 # good_fevals = good_trials[:,1]
-                good_params = np.array([tr['parameters'] for tr in info_list if tr['fail']==0])
-                good_fevals = np.array([tr['ball_polar'] for tr in info_list if tr['fail']==0])
+                good_params = np.array([tr['parameters'] for tr in info_list if tr['fail_status']==0])
+                good_fevals = np.array([tr['ball_polar'] for tr in info_list if tr['fail_status']==0])
                 # Estimate the Angle and Distance GPR models, as well as PIDF
                 self.mu_alpha, self.var_alpha = self.updateGPR(good_params, good_fevals, 0)
                 self.mu_L,     self.var_L     = self.updateGPR(good_params, good_fevals, 1)
                 # self.updatePIDF(info_list[-1]['parameters'], failed=-1)
             # Failed trial: Update PIDF
-            # elif info_list[-1]['fail']>0:
-            #     self.failed_coords = [tr['coordinates'] for tr in info_list if tr['fail']>0]
+            # elif info_list[-1]['fail_status']>0:
+            #     self.failed_coords = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
                 # self.updatePIDF(info_list[-1]['parameters'], failed=1)
 
             # All trials: Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
             self.model_uncertainty = self.updateGPR(all_trials, None, -1)
             # GPC for fail/success 
-            all_nonfails = np.array([ 1 if tr['fail']>0 else 0 for tr in info_list])
+            all_nonfails = np.array([ 1 if tr['fail_status']>0 else 0 for tr in info_list])
             self.mu_pidf,     self.var_pidf     = self.updateGPR_reviewer(all_trials, all_nonfails)
 
             temp = self.returnUncertainty()
@@ -229,19 +229,19 @@ class InformedModel:
         """
         if len(info_list):
             # Successful trial: Update task models
-            if info_list[-1]['fail']==0:
-                # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail']==0])
+            if info_list[-1]['fail_status']==0:
+                # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail_status']==0])
                 # good_params = good_trials[:,0]
                 # good_fevals = good_trials[:,1]
-                good_params = np.array([tr['parameters'] for tr in info_list if tr['fail']==0])
-                good_fevals = np.array([tr['ball_polar'] for tr in info_list if tr['fail']==0])
+                good_params = np.array([tr['parameters'] for tr in info_list if tr['fail_status']==0])
+                good_fevals = np.array([tr['ball_polar'] for tr in info_list if tr['fail_status']==0])
                 # Estimate the Angle and Distance GPR models, as well as PIDF
                 self.mu_alpha, self.var_alpha = self.updateGPR(good_params, good_fevals, 0)
                 self.mu_L,     self.var_L     = self.updateGPR(good_params, good_fevals, 1)
                 self.updatePIDF(info_list[-1]['parameters'], failed=-1)
             # Failed trial: Update PIDF
-            elif info_list[-1]['fail']>0:
-                self.failed_coords = [tr['coordinates'] for tr in info_list if tr['fail']>0]
+            elif info_list[-1]['fail_status']>0:
+                self.failed_coords = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
                 self.updatePIDF(info_list[-1]['parameters'], failed=1)
             # All trials: Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])

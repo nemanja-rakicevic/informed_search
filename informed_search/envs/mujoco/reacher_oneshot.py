@@ -56,7 +56,7 @@ class BaseReacher(object):
         reward = reward_dist + reward_ctrl
         self.do_simulation(a, self.frame_skip)
         ob = self._get_obs()
-        done = _check_collision()
+        done = self._check_collision()
         return ob, reward, done, dict(reward_dist=reward_dist, 
                                       reward_ctrl=reward_ctrl,
                                       ball_xy=self.get_body_com("ball")[:2])
@@ -65,7 +65,7 @@ class BaseReacher(object):
     def _get_obs(self):
         vec = self.get_body_com("real_target")-self.get_body_com("ball")
         target_dist = 100*np.linalg.norm(vec[:2])
-        return np.concatenate([
+        return np.hstack([
             self.sim.data.qpos.flat[:],       # joint0, .., jointN, ballx, bally, targetx, targety
             self.sim.data.qvel.flat[:-2],     # velocities joint0, .., jointN, ballx, bally
             target_dist                       # error distance: x,y
@@ -84,7 +84,7 @@ class BaseReacher(object):
 
 
 
-class ReacherOneShotEnv(mujoco_env.MujocoEnv, utils.EzPickle, BaseReacher):
+class ReacherOneShotEnv(BaseReacher, mujoco_env.MujocoEnv, utils.EzPickle):
     """ 2 link Reacher one shot agent """
     
     def __init__(self, resolution):
@@ -99,7 +99,7 @@ class ReacherOneShotEnv(mujoco_env.MujocoEnv, utils.EzPickle, BaseReacher):
 
 
 
-class ReacherOneShotEnv_v1(mujoco_env.MujocoEnv, utils.EzPickle, BaseReacher):
+class ReacherOneShotEnv_v1(BaseReacher, mujoco_env.MujocoEnv, utils.EzPickle):
     """ 5 link Reacher one shot agent """
 
     def __init__(self, resolution):
