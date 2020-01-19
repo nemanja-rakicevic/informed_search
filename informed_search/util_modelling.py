@@ -86,25 +86,33 @@ class InformedModel:
         sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
         return sigsq*np.exp(-.5 *sqdist)
 
-    # def kernel(self, a, b):
-    #     """ MT Matern 5/2 kernel: """
-    #     sigsq = 1
-    #     # siglensq = 0.03 # 1
-    #     siglensq = self.other[1]
-    #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-    #     return sigsq * (1 + np.sqrt(5*sqdist) + 5*sqdist/3.) * np.exp(-np.sqrt(5.*sqdist))
+    def kernel(self, a, b):
+        """ MT Matern 5/2 kernel: """
+        sigsq = 1
+        # siglensq = 0.03 # 1
+        siglensq = self.other[1]
+        sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+        return sigsq * (1 + np.sqrt(5*sqdist) + 5*sqdist/3.) * np.exp(-np.sqrt(5.*sqdist))
 
-    # def kernel(self, a, b):
-    #     """ RQ rational quadratic kernel """
-    #     sigsq = 1
-    #     # siglensq = 1
-    #     siglensq = self.other[1]
-    #     alpha = a.shape[1]/2. #a.shape[1]/2. #np.exp(1) #len(a)/2.
-    #     # print alpha
-    #     sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-    #     return sigsq * np.power(1 + 0.5*sqdist/alpha, -alpha)
+    def kernel(self, a, b):
+        """ RQ rational quadratic kernel """
+        sigsq = 1
+        # siglensq = 1
+        siglensq = self.other[1]
+        alpha = a.shape[1]/2. #a.shape[1]/2. #np.exp(1) #len(a)/2.
+        # print alpha
+        sqdist = (1./siglensq) * sp.spatial.distance.cdist(a, b, 'sqeuclidean')
+        return sigsq * np.power(1 + 0.5*sqdist/alpha, -alpha)
 
 ######################## 
+
+
+
+#################################################################################
+#################################################################################
+#################################################################################
+#################################################################################
+
 
 
     def generatePDF_matrix(self, x_sample, mu, cov):
@@ -126,6 +134,14 @@ class InformedModel:
     # #     f = np.diag(f)
     #     f = (1/np.sqrt((2*np.pi)**len(mu) * sigma_det)) * np.exp(-0.5 * inner1d(tmp, diff))
     #     return f
+
+
+
+#################################################################################
+#################################################################################
+#################################################################################
+#################################################################################
+
 
     def updateModel_reviewer(self, info_list, save_progress=True):
         """
@@ -220,6 +236,11 @@ class InformedModel:
         print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
         # return the next sample vector
         return selected_coord, selected_params
+
+#################################################################################
+#################################################################################
+#################################################################################
+#################################################################################
 
 
     def updateModel(self, info_list, save_progress=True):
@@ -340,6 +361,11 @@ class InformedModel:
         print("--- penalised", len(np.argwhere(self.penal_IDF.round(2)==np.max(self.penal_IDF.round(2)))),"peaks from",len(self.failed_coords),"combinations.")
         
 
+#################################################################################
+#################################################################################
+#################################################################################
+#################################################################################
+
 
     def generateInformedSample(self, info_list):
         """
@@ -457,6 +483,11 @@ class InformedModel:
         return selected_coord, selected_params
 
 
+#################################################################################
+#################################################################################
+#################################################################################
+#################################################################################
+#################################################################################
 
 
     def returnModel(self):

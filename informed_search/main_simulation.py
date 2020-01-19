@@ -14,7 +14,7 @@ import argparse
 import datetime
 import numpy as np
 
-import util_modelling as umodel
+import utils.modelling as umodel
 import utils.environments as uenv
 import utils.testing as utest
 
@@ -41,7 +41,7 @@ parser.add_argument('-pcov',   '--pidf_cov', type=float,
                     help="Penalisation function covariance coefficient.")
 
 parser.add_argument('-k',   '--kernel_name',
-                    default='RBF',      
+                    default='se',      
                     help="Gaussian Process Regression kernel function.")
 parser.add_argument('-sig',   '--kernel_sigma', nargs='+', type=float,
                     default=0.01,      
@@ -117,11 +117,11 @@ def main_run():
 
 
     experiment = uenv.SimulationExperiment(**task_kwargs)
-    model = umodel.InformedModel(experiment.parameter_list, 
+    model = umodel.InformedSearch(experiment.parameter_list, 
                                  experiment.type, 
                                  show_plots=0, 
                                  other=[0.1, 0.01, 1], 
-                                 folder_name=task_kwargs['dirname'])
+                                 dirname=task_kwargs['dirname'])
 
     testing = utest.FullTest(experiment, model, 
                              show_plots=0, 
