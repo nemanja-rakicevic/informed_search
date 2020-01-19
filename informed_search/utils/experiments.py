@@ -7,114 +7,112 @@ Description:
                 the real robot.
 """
 
-import numpy as np 
-import pickle
 import time
+import pickle
 import logging
+import numpy as np 
 
 logger = logging.getLogger(__name__)
 
 
 
 class SimulationExperiment:
-  import envs
-  import gym
+    import envs
+    import gym
 
-  def __init__(self, agent, resolution, animation_steps=100, animate=False, verbose=False, display=False):
+    def __init__(self, environment, resolution, 
+                 animation_steps=100, verbose=False, display=False):
 
-    # PARTIAL RANGE
-    # __range1 = np.linspace(0,  2, RESOLUTION)
-    # __range2 = np.linspace(0, -1, RESOLUTION)
-    # FULL RANGE
-    __range0 = np.linspace(-1.57, 1.57, resolution)
-    __range1 = np.linspace(-3.14, 3.14, resolution)
-    __range2 = np.linspace(-3.14, 3.14, resolution)
-    __range3 = np.linspace(-3.14, 3.14, resolution)
-    __range4 = np.linspace(-3.14, 3.14, resolution)
-    if agent=='sim2link':
-      self._NUM_LINKS = 2
-      self.env = self.gym.make('ReacherOneShot-v0')
-    elif agent=='sim5link':
-      self._NUM_LINKS = 5
-      self.env = self.gym.make('ReacherOneShot-v1')
+        if environment=='sim2link':
+            self.env = self.gym.make('ReacherOneShot-v0', resolution=resolution)
+        elif environment=='sim5link':
+            self.env = self.gym.make('ReacherOneShot-v1', resolution=resolution)
+        
+        self.parameter_list = self.env.parameter_list
+        self._num_links = len(self.parameter_list)
+        self.verbose = verbose
+        self.display = display
 
-    self.parameter_list = np.array([__range0, __range1, __range2, __range3, __range4])[:self._NUM_LINKS]
+        self.type = 'SIMULATION'
+        self.info_list = []
+        self._num_steps = animation_steps
 
-    self.type = 'SIMULATION'
-    self.info_list = []
-    self.__NUM_STEPS = animation_steps
-    self.animate = animate
-    self.verbose = verbose
-    self.display = display
 
-  def executeTrial(self, t, coords, params, test=False):
 
-    self.env.close()
-    
-    theta_list = np.array([ np.linspace(0, p, self.__NUM_STEPS) for p in params ]).T
-    # Place target for testing or just hide it
-    if not isinstance(test, bool):
-    # if test:
-      self.env.unwrapped.init_qpos[-2] = - test[1] * np.sin(np.deg2rad(test[0])) / 100.
-      self.env.unwrapped.init_qpos[-1] = test[1] * np.cos(np.deg2rad(test[0])) / 100.
-    else:
-      self.env.unwrapped.init_qpos[-2] = 0.0
-      self.env.unwrapped.init_qpos[-1] = 1.3
-    init_pos = self.env.reset()
-    init_pos = init_pos[:self._NUM_LINKS]
-    # EXECUTE TRIAL
-    contact_cnt = 0
-    obs_list = []
-    for i in range(self.__NUM_STEPS):
-      if self.animate and not isinstance(test, bool):
-        self.env.render()
-      control = init_pos + theta_list[i]
+    def _log_trial(self, fail_status, ball_polar, target_dist, **kwargs):
+        if self.verbose:
+            error_string = ''
+            if fail_status:
+                outcome_string = "FAIL ({})".format(fail_status)
+            else:
+                outcome_string = "SUCCESS\t> ball_polar: {}".format(ball_polar)
+                if test_params is not None:
+                    error_string = "; test error: {}".format(target_dist)
+            logger.info("--- trial executed: {}{}{}".format(outcome_string,
+                                                            error_string))
 
-      observation, _, _, _ = self.env.step(control) 
-      obs_list.append(observation)
-      ball_xy = observation[self._NUM_LINKS:self._NUM_LINKS+2]
-      # Check collision
-      if self.env.unwrapped.data.ncon:
-        contact_cnt+=1
-        if contact_cnt > 5 and not sum(ball_xy)>0:
-          # contact with wall
-          fail_status = 1
-          break
-    # Check ball movement and calculate polar coords
-    if not sum(ball_xy)>0.:
-      # ball did not move
-      fail_status = 2  
-      ball_polar = np.array([0,0])   
-    else:
-      fail_status = 0  
-      ball_polar = np.array([ np.rad2deg(np.arctan2(-ball_xy[0], ball_xy[1])), np.sqrt(ball_xy[0]**2 + ball_xy[1]**2) * 100])
-    # Compile trial info
-    all_info = {'trial_num':  t+1,
-          'parameters':   params,
-          'coordinates':  coords,
-          'fail':     fail_status, 
-          'ball_polar':   ball_polar,
-          'observations': np.array(obs_list) }
-    # INFO
-    if self.verbose:
-      if fail_status:
-        print("--- trial executed: FAIL ({})".format(fail_status))
-      else:
-        if not isinstance(test, bool):
-          euclid_error = np.sqrt(np.sum(observation[-2:]**2))
-          print("--- trial executed: SUCCESS\t-> achieved: {}, euclidean error: {}".format(ball_polar, round(euclid_error,2)))
+
+    def execute_trial(self, num_trial, param_coords, param_vals, 
+                     test_params=None):
+        """ Execute a trial defined by parameters """
+        # Set up sequence of intermediate positions
+        param_seq = np.array([np.linspace(0, p, self._num_steps) \
+                               for p in param_vals]).T
+        # Place target for testing or just hide it
+        if test_params is not None:
+          self.env.unwrapped.init_qpos[-2] = \
+                -test_params[1] * np.sin(np.deg2rad(test_params[0])) / 100.
+          self.env.unwrapped.init_qpos[-1] = \
+                test_params[1] * np.cos(np.deg2rad(test_params[0])) / 100.
         else:
-          print("--- trial executed: SUCCESS\t-> labels: {}".format(ball_polar))
+          self.env.unwrapped.init_qpos[-2] = 0.0
+          self.env.unwrapped.init_qpos[-1] = 1.3
 
-    # time.sleep(1)
+        # Execute trial
+        init_pos = self.env.reset()
+        init_pos = init_pos[:self._num_links]
+        obs_list = []
+        for i in range(self._num_steps):
+            if self.display and not isinstance(test_params, bool):
+                self.env.render()
+            control = init_pos + param_seq[i]
+            observation, _, done, info_dict = self.env.step(control) 
+            obs_list.append(observation)
+            # Check collision
+            if done:
+                fail_status = 1
+                break
+        if self.display and test_params is not None:
+            self.env.close()
 
-    return all_info
+        # Check ball movement and calculate polar coords
+        ball_xy = info_dict['ball_xy']
+        if np.linalg.norm(ball_xy) > 0:
+            fail_status = 0  
+            ball_polar = np.array([np.rad2deg(np.arctan2(-ball_xy[0], 
+                                                         ball_xy[1])), 
+                                   np.linalg.norm(ball_xy) * 100]) 
+        else:
+            fail_status = 2  
+            ball_polar = np.array([0,0])  
+
+        # Compile trial info
+        trial_info = {'trial_num':    num_trial+1,
+                      'parameters':   param_vals,
+                      'coordinates':  param_coords,
+                      'fail':         fail_status, 
+                      'ball_polar':   ball_polar,
+                      'target_dist':  observation[-1],
+                      'observations': np.vstack(obs_list)}
+        self._log_trial(**trial_info)
+
+        return trial_info
 
 
-  def saveData(self, trial_dirname):  
-    self.env.close()
-    with open(trial_dirname + "/data_training_info.dat", "wb") as m:
-      pickle.dump(self.info_list, m, protocol=pickle.HIGHEST_PROTOCOL)
+    def save_data(self, trial_dirname):  
+        self.env.close()
+        with open(trial_dirname + "/data_training_info.dat", "wb") as m:
+            pickle.dump(self.info_list, m, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 
@@ -140,7 +138,7 @@ class SimulationExperiment:
 
 
 ##################################################################
-#  FINISH THIS AND TEST ON ROBOT
+#  FINISH THIS AND test_params ON ROBOT
 ##################################################################
 class RobotExperiment:
 
@@ -236,7 +234,7 @@ class RobotExperiment:
 
 
 
-  def executeTrial(t, params):
+  def executeTrial(num_trial, params):
     theta_list = np.array([np.linspace(0, params[0], NUM_STEPS), np.linspace(0, params[1], NUM_STEPS)]).T
     init_pos = env.reset()
     init_pos = init_pos[:2]
@@ -265,7 +263,7 @@ class RobotExperiment:
       fail_status = 0  
       ball_polar = np.array([ np.rad2deg(np.arctan2(-ball_xy[0], ball_xy[1])), np.sqrt(ball_xy[0]**2 + ball_xy[1]**2) * 100])
     # Compile trial info
-    all_info = {'trial_num':  t+1,
+    all_info = {'trial_num':  num_trial+1,
           'parameters':   params,
           'coordinates':  coords,
           'fail':     fail_status, 

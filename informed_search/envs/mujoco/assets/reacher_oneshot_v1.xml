@@ -59,10 +59,10 @@
 
 
 		<!-- BALL -->
-		<body name="target" pos="0.10 -0.10 0.0">
-			<joint armature="1" axis="1 0 0" limited="true" name="target_x" pos="0 0 0" range="-.3 .3" ref=".1" type="slide" damping="0.1" stiffness="0" />
-			<joint armature="1" axis="0 1 0" limited="true" name="target_y" pos="0 0 0" range="-.3 .3" ref="-.1" type="slide" damping="0.1" stiffness="0" />
-			<geom conaffinity="3" contype="2" name="target" pos="0 0 0" rgba="0.0 0.2 0.9 1" size=".025" type="sphere"/>
+		<body name="ball" pos="0.10 -0.10 0.0">
+			<joint armature="1" axis="1 0 0" limited="true" name="ball_x" pos="0 0 0" range="-.3 .3" ref=".1" type="slide" damping="0.1" stiffness="0" />
+			<joint armature="1" axis="0 1 0" limited="true" name="ball_y" pos="0 0 0" range="-.3 .3" ref="-.1" type="slide" damping="0.1" stiffness="0" />
+			<geom conaffinity="3" contype="2" name="ball" pos="0 0 0" rgba="0.0 0.2 0.9 1" size=".025" type="sphere"/>
 		</body>
 
 

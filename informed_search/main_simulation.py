@@ -8,6 +8,7 @@ Description:
 """
 
 import os
+import json
 import logging
 import argparse
 import datetime
@@ -17,10 +18,6 @@ import util_modelling as umodel
 import utils.experiments as uexp
 import utils.testing as utest
 
-
-# TODO use config
-# TODO put stuff in main()
-# TODO add logging
 
 logger = logging.getLogger(__name__) 
 
@@ -35,19 +32,36 @@ parser.add_argument('-m',   '--model_type',
                          "uidf\n"
                          "entropy\n"
                          "reviewer")
-parser.add_argument('-e',   '--env_type',
-                    default='sim5link', 
-                    help="Select which environment to use 'sim2link','sim5link' or 'robot'")
 parser.add_argument('-r',   '--resolution',
                     default=7,        
                     help="Select discretisation resolution")
-parser.add_argument('-v',   '--verbose',
-                    default=0,       
-                    help="Define verbose level\n"
-                         "0: basic info\n"
-                         "1: training detailed info\n"
-                         "2: test detailed info\n"
-                         "3: training and test detailed info\n")
+
+parser.add_argument('-pcov',   '--pidf_cov', type=float,
+                    default=0.1,      
+                    help="Penalisation function covariance coefficient.")
+
+parser.add_argument('-k',   '--kernel_name',
+                    default='RBF',      
+                    help="Gaussian Process Regression kernel function.")
+parser.add_argument('-sig',   '--kernel_sigma', nargs='+', type=float,
+                    default=0.01,      
+                    help="Sigma coefficient of the kernel")
+
+
+parser.add_argument('-nt',  '--num_trial', type=int,
+                    default=10,  
+                    help="Number of trials to run")
+
+parser.add_argument('-e',   '--environment',
+                    default='sim5link', 
+                    help="Select which environment to use: "
+                         "'sim2link'\n"
+                         "'sim5link'\n"
+                         "'robot'")
+
+parser.add_argument('-s',   '--seed', type=int,
+                    default=100,      
+                    help="Experiment seed.")
 parser.add_argument('-pl',   '--plots',
                     default=0,     
                     help="Define plots to show\n"
@@ -55,33 +69,27 @@ parser.add_argument('-pl',   '--plots',
                          "1: model plots\n"
                          "2: test plots\n"
                          "3: both model and test plots\n")
-parser.add_argument('-tr',  '--num_trial', type=int,
-                    default=10,  
-                    help="Number of trials to run")
-parser.add_argument('-o',   '--other', nargs='+', type=float,
-                    default=[0.1, 0.01, 1],      
-                    help="Additional model specs list\n"
-                         "[COV, siglensq, seed]\n")
+parser.add_argument('-v',   '--verbose',
+                    default=0,       
+                    help="Define verbose level\n"
+                         "0: basic info\n"
+                         "1: training detailed info\n"
+                         "2: test detailed info\n"
+                         "3: training and test detailed info\n")
 
 
-
-# INITIALISE MODEL
-
-def main_run():
+def _start_logging():
     args = parser.parse_args()
-    # dirname = '_'.join([args.env_type,
-    #                     args.model_type, 
-    #                     'res'+str(args.res), 
-    #                     'cov'+str(int(args.other[0])), 
-    #                     'kernelSE_sl'+str(args.other[1])+'-seed'+str(int(args.other[2]))])
     dirname = "experiment_data/simulation/"\
               "ENV_{}__MODEL_{}_res{}_cov{}_kernelSE_sl{}__{}_{}".format(
-              args.env_type,
+              args.environment,
               args.model_type, 
               args.resolution, 
-              int(args.other[0]), args.other[1], int(args.other[2]),
+              args.pidf_cov, args.kernel_sigma, args.seed,
               datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S"))
     os.makedirs(dirname)
+    task_kwargs = vars(args)
+    task_kwargs[dirname] = dirname
     # Start logging info
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(name)-10s '
@@ -91,20 +99,30 @@ def main_run():
                                 '{}/logging_data.log'.format(dirname)),
                             logging.StreamHandler()
                         ])
+    # Save the modified arguments
+    filename = '{}/experiment_metadata.json'.format(dirname)
+    with open(filename, 'w') as outfile:  
+        json.dump(task_kwargs, outfile, sort_keys=True, indent=4)
+    # print(task_kwargs)
     logger.info('Starting session: {}\n'.format(dirname))
-    print(args)
+    return task_kwargs
 
 
+# INITIALISE MODEL
 
-    experiment = uexp.SimulationExperiment(agent=args.env_type, 
-                                           resolution=args.resolution, 
-                                           animate=False, 
-                                           verbose=args.verbose&1)
+def main_run():
+    # Initialise stuff
+    task_kwargs = _start_logging()
+    # experiment = mm.ExperimentManager(task_kwargs)
+
+
+    experiment = uexp.SimulationExperiment(**task_kwargs)
     model = umodel.InformedModel(experiment.parameter_list, 
                                  experiment.type, 
                                  show_plots=args.plots&1, 
-                                 other=args.other, 
-                                 folder_name=dirname)
+                                 other=[args.other], 
+                                 folder_name=task_kwargs['dirname'])
+    
     testing = utest.FullTest(experiment, model, 
                              show_plots=args.plots&2, 
                              verbose=args.verbose&2)

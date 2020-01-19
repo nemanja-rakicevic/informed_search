@@ -10,7 +10,9 @@ Implementation of the Informed Search approach to parameter space exploration. F
 
 ## Motivation and Method Description
 
-- The goal is to efficiently explore the movement parameter space in as few trials as possible. By evaluating the most informative regions of the parameter space,  a robust forward model is obtained that can be used at testing
+- The goal is to efficiently explore the movement parameter space in as few trials as possible. 
+- By evaluating the potentially most informative regions of the parameter space,  a robust forward model is obtained.
+- The forward model can be used at test time to find the appropriate parameters to perform an action.
 
 ![Method components](img/method_components.png)
 
