@@ -87,6 +87,7 @@ class BaseModel(object):
 
     def _build_kernel(self, kernel_name, lenscale_sq=0.1, sigma_sq=1):
         """ Construct the kernel function and initialise Kss """
+### CAN ALSO DEFINE KERNELS IN A DIFFRENT FILE AND CALL BY NAME
         if kernel_name == 'se':
             # SE squared exponential kernel
             def se_kernel(a, b):

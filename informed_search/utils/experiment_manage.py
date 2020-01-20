@@ -29,6 +29,35 @@ class ExperimentManager(object):
                                  show_plots=args.plots&2, 
                                  verbose=args.verbose&2)
 
+    # def __new__(self, **training_dict):
+
+    #     ae_type_param = training_dict['ae_param']['type']
+    #     ae_type_traj = training_dict['ae_traj']['type']
+
+    #     # Extract parameter AE model         
+    #     param_ae_fns = {
+    #         'param_encoder_fn': 
+    #             arch.__dict__['{}_param_encoder'.format(ae_type_param)],
+    #         'param_decoder_fn': 
+    #             arch.__dict__['{}_param_decoder'.format(ae_type_param)],
+    #         'param_branch_fn' : 
+    #             arch.__dict__['{}_param_branch_2out'.format('fc')]}
+
+    #     # Select and pass the model object
+    #     if ae_type_traj == 'None':
+    #         return TrainAE(**param_ae_fns, **training_dict)
+    #     else:
+    #         # Extract trajectory AE model  
+    #         traj_ae_fns = {
+    #           'traj_encoder_fn': 
+    #               arch.__dict__['{}_traj_encoder'.format(ae_type_traj)],
+    #           'traj_decoder_fn': 
+    #               arch.__dict__['{}_traj_decoder'.format(ae_type_traj)]}
+    #         return TrainAEwTRAJ(**param_ae_fns, **traj_ae_fns, **training_dict)
+
+
+
+
 
     def run_iteration(self):
         pass
