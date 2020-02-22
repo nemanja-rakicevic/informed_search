@@ -63,11 +63,11 @@ class FullTest:
   #   # Save statistics
   #   self.results_list.append([tr_num, statistics, euclid_plot, dist_plot, errors_mean, errors_std, num_fails])
   #   if save_progress:
-  #     self.saveResults(model.trial_dirname)
+  #     self.saveResults(model.dirname)
   #   # Plot heatmaps
   #   heatmap = False
   #   if heatmap:
-  #     self.plotResults(model.trial_dirname, tr_num, euclid_plot, dist_plot, errors_mean)
+  #     self.plotResults(model.dirname, tr_num, euclid_plot, dist_plot, errors_mean)
 
 
 
@@ -110,11 +110,11 @@ class FullTest:
     # Save statistics
     self.results_list.append([tr_num, statistics, euclid_plot, dist_plot, errors_mean, errors_std, num_fails])
     if save_progress:
-      self.saveResults(self.model.trial_dirname)
+      self.saveResults(self.model.dirname)
     # Plot heatmaps
     # heatmap = False
     if heatmap:
-      self.plotResults(self.model.trial_dirname, tr_num, euclid_plot, dist_plot, errors_mean)
+      self.plotResults(self.model.dirname, tr_num, euclid_plot, dist_plot, errors_mean)
 
 
   def saveResults(self, savepath):

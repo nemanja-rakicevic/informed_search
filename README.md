@@ -1,4 +1,16 @@
 
+# TODO
+
+- reorganise utils/modelling.py so functionality matches utils_modelling.py but  take out unnecessary stuff.
+- pass kernel params in a nicer way
+- move kernel definition to another file
+- make testing nicer
+
+
+- check if robot code can be integrated
+
+---
+
 # Informed Search
 
 Implementation of the Informed Search approach to parameter space exploration. For more details see:
@@ -28,11 +40,12 @@ Download repository:
 
 
 Set up conda environment<br/>
+UPDATE THIS !!!
 (assuming __Conda 4.6.14__, __CUDA v7.5.17__ and __NVIDIA Driver Version 396.44__ already installed) :
 
-&nbsp;&nbsp;&nbsp;`conda env create -f behrep_env_[cpu/gpu].yml`
+&nbsp;&nbsp;&nbsp;`conda env create -f infosearch_env.yml`
 
-&nbsp;&nbsp;&nbsp;`conda activate behrep_env_[cpu/gpu]`
+&nbsp;&nbsp;&nbsp;`conda activate infosearch_env`
 
 
 Install repository:
@@ -47,6 +60,6 @@ Install repository:
 
 Basic usage example:
 
-&nbsp;&nbsp;&nbsp;`cd behaviour_representations`
+&nbsp;&nbsp;&nbsp;`cd informed_search`
 
-&nbsp;&nbsp;&nbsp;`python main_training.py --config_file config_experiments/config_disp_param.json`
+&nbsp;&nbsp;&nbsp;`python main_simulation.py`

@@ -1,9 +1,9 @@
+
 """
-Author: Nemanja Rakicevic
-Date  : January 2018
+Author:     Nemanja Rakicevic
+Date  :     January 2018
 Description:
             Classes containing model functionalities
-
 """
 
 import os
@@ -29,29 +29,37 @@ _EPS = 1e-8   # 0.00005
 
 class BaseModel(object):
 
-    def __init__(self, parameter_list, experiment_type, dirname,
-                kernel_name='se',   # SE, MT, RQ
-                cov_coeff=1,
-                seed=100,
-                is_training=False,
-                show_plots=False, **kwargs):
-
+    def __init__(self, parameter_list, 
+                       dirname,
+                       kernel_name='se',   # SE, MT, RQ
+                       kernel_lenscale=0.1,
+                       kernel_sigma=1,
+                       cov_coeff=1,
+                       seed=100,
+                       is_training=False,
+                       show_plots=False, **kwargs):
         # Fix numpy seed
         np.random.seed(seed)
+        self.show_plots = show_plots
+
+        # Generate experiment directory
         self.dirname = dirname
         os.makedirs(self.dirname+'/plots')
+
         # Initialise parameter space
         self.param_list = parameter_list
-        self.param_space = np.array([xs for xs in itertools.product(*self.param_list)])
+        self.param_space = \
+                np.array([xs for xs in itertools.product(*self.param_list)])
         self.param_dims = np.array([len(i) for i in self.param_list])
+        self.n_param = len(self.param_space)
+
         # Initialise statistics
         self.coord_explored = []
         self.coord_failed = []
 
         # Initialise attributes 
         self._build_model(cov_coeff)
-        self._build_kernel(kernel_name)
-
+        self._build_kernel(kernel_name, kernel_lenscale, kernel_sigma)
 
     def _build_model(self, cov_coeff):
         # Prior distribution
@@ -68,6 +76,7 @@ class BaseModel(object):
         self.pidf = self.prior_init
         self.uidf = self.prior_init
         self.sidf = self.prior_init
+
         # Initialise model components
         self.model_list = []
         self.mu_alpha = np.zeros(tuple(self.param_dims))
@@ -79,40 +88,41 @@ class BaseModel(object):
         # self.gp_class = GaussianProcessClassifier(kernel=1.0 * RBF(length_scale=1.0))
         self.mu_pidf = 0.5*np.ones(tuple(self.param_dims))
         self.var_pidf = np.ones(tuple(self.param_dims))
-        self.current_uncertainty = self.model_uncertainty
-        self.delta_uncertainty = []
         self.mu_uncert = 0*np.ones(tuple(self.param_dims))
         self.var_uncert = np.ones(tuple(self.param_dims))
+        self.current_uncertainty = self.model_uncertainty
+        self.delta_uncertainty = []
 
 
-    def _build_kernel(self, kernel_name, lenscale_sq=0.1, sigma_sq=1):
-        """ Construct the kernel function and initialise Kss """
 ### CAN ALSO DEFINE KERNELS IN A DIFFRENT FILE AND CALL BY NAME
+    def _build_kernel(self, kernel_name, kernel_lenscale, kernel_sigma):
+        """ Construct the kernel function and initialise Kss """
         if kernel_name == 'se':
             # SE squared exponential kernel
             def se_kernel(a, b):
-                # lenscale_sq = 0.01 # 1 0.5 0.3 0.1 
-                sqdist = (1. / lenscale_sq) * \
+                # kernel_lenscale = 0.01 # 1 0.5 0.3 0.1 
+                sqdist = (1. / kernel_lenscale) * \
                          sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-                return sigma_sq * np.exp(-.5 * sqdist)
+                return kernel_sigma * np.exp(-.5 * sqdist)
             self.kernel_fn = se_kernel
         elif kernel_name == 'mt':
             def mat_kernel(a, b):
                 # MT Matern 5/2 kernel
-                # lenscale_sq = 0.03 # 1
-                sqdist = (1. / lenscale_sq) * \
+                # kernel_lenscale = 0.03 # 1
+                sqdist = (1. / kernel_lenscale) * \
                          sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-                return sigma_sq * (1 + np.sqrt(5 * sqdist) + 5 * sqdist / 3.) \
-                            * np.exp(-np.sqrt(5.*sqdist))
+                return kernel_sigma \
+                       * (1 + np.sqrt(5 * sqdist) + 5 * sqdist / 3.) \
+                       * np.exp(-np.sqrt(5.*sqdist))
             self.kernel_fn = mat_kernel
         elif kernel_name == 'rq':
             def rq_kernel(a, b):
                 # RQ rational quadratic kernel
-                # lenscale_sq = 1
+                # kernel_lenscale = 1
                 alpha = a.shape[1] / 2. #a.shape[1]/2. #np.exp(1) #len(a)/2.
-                sqdist = (1. / lenscale_sq) * \
+                sqdist = (1. / kernel_lenscale) * \
                          sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-                return sigma_sq * np.power(1 + 0.5 * sqdist / alpha, -alpha)
+                return kernel_sigma * np.power(1 + 0.5 * sqdist / alpha, -alpha)
             self.kernel_fn = rq_kernel
         else:
             raise AttributeError("Undefined kernel name!")
@@ -132,8 +142,8 @@ class BaseModel(object):
 
 
     def save_model(self):
-        self.model_list.append([self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list])
-        with open(self.trial_dirname + "/data_training_model.dat", "wb") as m:
+        self.model_list.append([self.mu_alpha, self.mu_L, self.model_uncertainty, self.pidf, self.sidf, self.param_list])
+        with open(self.dirname + "/data_training_model.dat", "wb") as m:
             pickle.dump(self.model_list, m, protocol=pickle.HIGHEST_PROTOCOL)
 
 
@@ -142,18 +152,18 @@ class BaseModel(object):
         for idx, t in enumerate(list_models):
             print("("+str(idx)+")\t", t)
         test_num = input("\nEnter number of model to load > ")
-        self.trial_dirname = './DATA/'+self.exp_type+'/'+list_models[int(test_num)]
+        self.dirname = './DATA/'+self.exp_type+'/'+list_models[int(test_num)]
 
 
-        print("Loading: ",self.trial_dirname)
-        with open(self.trial_dirname + "/data_training_model.dat", "rb") as m:
+        print("Loading: ",self.dirname)
+        with open(self.dirname + "/data_training_model.dat", "rb") as m:
             tmp = pickle.load(m)
             if len(tmp)<6:
                 self.model_list = tmp
-                (self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list) = self.model_list[-1]
+                (self.mu_alpha, self.mu_L, self.model_uncertainty, self.pidf, self.sidf, self.param_list) = self.model_list[-1]
             else:
                 # Load last from history 
-                (self.mu_alpha, self.mu_L, self.model_uncertainty, self.penal_IDF, self.selection_IDF, self.param_list) = tmp
+                (self.mu_alpha, self.mu_L, self.model_uncertainty, self.pidf, self.sidf, self.param_list) = tmp
  
 
 
@@ -161,8 +171,6 @@ class BaseModel(object):
     def test_model(self):
         """ Generate test parameter coordinates for performance evaluation """
         pass
-
-
 
 
     def update_model():
@@ -191,7 +199,7 @@ class BaseModel(object):
         # M_meas  = getMeas(M_angle, M_dist, angle_s, dist_s)
         M_meas = sqdist(self.mu_alpha - angle_s, self.mu_L - dist_s)
         """
-        Check for known constraints/failures if the values of the penal_IDF for the selected_coords 
+        Check for known constraints/failures if the values of the pidf for the selected_coords 
         are above a cetrain threshold this is probably a bad idea
         """
         src = 0
@@ -206,8 +214,8 @@ class BaseModel(object):
             if cnt%50 == 0 and cnt > 100:
                 thrsh = cnt/1000.
                 src = 0
-            # print(self.penal_IDF[tuple(selected_coord)], "DIFF",thrsh)
-            if self.penal_IDF[tuple(selected_coord)] < thrsh:
+            # print(self.pidf[tuple(selected_coord)], "DIFF",thrsh)
+            if self.pidf[tuple(selected_coord)] < thrsh:
                 # print("BREAK")
                 break
             else:    
@@ -243,27 +251,27 @@ class BaseModel(object):
                 if self.param_dims[0]>1:
                     model_alpha  = self.mu_alpha[:,:,3,3,4].reshape(len(dim1),len(dim2))
                     model_L      = self.mu_L[:,:,3,3,4].reshape(len(dim1),len(dim2))
-                    model_PIDF   = self.penal_IDF[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                    model_PIDF   = self.pidf[:,:,3,3,4].reshape(len(dim1),len(dim2))
                     model_var    = self.model_uncertainty[:,:,3,3,4].reshape(len(dim1),len(dim2))
-                    model_select = self.selection_IDF[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                    model_select = self.sidf[:,:,3,3,4].reshape(len(dim1),len(dim2))
 
                     # model_alpha  = self.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                     # model_L      = self.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
-                    # model_PIDF   = self.penal_IDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    # model_PIDF   = self.pidf[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                     # model_var    = self.model_uncertainty[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
-                    # model_select = self.selection_IDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    # model_select = self.sidf[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                 else:
                     model_alpha  = self.mu_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                     model_L      = self.mu_L[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
-                    model_PIDF   = self.penal_IDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
+                    model_PIDF   = self.pidf[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                     model_var    = self.model_uncertainty[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
-                    model_select = self.selection_IDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
+                    model_select = self.sidf[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
             else:
                 model_alpha  = self.mu_alpha
                 model_L      = self.mu_L
-                model_PIDF   = self.penal_IDF
+                model_PIDF   = self.pidf
                 model_var    = self.model_uncertainty
-                model_select = self.selection_IDF
+                model_select = self.sidf
             # Set ticks
             xticks = np.linspace(min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 5).round(1)
             yticks = np.linspace(min(dim1[0], dim1[-1]), max(dim1[0], dim1[-1]), 4).round(1)
@@ -273,7 +281,7 @@ class BaseModel(object):
             zticks_alpha = np.linspace(self.mu_alpha.min(), self.mu_alpha.max(), 4).round()
             zticks_L = np.linspace(self.mu_L.min(), self.mu_L.max(), 4).round()
             zticks_unc = np.linspace(self.model_uncertainty.min(), self.model_uncertainty.max(), 4).round(2)
-            # zticks_PIDF = np.linspace(self.penal_IDF.min(), self.penal_IDF.max(), 7).round(1)
+            # zticks_PIDF = np.linspace(self.pidf.min(), self.pidf.max(), 7).round(1)
             # ANGLE MODEL
             ax = plt.subplot2grid((2,6),(0, 0), colspan=2, projection='3d')
             ax.set_title('ANGLE MODEL')
@@ -324,7 +332,7 @@ class BaseModel(object):
                 spine.set_visible(False)
             # add also the trial points
             for tr in self.coord_explored:
-                if list(tr) in [list(x) for x in self.failed_coords]:
+                if list(tr) in [list(x) for x in self.coord_failed]:
                     ax1.scatter(x=tr[1], y=tr[0], c='r', s=15)
                 else:
                     ax1.scatter(x=tr[1], y=tr[0], c='c', s=15)
@@ -333,7 +341,7 @@ class BaseModel(object):
 
             # PENALISATION IDF
             ax = plt.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
-            ax.set_title('Penalisation function: '+str(len(self.failed_coords))+' points')
+            ax.set_title('Penalisation function: '+str(len(self.coord_failed))+' points')
             ax.set_ylabel(param_names[1], labelpad=5)
             ax.set_xlabel(param_names[0], labelpad=5)
             ax.set_xticks(xticks)
@@ -375,7 +383,7 @@ class BaseModel(object):
             # add also the trial points
             if show_points:
                 for tr in self.coord_explored:
-                    if list(tr) in [list(x) for x in self.failed_coords]:
+                    if list(tr) in [list(x) for x in self.coord_failed]:
                         ax.plot([dim2[tr[1]], dim2[tr[1]]], [dim1[tr[0]], dim1[tr[0]]], [model_select.min(), model_select.max()], linewidth=1, color='k', alpha=0.7)
                     else:
                         ax.plot([dim2[tr[1]], dim2[tr[1]]], [dim1[tr[0]], dim1[tr[0]]], [model_select.min(), model_select.max()], linewidth=1, color='m', alpha=0.7)
@@ -383,9 +391,9 @@ class BaseModel(object):
             # SAVEFIG
             if isinstance(trial_num, str):
                 fig.suptitle("Models and IDFs (num_iter: {}, resolution: {})".format(trial_num, len(dim1)), fontsize=16)
-                plt.savefig(self.trial_dirname+"/img_training_trial_{}.svg".format(trial_num), format="svg")
+                plt.savefig(self.dirname+"/img_training_trial_{}.svg".format(trial_num), format="svg")
             else:
-                plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}.svg".format(num=trial_num), format="svg")
+                plt.savefig(self.dirname+"/img_training_trial#{num:03d}.svg".format(num=trial_num), format="svg")
             
             if self.show_plots:
                 plt.show()
@@ -408,27 +416,27 @@ class BaseModel(object):
                 if self.param_dims[0]>1:
                     model_alpha  = self.mu_alpha[:,:,3,3,4].reshape(len(dim1),len(dim2))
                     model_L      = self.mu_L[:,:,3,3,4].reshape(len(dim1),len(dim2))
-                    model_PIDF   = self.penal_IDF[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                    model_PIDF   = self.pidf[:,:,3,3,4].reshape(len(dim1),len(dim2))
                     model_var    = self.model_uncertainty[:,:,3,3,4].reshape(len(dim1),len(dim2))
-                    model_select = self.selection_IDF[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                    model_select = self.sidf[:,:,3,3,4].reshape(len(dim1),len(dim2))
 
                     # model_alpha  = self.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                     # model_L      = self.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
-                    # model_PIDF   = self.penal_IDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    # model_PIDF   = self.pidf[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                     # model_var    = self.model_uncertainty[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
-                    # model_select = self.selection_IDF[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                    # model_select = self.sidf[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                 else:
                     model_alpha  = self.mu_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                     model_L      = self.mu_L[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
-                    model_PIDF   = self.penal_IDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
+                    model_PIDF   = self.pidf[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                     model_var    = self.model_uncertainty[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
-                    model_select = self.selection_IDF[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
+                    model_select = self.sidf[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
             else:
                 model_alpha  = self.mu_alpha
                 model_L      = self.mu_L
-                model_PIDF   = self.penal_IDF
+                model_PIDF   = self.pidf
                 model_var    = self.model_uncertainty
-                model_select = self.selection_IDF
+                model_select = self.sidf
             # Set ticks
             xticks = np.linspace(min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 5).round(1)
             yticks = np.linspace(min(dim1[0], dim1[-1]), max(dim1[0], dim1[-1]), 4).round(1)
@@ -438,7 +446,7 @@ class BaseModel(object):
             zticks_alpha = np.linspace(self.mu_alpha.min(), self.mu_alpha.max(), 4).round()
             zticks_L = np.linspace(self.mu_L.min(), self.mu_L.max(), 4).round()
             zticks_unc = np.linspace(self.model_uncertainty.min(), self.model_uncertainty.max(), 4).round(2)
-            # zticks_PIDF = np.linspace(self.penal_IDF.min(), self.penal_IDF.max(), 7).round(1)
+            # zticks_PIDF = np.linspace(self.pidf.min(), self.pidf.max(), 7).round(1)
             
 
             # ANGLE MODEL
@@ -457,7 +465,7 @@ class BaseModel(object):
             ax.tick_params(axis='y', direction='out', pad=-3)
             ax.tick_params(axis='z', direction='out', pad=5)
             ax.plot_surface(X, Y, model_alpha, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}_angle.svg".format(num=trial_num), format="svg")
+            plt.savefig(self.dirname+"/img_training_trial#{num:03d}_angle.svg".format(num=trial_num), format="svg")
             
             # DISTANCE MODEL
             fig = plt.figure("DISTANCE MODEL"+str(trial_num), figsize=None)
@@ -475,7 +483,7 @@ class BaseModel(object):
             ax.tick_params(axis='y', direction='out', pad=-3)
             ax.tick_params(axis='z', direction='out', pad=5)
             ax.plot_surface(X, Y, model_L, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}_dist.svg".format(num=trial_num), format="svg")
+            plt.savefig(self.dirname+"/img_training_trial#{num:03d}_dist.svg".format(num=trial_num), format="svg")
             
             # SELECTION FUNCTION - TOP VIEW
             fig = plt.figure("SELECTION FCN"+str(trial_num), figsize=None)
@@ -498,17 +506,17 @@ class BaseModel(object):
                 spine.set_visible(False)
             # add also the trial points
             for tr in self.coord_explored:
-                if list(tr) in [list(x) for x in self.failed_coords]:
+                if list(tr) in [list(x) for x in self.coord_failed]:
                     ax1.scatter(x=tr[1], y=tr[0], c='r', s=15)
                 else:
                     ax1.scatter(x=tr[1], y=tr[0], c='c', s=15)
             cbar = plt.colorbar(sidf, shrink=0.5, aspect=20, pad = 0.17, orientation='horizontal', ticks=[0.0, 0.5, 1.0])
             sidf.set_clim(-0.001, 1.001)
-            plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}_select.svg".format(num=trial_num), format="svg")
+            plt.savefig(self.dirname+"/img_training_trial#{num:03d}_select.svg".format(num=trial_num), format="svg")
             
             # # PENALISATION IDF
             # ax = plt.subplot2grid((2,6),(1, 0), colspan=2, projection='3d')
-            # ax.set_title('Penalisation function: '+str(len(self.failed_coords))+' points')
+            # ax.set_title('Penalisation function: '+str(len(self.coord_failed))+' points')
             # ax.set_ylabel(param_names[1], labelpad=5)
             # ax.set_xlabel(param_names[0], labelpad=5)
             # ax.set_xticks(xticks)
@@ -550,7 +558,7 @@ class BaseModel(object):
             # # add also the trial points
             # if show_points:
             #     for tr in self.coord_explored:
-            #         if list(tr) in [list(x) for x in self.failed_coords]:
+            #         if list(tr) in [list(x) for x in self.coord_failed]:
             #             ax.plot([dim2[tr[1]], dim2[tr[1]]], [dim1[tr[0]], dim1[tr[0]]], [model_select.min(), model_select.max()], linewidth=1, color='k', alpha=0.7)
             #         else:
             #             ax.plot([dim2[tr[1]], dim2[tr[1]]], [dim1[tr[0]], dim1[tr[0]]], [model_select.min(), model_select.max()], linewidth=1, color='m', alpha=0.7)
@@ -558,9 +566,9 @@ class BaseModel(object):
             # SAVEFIG
             # if isinstance(trial_num, str):
             #     fig.suptitle("Models and IDFs (num_iter: {}, resolution: {})".format(trial_num, len(dim1)), fontsize=16)
-            #     plt.savefig(self.trial_dirname+"/img_training_trial_{}.svg".format(trial_num), format="svg")
+            #     plt.savefig(self.dirname+"/img_training_trial_{}.svg".format(trial_num), format="svg")
             # else:
-            #     plt.savefig(self.trial_dirname+"/img_training_trial#{num:03d}.svg".format(num=trial_num), format="svg")
+            #     plt.savefig(self.dirname+"/img_training_trial#{num:03d}.svg".format(num=trial_num), format="svg")
             
             if self.show_plots:
                 plt.show()
@@ -577,9 +585,11 @@ class BaseModel(object):
 ##############################################################################
 
 
+
+
 class InformedSearch(BaseModel):
 
-    def update_model(self, info_list, save_progress=True):
+    def update_model(self, info_list, save_progress=True, **kwargs):
         """
         Select successful trials to estimate the GPR model mean and variance,
         and the failed ones to update the penalisation IDF.
@@ -598,7 +608,7 @@ class InformedSearch(BaseModel):
                 self.update_PIDF(info_list[-1]['parameters'], failed=-1)
             # Failed trial: Update PIDF
             elif info_list[-1]['fail_status']>0:
-                self.failed_coords = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
+                self.coord_failed = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
                 self.update_PIDF(info_list[-1]['parameters'], failed=1)
             # All trials: Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
@@ -619,9 +629,9 @@ class InformedSearch(BaseModel):
             # Xtrain = np.array(Xtrain).reshape(-1,len(self.param_list))
             Xtest = self.param_space
             # Calculate kernel matrices
-            K = self.kernel(Xtrain, Xtrain)
+            K = self.kernel_fn(Xtrain, Xtrain)
             L = np.linalg.cholesky(K + _EPS*np.eye(len(Xtrain)))
-            Ks = self.kernel(Xtrain, Xtest)
+            Ks = self.kernel_fn(Xtrain, Xtest)
             Lk = np.linalg.solve(L, Ks)
             # Get overall model uncertainty
             return np.sqrt(np.diag(self.Kss) - np.sum(Lk**2, axis=0)).reshape(tuple(self.param_dims))
@@ -633,9 +643,9 @@ class InformedSearch(BaseModel):
         Ytrain = Ytrain[:, label_indicator].reshape(-1,1)
         Xtest = self.param_space
         # Calculate kernel matrices
-        K = self.kernel(Xtrain, Xtrain)
+        K = self.kernel_fn(Xtrain, Xtrain)
         L = np.linalg.cholesky(K + _EPS*np.eye(len(Xtrain)))
-        Ks = self.kernel(Xtrain, Xtest)
+        Ks = self.kernel_fn(Xtrain, Xtest)
         Lk = np.linalg.solve(L, Ks)
         # Get posterior MU and SIGMA
         mu_post = np.dot(Lk.T, np.linalg.solve(L, Ytrain))
@@ -652,7 +662,7 @@ class InformedSearch(BaseModel):
         corresponding to the movement vector of the failed trial.
         Similar is done for the successful trials with a positive Gaussian, but wider.
         """
-        previous_pidf = self.penal_IDF.copy()
+        previous_pidf = self.pidf.copy()
         # Modify the covariance matrix, depending on trial outcome  
         # Failed trial
         if failed == 1:
@@ -660,24 +670,24 @@ class InformedSearch(BaseModel):
             Use most diverse samples. Make the parameters that change often change less (make cov smaller and wider), 
             and the ones which don't push to change more (make cov larger and narrower)
             """
-            # fl_var = np.array([len(np.unique(np.array(self.failed_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)
+            # fl_var = np.array([len(np.unique(np.array(self.coord_failed)[:,f])) for f in range(len(self.param_list)) ], np.float)
             # cov_coeff = 1 + (fl_var-fl_var.mean())/(fl_var.max())
             """ VERSION 2
             Get samples with most repeated elements. Leave the parameters that change often as they are (leave cov as is),
             and the ones which don't push to change more (make cov larger and narrower) 
             """
-            fl_var = np.array([ max(np.bincount(np.array(self.failed_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)            
+            fl_var = np.array([ max(np.bincount(np.array(self.coord_failed)[:,f])) for f in range(len(self.param_list)) ], np.float)            
             cov_coeff = 1 + (fl_var-fl_var.min())/fl_var.max()
         # Succesful trial
         elif failed == -1:
             fl_var = 0
             cov_coeff = 0.5*np.ones(len(self.param_list))
             # # Update the covariance matrix taking into account stationary parameters
-            # if len(self.failed_coords)>0:
-            #     good_coords = set(map(tuple, self.coord_explored)) - set(map(tuple,self.failed_coords))
+            # if len(self.coord_failed)>0:
+            #     good_coords = set(map(tuple, self.coord_explored)) - set(map(tuple,self.coord_failed))
             #     good_coords = np.array(list(good_coords)) 
             #     """VERSION 1: Get most diverse samples"""
-            #     # fl_var = np.array([len(np.unique(np.array(self.failed_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)
+            #     # fl_var = np.array([len(np.unique(np.array(self.coord_failed)[:,f])) for f in range(len(self.param_list)) ], np.float)
             #     # cov_coeff = (1-(fl_var-fl_var.mean())/(fl_var.max()))
             #     """VERSION 2: Get samples with most repeated elements"""
             #     # fl_var = np.array([ max(np.bincount(np.array(self.good_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)            
@@ -686,45 +696,45 @@ class InformedSearch(BaseModel):
             #     cov_coeff = 0.5*np.ones(len(self.param_list))
         # Update covariance diagonal elements
         for idx, cc in enumerate(cov_coeff):
-            self.cov[idx,idx] = self.COVARIANCE * cc
+            self.cov_matrix[idx,idx] = self.cov_coeff * cc
         # Estimate the contributing Gaussian
-        trial_gaussian = failed * np.reshape(self.generate_pdf_matrix(self.param_space, mu, self.cov), tuple(self.param_dims))
+        trial_gaussian = failed * np.reshape(self.generate_pdf_matrix(self.param_space, mu, self.cov_matrix), tuple(self.param_dims))
         trial_gaussian /= (trial_gaussian.max() + _EPS)
         # Update the penalisation IDF
-        self.penal_IDF = np.clip(previous_pidf + trial_gaussian, self.prior_init, 1.)
+        self.pidf = np.clip(previous_pidf + trial_gaussian, self.prior_init, 1.)
         # print("---check, penalisation updates: ")
         # print(fl_var)
-        # print(np.diag(self.cov))
-        print("--- penalised", len(np.argwhere(self.penal_IDF.round(2)==np.max(self.penal_IDF.round(2)))),"peaks from",len(self.failed_coords),"combinations.")
+        # print(np.diag(self.cov_matrix))
+        print("--- penalised", len(np.argwhere(self.pidf.round(2)==np.max(self.pidf.round(2)))),"peaks from",len(self.coord_failed),"combinations.")
         
 
 
-    def generate_sample(self, info_list):
+    def generate_sample(self, info_list, **kwargs):
         """
         Generate the movement parameter vector to evaluate next, 
         based on the GPR model uncertainty and the penalisation IDF.
         """
         # Combine the model uncertainty with the penalisation IDF to get the most informative point  
         # model_var = (self.prior_init * self.model_uncertainty)/np.sum(self.prior_init * self.model_uncertainty)
-        selection_IDF = 1.0 * self.model_uncertainty * (1 - self.penal_IDF)#/np.sum(1-self.penal_IDF)
+        sidf = 1.0 * self.model_uncertainty * (1 - self.pidf)#/np.sum(1-self.pidf)
         # info_pdf /= np.sum(info_pdf)
-        self.selection_IDF = selection_IDF /(selection_IDF.max() + _EPS)
+        self.sidf = sidf /(sidf.max() + _EPS)
         # Check if the parameters have already been used
         temp_good = np.array([])
         cnt=1
         while len(temp_good)==0:
-            temp = np.argwhere(np.array([selection_IDF==c for c in nlargest(cnt*1, selection_IDF.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
+            temp = np.argwhere(np.array([sidf==c for c in nlargest(cnt*1, sidf.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
             temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_explored))
             temp_good = np.array(list(temp_good)) 
             cnt+=1
-            if cnt > len(self.penal_IDF.ravel()):
+            if cnt > self.n_param:
                 print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
                 break
 
         selected_coord = temp_good[np.random.choice(len(temp_good)),:]
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
         self.coord_explored.append(selected_coord)
-        # print("---selection_IDF provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
+        # print("---sidf provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
         print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
         # return the next sample vector
         return selected_coord, selected_params
@@ -745,9 +755,21 @@ class InformedSearch(BaseModel):
 
 
 
+
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+
+
+
+
+
+
+
 class UIDFSearch(BaseModel):
 
-    def update_model(self, info_list, save_progress=True):
+    def update_model(self, info_list, save_progress=True, **kwargs):
         """
         Select successful trials to estimate the GPR model mean and variance,
         and the failed ones to update the penalisation IDF.
@@ -766,7 +788,7 @@ class UIDFSearch(BaseModel):
                 self.update_PIDF(info_list[-1]['parameters'], failed=-1)
             # Failed trial: Update PIDF
             elif info_list[-1]['fail_status']>0:
-                self.failed_coords = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
+                self.coord_failed = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
                 self.update_PIDF(info_list[-1]['parameters'], failed=1)
             # All trials: Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
@@ -787,9 +809,9 @@ class UIDFSearch(BaseModel):
             # Xtrain = np.array(Xtrain).reshape(-1,len(self.param_list))
             Xtest = self.param_space
             # Calculate kernel matrices
-            K = self.kernel(Xtrain, Xtrain)
+            K = self.kernel_fn(Xtrain, Xtrain)
             L = np.linalg.cholesky(K + _EPS*np.eye(len(Xtrain)))
-            Ks = self.kernel(Xtrain, Xtest)
+            Ks = self.kernel_fn(Xtrain, Xtest)
             Lk = np.linalg.solve(L, Ks)
             # Get overall model uncertainty
             return np.sqrt(np.diag(self.Kss) - np.sum(Lk**2, axis=0)).reshape(tuple(self.param_dims))
@@ -801,9 +823,9 @@ class UIDFSearch(BaseModel):
         Ytrain = Ytrain[:, label_indicator].reshape(-1,1)
         Xtest = self.param_space
         # Calculate kernel matrices
-        K = self.kernel(Xtrain, Xtrain)
+        K = self.kernel_fn(Xtrain, Xtrain)
         L = np.linalg.cholesky(K + _EPS*np.eye(len(Xtrain)))
-        Ks = self.kernel(Xtrain, Xtest)
+        Ks = self.kernel_fn(Xtrain, Xtest)
         Lk = np.linalg.solve(L, Ks)
         # Get posterior MU and SIGMA
         mu_post = np.dot(Lk.T, np.linalg.solve(L, Ytrain))
@@ -814,85 +836,35 @@ class UIDFSearch(BaseModel):
 
 
     def update_PIDF(self, mu, failed=1):
-        """ 
-        Update the penalisation PDF based on the failed trials, by centering a
-        negative multivariate Gaussian in the point in the parameter space 
-        corresponding to the movement vector of the failed trial.
-        Similar is done for the successful trials with a positive Gaussian, but wider.
-        """
-        previous_pidf = self.penal_IDF.copy()
-        # Modify the covariance matrix, depending on trial outcome  
-        # Failed trial
-        if failed == 1:
-            """ VERSION 1
-            Use most diverse samples. Make the parameters that change often change less (make cov smaller and wider), 
-            and the ones which don't push to change more (make cov larger and narrower)
-            """
-            # fl_var = np.array([len(np.unique(np.array(self.failed_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)
-            # cov_coeff = 1 + (fl_var-fl_var.mean())/(fl_var.max())
-            """ VERSION 2
-            Get samples with most repeated elements. Leave the parameters that change often as they are (leave cov as is),
-            and the ones which don't push to change more (make cov larger and narrower) 
-            """
-            fl_var = np.array([ max(np.bincount(np.array(self.failed_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)            
-            cov_coeff = 1 + (fl_var-fl_var.min())/fl_var.max()
-        # Succesful trial
-        elif failed == -1:
-            fl_var = 0
-            cov_coeff = 0.5*np.ones(len(self.param_list))
-            # # Update the covariance matrix taking into account stationary parameters
-            # if len(self.failed_coords)>0:
-            #     good_coords = set(map(tuple, self.coord_explored)) - set(map(tuple,self.failed_coords))
-            #     good_coords = np.array(list(good_coords)) 
-            #     """VERSION 1: Get most diverse samples"""
-            #     # fl_var = np.array([len(np.unique(np.array(self.failed_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)
-            #     # cov_coeff = (1-(fl_var-fl_var.mean())/(fl_var.max()))
-            #     """VERSION 2: Get samples with most repeated elements"""
-            #     # fl_var = np.array([ max(np.bincount(np.array(self.good_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)            
-            #     # cov_coeff = 1+(1-(fl_var)/(fl_var.max()))
-            # else:
-            #     cov_coeff = 0.5*np.ones(len(self.param_list))
-        # Update covariance diagonal elements
-        for idx, cc in enumerate(cov_coeff):
-            self.cov[idx,idx] = self.COVARIANCE * cc
-        # Estimate the contributing Gaussian
-        trial_gaussian = failed * np.reshape(self.generatePDF_matrix(self.param_space, mu, self.cov), tuple(self.param_dims))
-        trial_gaussian /= (trial_gaussian.max() + _EPS)
-        # Update the penalisation IDF
-        self.penal_IDF = np.clip(previous_pidf + trial_gaussian, self.prior_init, 1.)
-        # print("---check, penalisation updates: ")
-        # print(fl_var)
-        # print(np.diag(self.cov))
-        print("--- penalised", len(np.argwhere(self.penal_IDF.round(2)==np.max(self.penal_IDF.round(2)))),"peaks from",len(self.failed_coords),"combinations.")
-        
+        pass
         
 
-    def generate_sample(self, info_list):
+    def generate_sample(self, info_list, **kwargs):
         """
         Generate the movement parameter vector to evaluate next, 
         based ONLY on the GPR model uncertainty.
         """
         # Combine the model uncertainty with the penalisation IDF to get the most informative point  
         # model_var = (self.prior_init * self.model_uncertainty)/np.sum(self.prior_init * self.model_uncertainty)
-        selection_IDF = 1.0 * self.model_uncertainty #* (1 - self.penal_IDF)#/np.sum(1-self.penal_IDF)
+        sidf = 1.0 * self.model_uncertainty #* (1 - self.pidf)#/np.sum(1-self.pidf)
         # info_pdf /= np.sum(info_pdf)
-        self.selection_IDF = selection_IDF /(selection_IDF.max() + _EPS)
+        self.sidf = sidf /(sidf.max() + _EPS)
         # Check if the parameters have already been used
         temp_good = np.array([])
         cnt=1
         while len(temp_good)==0:
-            temp = np.argwhere(np.array([selection_IDF==c for c in nlargest(cnt*1, selection_IDF.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
+            temp = np.argwhere(np.array([sidf==c for c in nlargest(cnt*1, sidf.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
             temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_explored))
             temp_good = np.array(list(temp_good)) 
             cnt+=1
-            if cnt > len(self.penal_IDF.ravel()):
+            if cnt > self.n_param:
                 print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
                 break
 
         selected_coord = temp_good[np.random.choice(len(temp_good)),:]
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
         self.coord_explored.append(selected_coord)
-        # print("---selection_IDF provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
+        # print("---sidf provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
         print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
         # return the next sample vector
         return selected_coord, selected_params
@@ -902,11 +874,18 @@ class UIDFSearch(BaseModel):
 
 
 
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+
+
+
 
 
 class EntropySearch(BaseModel):
 
-    def update_model(self, info_list, save_progress=True):
+    def update_model(self, info_list, save_progress=True, **kwargs):
         """
         Select successful trials to estimate the GPR model mean and variance,
         and the failed ones to update the penalisation IDF.
@@ -925,7 +904,7 @@ class EntropySearch(BaseModel):
                 self.update_PIDF(info_list[-1]['parameters'], failed=-1)
             # Failed trial: Update PIDF
             elif info_list[-1]['fail_status']>0:
-                self.failed_coords = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
+                self.coord_failed = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
                 self.update_PIDF(info_list[-1]['parameters'], failed=1)
             # All trials: Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
@@ -946,9 +925,9 @@ class EntropySearch(BaseModel):
             # Xtrain = np.array(Xtrain).reshape(-1,len(self.param_list))
             Xtest = self.param_space
             # Calculate kernel matrices
-            K = self.kernel(Xtrain, Xtrain)
+            K = self.kernel_fn(Xtrain, Xtrain)
             L = np.linalg.cholesky(K + self.eps_var*np.eye(len(Xtrain)))
-            Ks = self.kernel(Xtrain, Xtest)
+            Ks = self.kernel_fn(Xtrain, Xtest)
             Lk = np.linalg.solve(L, Ks)
             # Get overall model uncertainty
             return np.sqrt(np.diag(self.Kss) - np.sum(Lk**2, axis=0)).reshape(tuple(self.param_dims))
@@ -960,9 +939,9 @@ class EntropySearch(BaseModel):
         Ytrain = Ytrain[:, label_indicator].reshape(-1,1)
         Xtest = self.param_space
         # Calculate kernel matrices
-        K = self.kernel(Xtrain, Xtrain)
+        K = self.kernel_fn(Xtrain, Xtrain)
         L = np.linalg.cholesky(K + self.eps_var*np.eye(len(Xtrain)))
-        Ks = self.kernel(Xtrain, Xtest)
+        Ks = self.kernel_fn(Xtrain, Xtest)
         Lk = np.linalg.solve(L, Ks)
         # Get posterior MU and SIGMA
         mu_post = np.dot(Lk.T, np.linalg.solve(L, Ytrain))
@@ -976,32 +955,32 @@ class EntropySearch(BaseModel):
         pass
         
 
-    def generate_sample(self, info_list):
+    def generate_sample(self, info_list, **kwargs):
         """
         Generate the movement parameter vector to evaluate next, 
         based ONLY on the posterior distributions entropy
         """
         # Combine the model uncertainty with the penalisation IDF to get the most informative point  
         # model_var = (self.prior_init * self.model_uncertainty)/np.sum(self.prior_init * self.model_uncertainty)
-        selection_IDF = 0.5 * np.log(2 * np.pi * np.e * self.model_uncertainty )#* (1 - self.penal_IDF)#/np.sum(1-self.penal_IDF)
+        sidf = 0.5 * np.log(2 * np.pi * np.e * self.model_uncertainty )#* (1 - self.pidf)#/np.sum(1-self.pidf)
         # info_pdf /= np.sum(info_pdf)
-        self.selection_IDF = selection_IDF /(selection_IDF.max() + _EPS)
+        self.sidf = sidf /(sidf.max() + _EPS)
         # Check if the parameters have already been used
         temp_good = np.array([])
         cnt=1
         while len(temp_good)==0:
-            temp = np.argwhere(np.array([selection_IDF==c for c in nlargest(cnt*1, selection_IDF.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
+            temp = np.argwhere(np.array([sidf==c for c in nlargest(cnt*1, sidf.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
             temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_explored))
             temp_good = np.array(list(temp_good)) 
             cnt+=1
-            if cnt > len(self.penal_IDF.ravel()):
+            if cnt > self.n_param:
                 print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
                 break
 
         selected_coord = temp_good[np.random.choice(len(temp_good)),:]
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
         self.coord_explored.append(selected_coord)
-        # print("---selection_IDF provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
+        # print("---sidf provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
         print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
         # return the next sample vector
         return selected_coord, selected_params
@@ -1013,9 +992,19 @@ class EntropySearch(BaseModel):
 
 
 
+
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+
+
+
+
+
 class RandomSearch(BaseModel):
 
-    def update_model(self, info_list, save_progress=True):
+    def update_model(self, info_list, save_progress=True, **kwargs):
         """
         Select successful trials to estimate the GPR model mean and variance,
         and the failed ones to update the penalisation IDF.
@@ -1034,7 +1023,7 @@ class RandomSearch(BaseModel):
                 self.update_PIDF(info_list[-1]['parameters'], failed=-1)
             # Failed trial: Update PIDF
             elif info_list[-1]['fail_status']>0:
-                self.failed_coords = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
+                self.coord_failed = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
                 self.update_PIDF(info_list[-1]['parameters'], failed=1)
             # All trials: Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
@@ -1055,9 +1044,9 @@ class RandomSearch(BaseModel):
             # Xtrain = np.array(Xtrain).reshape(-1,len(self.param_list))
             Xtest = self.param_space
             # Calculate kernel matrices
-            K = self.kernel(Xtrain, Xtrain)
+            K = self.kernel_fn(Xtrain, Xtrain)
             L = np.linalg.cholesky(K + _EPS*np.eye(len(Xtrain)))
-            Ks = self.kernel(Xtrain, Xtest)
+            Ks = self.kernel_fn(Xtrain, Xtest)
             Lk = np.linalg.solve(L, Ks)
             # Get overall model uncertainty
             return np.sqrt(np.diag(self.Kss) - np.sum(Lk**2, axis=0)).reshape(tuple(self.param_dims))
@@ -1069,9 +1058,9 @@ class RandomSearch(BaseModel):
         Ytrain = Ytrain[:, label_indicator].reshape(-1,1)
         Xtest = self.param_space
         # Calculate kernel matrices
-        K = self.kernel(Xtrain, Xtrain)
+        K = self.kernel_fn(Xtrain, Xtrain)
         L = np.linalg.cholesky(K + _EPS*np.eye(len(Xtrain)))
-        Ks = self.kernel(Xtrain, Xtest)
+        Ks = self.kernel_fn(Xtrain, Xtest)
         Lk = np.linalg.solve(L, Ks)
         # Get posterior MU and SIGMA
         mu_post = np.dot(Lk.T, np.linalg.solve(L, Ytrain))
@@ -1082,60 +1071,10 @@ class RandomSearch(BaseModel):
 
 
     def update_PIDF(self, mu, failed=1):
-        """ 
-        Update the penalisation PDF based on the failed trials, by centering a
-        negative multivariate Gaussian in the point in the parameter space 
-        corresponding to the movement vector of the failed trial.
-        Similar is done for the successful trials with a positive Gaussian, but wider.
-        """
-        previous_pidf = self.penal_IDF.copy()
-        # Modify the covariance matrix, depending on trial outcome  
-        # Failed trial
-        if failed == 1:
-            """ VERSION 1
-            Use most diverse samples. Make the parameters that change often change less (make cov smaller and wider), 
-            and the ones which don't push to change more (make cov larger and narrower)
-            """
-            # fl_var = np.array([len(np.unique(np.array(self.failed_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)
-            # cov_coeff = 1 + (fl_var-fl_var.mean())/(fl_var.max())
-            """ VERSION 2
-            Get samples with most repeated elements. Leave the parameters that change often as they are (leave cov as is),
-            and the ones which don't push to change more (make cov larger and narrower) 
-            """
-            fl_var = np.array([ max(np.bincount(np.array(self.failed_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)            
-            cov_coeff = 1 + (fl_var-fl_var.min())/fl_var.max()
-        # Succesful trial
-        elif failed == -1:
-            fl_var = 0
-            cov_coeff = 0.5*np.ones(len(self.param_list))
-            # # Update the covariance matrix taking into account stationary parameters
-            # if len(self.failed_coords)>0:
-            #     good_coords = set(map(tuple, self.coord_explored)) - set(map(tuple,self.failed_coords))
-            #     good_coords = np.array(list(good_coords)) 
-            #     """VERSION 1: Get most diverse samples"""
-            #     # fl_var = np.array([len(np.unique(np.array(self.failed_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)
-            #     # cov_coeff = (1-(fl_var-fl_var.mean())/(fl_var.max()))
-            #     """VERSION 2: Get samples with most repeated elements"""
-            #     # fl_var = np.array([ max(np.bincount(np.array(self.good_coords)[:,f])) for f in range(len(self.param_list)) ], np.float)            
-            #     # cov_coeff = 1+(1-(fl_var)/(fl_var.max()))
-            # else:
-            #     cov_coeff = 0.5*np.ones(len(self.param_list))
-        # Update covariance diagonal elements
-        for idx, cc in enumerate(cov_coeff):
-            self.cov[idx,idx] = self.COVARIANCE * cc
-        # Estimate the contributing Gaussian
-        trial_gaussian = failed * np.reshape(self.generatePDF_matrix(self.param_space, mu, self.cov), tuple(self.param_dims))
-        trial_gaussian /= (trial_gaussian.max() + _EPS)
-        # Update the penalisation IDF
-        self.penal_IDF = np.clip(previous_pidf + trial_gaussian, self.prior_init, 1.)
-        # print("---check, penalisation updates: ")
-        # print(fl_var)
-        # print(np.diag(self.cov))
-        print("--- penalised", len(np.argwhere(self.penal_IDF.round(2)==np.max(self.penal_IDF.round(2)))),"peaks from",len(self.failed_coords),"combinations.")
-        
+        pass
         
 
-    def generate_sample(self):
+    def generate_sample(self, *args, **kwargs):
         """
         Generate the random movement parameter vector to evaluate next. (with replacement)
         """
@@ -1143,10 +1082,15 @@ class RandomSearch(BaseModel):
         temp = np.array([xs for xs in itertools.product(*param_sizes)])
         
         temp_good = np.array([])
+        cnt=1
         while len(temp_good)==0:
             temp_sel = np.array([temp[np.random.choice(len(temp)),:]])
             temp_good = set(map(tuple, temp_sel)) - set(map(tuple,self.coord_explored))
             temp_good = np.array(list(temp_good))
+            cnt+=1
+            if cnt > self.n_param:
+                print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
+                break
 
         selected_coord = temp_good[0]
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
@@ -1159,6 +1103,11 @@ class RandomSearch(BaseModel):
 
 
 
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+
 
 
 
@@ -1166,7 +1115,7 @@ class RandomSearch(BaseModel):
 
 class REVIEWERSearch(BaseModel):
 
-    def update_model(self, info_list, save_progress=True):
+    def update_model(self, info_list, save_progress=True, **kwargs):
         """
         Select successful trials to estimate the GPR model mean and variance,
         and the failed ones to update the penalisation IDF.
@@ -1185,7 +1134,7 @@ class REVIEWERSearch(BaseModel):
                 # self.update_PIDF(info_list[-1]['parameters'], failed=-1)
             # Failed trial: Update PIDF
             # elif info_list[-1]['fail_status']>0:
-            #     self.failed_coords = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
+            #     self.coord_failed = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
                 # self.update_PIDF(info_list[-1]['parameters'], failed=1)
 
             # All trials: Update UIDF
@@ -1215,9 +1164,9 @@ class REVIEWERSearch(BaseModel):
             # Xtrain = np.array(Xtrain).reshape(-1,len(self.param_list))
             Xtest = self.param_space
             # Calculate kernel matrices
-            K = self.kernel(Xtrain, Xtrain)
+            K = self.kernel_fn(Xtrain, Xtrain)
             L = np.linalg.cholesky(K + _EPS*np.eye(len(Xtrain)))
-            Ks = self.kernel(Xtrain, Xtest)
+            Ks = self.kernel_fn(Xtrain, Xtest)
             Lk = np.linalg.solve(L, Ks)
             # Get overall model uncertainty
             return np.sqrt(np.diag(self.Kss) - np.sum(Lk**2, axis=0)).reshape(tuple(self.param_dims))
@@ -1229,9 +1178,9 @@ class REVIEWERSearch(BaseModel):
         Ytrain = Ytrain[:, label_indicator].reshape(-1,1)
         Xtest = self.param_space
         # Calculate kernel matrices
-        K = self.kernel(Xtrain, Xtrain)
+        K = self.kernel_fn(Xtrain, Xtrain)
         L = np.linalg.cholesky(K + _EPS*np.eye(len(Xtrain)))
-        Ks = self.kernel(Xtrain, Xtest)
+        Ks = self.kernel_fn(Xtrain, Xtest)
         Lk = np.linalg.solve(L, Ks)
         # Get posterior MU and SIGMA
         mu_post = np.dot(Lk.T, np.linalg.solve(L, Ytrain))
@@ -1244,9 +1193,9 @@ class REVIEWERSearch(BaseModel):
     def update_GPR_reviewer(self, Xtrain, Ytrain):
         Xtest = self.param_space
         # Calculate kernel matrices
-        K = self.kernel(Xtrain, Xtrain)
+        K = self.kernel_fn(Xtrain, Xtrain)
         L = np.linalg.cholesky(K + _EPS*np.eye(len(Xtrain)))
-        Ks = self.kernel(Xtrain, Xtest)
+        Ks = self.kernel_fn(Xtrain, Xtest)
         Lk = np.linalg.solve(L, Ks)
         # Get posterior MU and SIGMA
         mu_post = np.dot(Lk.T, np.linalg.solve(L, Ytrain))
@@ -1259,12 +1208,12 @@ class REVIEWERSearch(BaseModel):
         pass
         
 
-    def generate_sample(self, info_list):
+    def generate_sample(self, info_list, **kwargs):
         """
         - calculate only PI for samples classified as successful, 
         - for those on border, use their variance
         """
-        selection_IDF = np.zeros(tuple(self.param_dims))
+        sidf = np.zeros(tuple(self.param_dims))
         if len(self.delta_uncertainty)>0:
             part_PI = norm.cdf((self.mu_uncert - np.array(self.delta_uncertainty).max()) / np.sqrt(self.var_uncert))
         else:
@@ -1274,26 +1223,26 @@ class REVIEWERSearch(BaseModel):
         part_Vgs = self.var_pidf.copy()
         part_Vgs[self.mu_pidf != 0.5] = 0
 
-        selection_IDF += part_PI
-        selection_IDF += part_Vgs
+        sidf += part_PI
+        sidf += part_Vgs
         # info_pdf /= np.sum(info_pdf)
-        self.selection_IDF = selection_IDF #/(selection_IDF.max() + _EPS)
+        self.sidf = sidf #/(sidf.max() + _EPS)
         # Check if the parameters have already been used
         temp_good = np.array([])
         cnt=1
         while len(temp_good)==0:
-            temp = np.argwhere(np.array([selection_IDF==c for c in nlargest(cnt*1, selection_IDF.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
+            temp = np.argwhere(np.array([sidf==c for c in nlargest(cnt*1, sidf.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
             temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_explored))
             temp_good = np.array(list(temp_good)) 
             cnt+=1
-            if cnt > len(self.penal_IDF.ravel()):
+            if cnt > self.n_param:
                 print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
                 break
 
         selected_coord = temp_good[np.random.choice(len(temp_good)),:]
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(len(self.param_list))])
         self.coord_explored.append(selected_coord)
-        # print("---selection_IDF provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
+        # print("---sidf provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
         print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
         # return the next sample vector
         return selected_coord, selected_params
