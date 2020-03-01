@@ -740,8 +740,8 @@ class InformedSearch(BaseModel):
         while len(temp_good)==0:
             sample = np.array([sidf==c for c in nlargest(cnt*1, sidf.ravel())])
             sample = sample.reshape([-1]+list(self.param_dims))
-            temp = np.argwhere(sample)[:,1:]
-            temp_good = np.array(list(set(map(tuple, temp)) \
+            sample_idx = np.argwhere(sample)[:,1:]
+            temp_good = np.array(list(set(map(tuple, sample_idx)) \
                         - set(map(tuple, self.coord_explored)))) 
             cnt += 1
             if cnt > self.n_coords:
