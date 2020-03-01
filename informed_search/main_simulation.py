@@ -84,6 +84,9 @@ parser.add_argument('-v',   '--verbose',
 
 
 def _start_logging():
+    """
+        Create the experiment directory and start logging
+    """
     args = parser.parse_args()
     dirname = "experiment_data/simulation/"\
               "ENV_{}__MODEL_{}_res{}_cov{}_kernelSE_sl{}__{}_{}".format(
@@ -113,12 +116,12 @@ def _start_logging():
     return task_kwargs
 
 
-# INITIALISE MODEL
 
 def main_run():
-    # Initialise stuff
+    """
+        Run simulation experiment defined by args
+    """
     task_kwargs = _start_logging()
-
     experiment = uenv.SimulationExperiment(**task_kwargs)
     model = umodel.UIDFSearch(parameter_list=experiment.parameter_list,
                               **task_kwargs)
@@ -159,7 +162,7 @@ def main_run():
     # model.plotModel('final_{}_3d'.format(t+1),  [0,1], ['joint_0', 'joint_1'], show=False, top_view=False)
 
 
-    print("\n\n\t>>> TRAINING DONE.")
+    logger.info("\t>>> TRAINING DONE.")
 
 
 ###############################################################################

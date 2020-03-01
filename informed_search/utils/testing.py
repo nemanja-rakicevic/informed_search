@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class FullTest:
-  def __init__(self, experiment, model, show_plots=False, verbose=False):
+  def __init__(self, experiment, model, show_plots=False, verbose=False, **kwargs):
     self.show_plots = show_plots
     self.verbose = verbose
     self.results_list = []
