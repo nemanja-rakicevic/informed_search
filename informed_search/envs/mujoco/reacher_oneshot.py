@@ -4,6 +4,7 @@ import numpy as np
 from gym import utils
 from gym.envs.mujoco import mujoco_env
 
+import pdb
 
 class BaseReacher(object):
     """ Reacher one shot base class """
@@ -66,7 +67,7 @@ class BaseReacher(object):
         vec = self.get_body_com("real_target")-self.get_body_com("ball")
         target_dist = 100*np.linalg.norm(vec[:2])
         return np.hstack([
-            self.sim.data.qpos.flat[:],       # joint0, .., jointN, ballx, bally, targetx, targety
+            self.sim.data.qpos.flat[:],       # joint0, .., jointN; ballx, bally; targetx, targety
             self.sim.data.qvel.flat[:-2],     # velocities joint0, .., jointN, ballx, bally
             target_dist                       # error distance: x,y
         ])

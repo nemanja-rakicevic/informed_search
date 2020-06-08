@@ -20,7 +20,7 @@ class SimulationExperiment:
   import envs
   import gym
 
-  def __init__(self, agent, resolution, animation_steps=100, animate=False, verbose=False, display=False):
+  def __init__(self, agent, resolution, animation_steps=100, animate=False, verbose=False, display=False, **kwargs):
 
     # PARTIAL RANGE
     # __range1 = np.linspace(0,  2, RESOLUTION)

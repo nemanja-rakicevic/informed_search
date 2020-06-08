@@ -57,9 +57,7 @@ class ExperimentManager(object):
 
 
 
-
-
-    def run_iteration(self):
+    def run_trial(self):
         pass
 
 
