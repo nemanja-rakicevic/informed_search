@@ -10,3 +10,4 @@ informed_search/simulation_experiments/DATA_SAVE/*
 informed_search/experiment_data/*
 *__pycache__*
 *.pyc
+notused

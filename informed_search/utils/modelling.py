@@ -1,37 +1,32 @@
 
 """
-Author:     Nemanja Rakicevic
-Date  :     January 2018
+Author:         Nemanja Rakicevic
+Date  :         January 2018
 Description:
-            Classes containing different model imp
+                Classes containing different model imp
 """
 
 import os
 import time
 import logging
 from numpy.core.umath_tests import inner1d
+
+import pickle
+import logging
 import itertools
 import numpy as np
 import scipy as sp
 import scipy.spatial
-import pickle
 from heapq import nlargest, nsmallest
 
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
-mpl.rcParams.update({'font.size': 14})
 
+import utils.plotting as uplot
+from utils.misc import _EPS
 
 
 logger = logging.getLogger(__name__)
 
-# TODO separate model class versions into multiple classes
-# TODO make nice private methods with unitary functionalities
-# TODO make nice callables
 
-_EPS = 1e-8   # 0.00005
 
 class BaseModel(object):
 
@@ -91,8 +86,7 @@ class BaseModel(object):
         self.var_alpha = np.ones(self.param_dims)
         self.var_L = np.ones(self.param_dims)
         self.model_uncertainty = np.ones(self.param_dims)
-        ###
-        # self.gp_class = GaussianProcessClassifier(kernel=1.0 * RBF(length_scale=1.0))
+        #
         self.mu_pidf = 0.5*np.ones(self.param_dims)
         self.var_pidf = np.ones(self.param_dims)
         self.mu_uncert = 0*np.ones(self.param_dims)
@@ -135,49 +129,6 @@ class BaseModel(object):
         # Construct Kss matrix
         self.Kss = self.kernel_fn(a=self.param_space, b=self.param_space)
         
-
-    @property
-    def uncertainty(self):
-        return round(self.model_uncertainty.mean(), 4)
-
-
-    @property
-    def components(self):
-        return self.mu_alpha, self.mu_L, self.var_alpha, self.var_L
-
-
-    def save_model(self):
-        self.model_list.append([self.mu_alpha, self.mu_L, self.model_uncertainty, self.pidf, self.sidf, self.param_list])
-        with open(self.dirname + "/data_training_model.dat", "wb") as m:
-            pickle.dump(self.model_list, m, protocol=pickle.HIGHEST_PROTOCOL)
-
-
-    def load_model(self):
-        list_models = sorted([d for d in os.listdir('./DATA/'+self.exp_type+'/') if d[0:6]=='TRIAL_'])
-        for idx, t in enumerate(list_models):
-            print("("+str(idx)+")\t", t)
-        test_num = input("\nEnter number of model to load > ")
-        self.dirname = './DATA/'+self.exp_type+'/'+list_models[int(test_num)]
-
-
-        print("Loading: ",self.dirname)
-        with open(self.dirname + "/data_training_model.dat", "rb") as m:
-            tmp = pickle.load(m)
-            if len(tmp)<6:
-                self.model_list = tmp
-                (self.mu_alpha, self.mu_L, self.model_uncertainty, self.pidf, self.sidf, self.param_list) = self.model_list[-1]
-            else:
-                # Load last from history 
-                (self.mu_alpha, self.mu_L, self.model_uncertainty, self.pidf, self.sidf, self.param_list) = tmp
- 
-
-    def update_model():
-        raise NotImplementedError
-
-
-    def generate_sample():
-        raise NotImplementedError
-
 
     def query_target(self, angle_s, dist_s, verbose=False):
         """ 
@@ -232,9 +183,55 @@ class BaseModel(object):
             print("--- generated coords: {} -> parameters: {} (goodness measure: {})".format(selected_coord, selected_params, round(best_fit[src-1], 4)))
             print("--- ESTIMATED ERRORS: chosen ({}, {}) - desired ({}, {}) = error ({}, {})".format(round(self.mu_alpha[tuple(selected_coord)], 4), round(self.mu_L[tuple(selected_coord)], 4), angle_s, dist_s, round(error_angle,4), round(error_dist,4)))  
         # return vector to execute
-        return selected_coord, selected_params
+        return selected_coord, selected_params, best_fit[src-1]
 
 
+    def update_model():
+        raise NotImplementedError
+
+
+    def generate_sample():
+        raise NotImplementedError
+
+    @property
+    def uncertainty(self):
+        return self.model_uncertainty.mean()
+
+
+    @property
+    def components(self):
+        return self.mu_alpha, self.mu_L, self.var_alpha, self.var_L
+
+
+    def save_model(self, num_trial, save_plots=True, save_data=True):
+        if save_plots:
+            uplot.plot_model(model_object=self,
+                             dimensions=[0,1],
+                             num_trial=num_trial, 
+                             savepath=self.dirname)  
+                             # param_names=['joint_1', 'joint_0'])
+        if save_data:
+            self.model_list.append([self.mu_alpha, self.mu_L, 
+                                    self.uidf, self.pidf, self.sidf, 
+                                    self.param_list])
+            with open(self.dirname+"/model_checkpoints.pickle", "wb") as f:
+                pickle.dump(self.model_list, f, 
+                            protocol=pickle.HIGHEST_PROTOCOL)
+
+
+    def load_model(self, loadpath):
+        # list_models = sorted([d for d in \
+        #     os.listdir('./DATA/'+self.exp_type+'/') if d[0:6]=='TRIAL_'])
+        # for idx, t in enumerate(list_models):
+        #     print("("+str(idx)+")\t", t)
+        # test_num = input("\nEnter number of model to load > ")
+        # self.dirname = './DATA/'+self.exp_type+'/'+list_models[int(test_num)]
+        logger.info("Loading: ", loadpath)
+        with open(loadpath + "/model_checkpoints.pickle", "rb") as f:
+            self.model_list = pickle.load(f)
+            self.mu_alpha, self.mu_L, \
+            self.uidf, self.pidf, self.sidf, \
+            self.param_list = self.model_list[-1]
 
 
 
@@ -252,7 +249,7 @@ class InformedSearch(BaseModel):
         Uses the penalisation and uncertainty IDF's to determine the next trial.
     """
 
-    def update_model(self, info_list, save_progress=True, **kwargs):
+    def update_model(self, info_list, save_model_progress=False, **kwargs):
         """
             Select successful trials to estimate the GPR model's mean and 
             variance, and the failed ones to update the penalisation IDF.
@@ -262,9 +259,13 @@ class InformedSearch(BaseModel):
             # Successful trial: Update task models and PIDF
             if info_list[-1]['fail_status']==0:
                 good_trials = np.vstack([[tr['parameters'], tr['ball_polar']] \
-                                for tr in info_list if tr['fail_status']==0])
-                good_params = good_trials[:, 0]
-                good_fevals = good_trials[:, 1]
+                                        for tr in info_list if tr['fail_status']==0])
+                good_params = np.vstack(good_trials[:, 0])
+                good_fevals = np.vstack(good_trials[:, 1])
+
+
+                # pdb.set_trace()
+
                 # Update the Angle and Distance GPR models, as well as PIDF
                 self.mu_alpha, self.var_alpha = self.update_GPR(good_params, 
                                                                 good_fevals, 0)
@@ -286,8 +287,7 @@ class InformedSearch(BaseModel):
             # all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
             # self.model_uncertainty = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
             # SAVE CURRENT MODEL
-            if save_progress:
-                self.saveModel()
+            if save_model_progress: self.save_model()
 
 
     def update_GPR(self, Xtrain, Ytrain, label_indicator):
@@ -374,13 +374,13 @@ class InformedSearch(BaseModel):
         self.pidf = np.clip(previous_pidf+trial_gaussian, self.prior_init, 1.)
 
         # Log penalized points
-        logger.info("PIDF: Penalised {} peaks from {} combinations.".format(
-            len(np.argwhere(self.pidf.round(2)==np.max(self.pidf.round(2)))),
-            len(self.coord_failed)))
+        # logger.info("PIDF: Penalised {} peaks from {} combinations.".format(
+        #     len(np.argwhere(self.pidf.round(2)==np.max(self.pidf.round(2)))),
+        #     len(self.coord_failed)))
         
 
 
-    def generate_sample(self, info_list, **kwargs):
+    def generate_sample(self, info_list=None, **kwargs):
         """
             Generate the movement parameter vector to evaluate next, 
             based on the GPR model uncertainty and the penalisation IDF.
@@ -412,8 +412,6 @@ class InformedSearch(BaseModel):
         selected_params = np.array([self.param_list[i][selected_coord[i]] \
                                                 for i in range(self.n_param)])
         self.coord_explored.append(selected_coord)
-        logger.info("Generated coords: [{}] -> parameters: [{}]".format(
-                                            selected_coord, selected_params))
         # Return the next parameter vector
         return selected_coord, selected_params
 
@@ -449,7 +447,7 @@ class UIDFSearch(BaseModel):
         the penalisation IDF.
     """
 
-    def update_model(self, info_list, save_progress=True, **kwargs):
+    def update_model(self, info_list, save_model_progress=False, **kwargs):
         """
         Select successful trials to estimate the GPR model mean and variance,
         and the failed ones to update the penalisation IDF.
@@ -477,8 +475,7 @@ class UIDFSearch(BaseModel):
             # all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
             # self.model_uncertainty = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
             # SAVE CURRENT MODEL
-            if save_progress:
-                self.saveModel()
+            if save_model_progress: self.save_model()
 
 
     def update_GPR(self, Xtrain, Ytrain, label_indicator):
@@ -519,7 +516,7 @@ class UIDFSearch(BaseModel):
         pass
         
 
-    def generate_sample(self, info_list, **kwargs):
+    def generate_sample(self, info_list=None, **kwargs):
         """
         Generate the movement parameter vector to evaluate next, 
         based ONLY on the GPR model uncertainty.
@@ -538,14 +535,12 @@ class UIDFSearch(BaseModel):
             temp_good = np.array(list(temp_good)) 
             cnt+=1
             if cnt > self.n_coords:
-                print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
+                logger.info("ALL COMBINATIONS HAVE BEEN EXPLORED! EXITING...")
                 break
 
         selected_coord = temp_good[np.random.choice(len(temp_good)),:]
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(self.n_param)])
         self.coord_explored.append(selected_coord)
-        # print("---sidf provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
-        print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
         # return the next sample vector
         return selected_coord, selected_params
 
@@ -570,7 +565,7 @@ class EntropySearch(BaseModel):
         Does not update the penalisation IDF.
     """
 
-    def update_model(self, info_list, save_progress=True, **kwargs):
+    def update_model(self, info_list, save_model_progress=False, **kwargs):
         """
         Select successful trials to estimate the GPR model mean and variance,
         and the failed ones to update the penalisation IDF.
@@ -598,8 +593,7 @@ class EntropySearch(BaseModel):
             # all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
             # self.model_uncertainty = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
             # SAVE CURRENT MODEL
-            if save_progress:
-                self.saveModel()
+            if save_model_progress: self.save_model()
 
 
     def update_GPR(self, Xtrain, Ytrain, label_indicator):
@@ -640,7 +634,7 @@ class EntropySearch(BaseModel):
         pass
         
 
-    def generate_sample(self, info_list, **kwargs):
+    def generate_sample(self, info_list=None, **kwargs):
         """
         Generate the movement parameter vector to evaluate next, 
         based ONLY on the posterior distributions entropy
@@ -659,14 +653,12 @@ class EntropySearch(BaseModel):
             temp_good = np.array(list(temp_good)) 
             cnt+=1
             if cnt > self.n_coords:
-                print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
+                logger.info("ALL COMBINATIONS HAVE BEEN EXPLORED! EXITING...")
                 break
 
         selected_coord = temp_good[np.random.choice(len(temp_good)),:]
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(self.n_param)])
         self.coord_explored.append(selected_coord)
-        # print("---sidf provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
-        print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
         # return the next sample vector
         return selected_coord, selected_params
 
@@ -686,13 +678,13 @@ class EntropySearch(BaseModel):
 
 # REVIEWER
 
-class BayesianOptimisationSearch(BaseModel):
+class BOSearch(BaseModel):
     """
         A modified BO approach from Englert and Toussaint (2016), adapted to 
         next trial selection.
     """
 
-    def update_model(self, info_list, save_progress=True, **kwargs):
+    def update_model(self, info_list, save_model_progress=False, **kwargs):
         """
         Select successful trials to estimate the GPR model mean and variance,
         and the failed ones to update the penalisation IDF.
@@ -729,8 +721,7 @@ class BayesianOptimisationSearch(BaseModel):
 
 
             # SAVE CURRENT MODEL
-            if save_progress:
-                self.saveModel()
+            if save_model_progress: self.save_model()
 
 
     def update_GPR(self, Xtrain, Ytrain, label_indicator):
@@ -785,7 +776,7 @@ class BayesianOptimisationSearch(BaseModel):
         pass
         
 
-    def generate_sample(self, info_list, **kwargs):
+    def generate_sample(self, info_list=None, **kwargs):
         """
         - calculate only PI for samples classified as successful, 
         - for those on border, use their variance
@@ -813,14 +804,12 @@ class BayesianOptimisationSearch(BaseModel):
             temp_good = np.array(list(temp_good)) 
             cnt+=1
             if cnt > self.n_coords:
-                print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
+                logger.info("ALL COMBINATIONS HAVE BEEN EXPLORED! EXITING...")
                 break
 
         selected_coord = temp_good[np.random.choice(len(temp_good)),:]
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(self.n_param)])
         self.coord_explored.append(selected_coord)
-        # print("---sidf provided:", len(temp),"of which", len(temp_good),"unexplored (among the top",cnt-1,")" )
-        print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
         # return the next sample vector
         return selected_coord, selected_params
 
@@ -844,7 +833,7 @@ class RandomSearch(BaseModel):
         Purely random search in the parameter space, without replacement.
     """
 
-    def update_model(self, info_list, save_progress=True, **kwargs):
+    def update_model(self, info_list, save_model_progress=False, **kwargs):
         """
         Select successful trials to estimate the GPR model mean and variance,
         and the failed ones to update the penalisation IDF.
@@ -872,8 +861,7 @@ class RandomSearch(BaseModel):
             # all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
             # self.model_uncertainty = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
             # SAVE CURRENT MODEL
-            if save_progress:
-                self.saveModel()
+            if save_model_progress: self.save_model()
 
 
     def update_GPR(self, Xtrain, Ytrain, label_indicator):
@@ -929,31 +917,12 @@ class RandomSearch(BaseModel):
             temp_good = np.array(list(temp_good))
             cnt+=1
             if cnt > self.n_coords:
-                print("ALL COMBINATIONS HAVE BEEN EXPLORED!\nEXITING...")
+                logger.info("ALL COMBINATIONS HAVE BEEN EXPLORED! EXITING...")
                 break
 
         selected_coord = temp_good[0]
         selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(self.n_param)])
         self.coord_explored.append(selected_coord)
-        # print("---random sampling provided:", len(temp),"of which", len(temp_good))#,"unexplored (among the top",cnt-1,")" 
-        print("--- generated coords: {}\t-> parameters: {}".format(selected_coord, selected_params))
         # return the next sample vector
         return selected_coord, selected_params
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

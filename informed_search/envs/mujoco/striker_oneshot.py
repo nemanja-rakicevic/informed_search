@@ -6,7 +6,7 @@ from gym.envs.mujoco import mujoco_env
 
 import pdb
 
-class BaseReacher(object):
+class BaseStriker(object):
     """ Reacher one shot base class """
 
     # def _check_collision(self):
@@ -85,7 +85,7 @@ class BaseReacher(object):
 
 
 
-class ReacherOneShotEnv(BaseReacher, mujoco_env.MujocoEnv, utils.EzPickle):
+class Striker2LinkEnv(BaseStriker, mujoco_env.MujocoEnv, utils.EzPickle):
     """ 2 link Reacher one shot agent """
     
     def __init__(self, resolution):
@@ -100,7 +100,7 @@ class ReacherOneShotEnv(BaseReacher, mujoco_env.MujocoEnv, utils.EzPickle):
 
 
 
-class ReacherOneShotEnv_v1(BaseReacher, mujoco_env.MujocoEnv, utils.EzPickle):
+class Striker5LinkEnv(BaseStriker, mujoco_env.MujocoEnv, utils.EzPickle):
     """ 5 link Reacher one shot agent """
 
     def __init__(self, resolution):
