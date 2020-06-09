@@ -11,3 +11,4 @@ informed_search/experiment_data/*
 *__pycache__*
 *.pyc
 notused
+informed_search/paper_data/*

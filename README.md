@@ -13,19 +13,24 @@ Implementation of the Informed Search approach to parameter space exploration. F
 
 - The goal is to efficiently explore the movement parameter space in as few trials as possible. 
 - By evaluating the potentially most informative regions of the parameter space, a robust forward model is obtained.
+- The forward model can be used at test time to find the appropriate parameters to perform a desired action.
 - The informative regions are obtained via Informed Search, by using 3 functions defined over the parameter space:
     - Penalisation function 
     - Model uncertainty
     - Selection function
-- The forward model can be used at test time to find the appropriate parameters to perform a desired action.
 
-![Method components](img/method_components.png)
+<!-- ![Method components](img/method_components.png) -->
+<p align="center">
+  <img src="img/method_components.png" width="700" /> 
+</p>
 
 
-This approach has been implemented in simulation on a puck striking task as well as on the real dual-arm robot.
+- This approach has been implemented in simulation on a puck striking task as well as on the real dual-arm robot.
 
 
-<img src="img/simulation_experiment.png" width="425"/>   <img src="img/deniro_hockey.jpg" width="380"/> 
+<p align="center">
+  <img src="img/simulation_experiment.png" width="400"  align="top"/>   <img src="img/deniro_hockey.jpg" width="330"  align="top"/> 
+</p>
 
 ---
 

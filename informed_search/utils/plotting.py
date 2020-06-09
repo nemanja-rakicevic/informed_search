@@ -1,4 +1,10 @@
 
+"""
+Author:         Nemanja Rakicevic
+Date  :         January 2018
+Description:
+                Useful plotting function
+"""
 
 import os
 import logging

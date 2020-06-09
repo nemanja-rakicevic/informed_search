@@ -274,7 +274,7 @@ class SimulationExperiment(object):
 
 
 
-
+# check files from paper_data/robot_experiments
 
 ##################################################################
 #  FINISH THIS AND test_params ON ROBOT

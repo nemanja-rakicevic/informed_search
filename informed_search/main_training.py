@@ -4,7 +4,6 @@ Author:         Nemanja Rakicevic
 Date  :         January 2018
 Description:
                 Main file for running experiments
-
 """
 
 import os
@@ -16,17 +15,14 @@ import datetime
 
 import utils.experiment_manage as expm
 
-
 logger = logging.getLogger(__name__) 
 
-
 parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
-
 
 # Experiment
 parser.add_argument('-s', '--seed', default=100,      
                     type=int, help="Experiment seed.")
-parser.add_argument('-ntrial', '--num-trial', default=100,  
+parser.add_argument('-ntrial', '--num-trial', default=300,  
                     type=int, help="Number of trials to run.")
 parser.add_argument('-efreq', '--eval-freq', default=10,  
                     type=int, help="How often to evaluate on test set.")
@@ -84,7 +80,7 @@ def _start_logging():
         Create the experiment directory and start logging
     """
     args = parser.parse_args()
-    dirname = "experiment_data/simulation/"\
+    dirname = "experiment_data/simulation/" \
                 "ENV_{}__SEARCH_{}_res{}_cov{}_kernelSE_sl{}__{}_{}".format(
                 args.environment,
                 args.search_type, 

@@ -3,7 +3,7 @@
 Author:         Nemanja Rakicevic
 Date  :         January 2018
 Description:
-                Classes containing different model imp
+                Classes containing different model implementations
 """
 
 import os
@@ -132,10 +132,7 @@ class BaseModel(object):
 
     def query_target(self, angle_s, dist_s, verbose=False):
         """ 
-            Generate test parameter coordinates for performance evaluation.
-            Perform model inversion, based on desired relative target pose,
-            search the parameter space to find parameters for which the model 
-            will produce the outcome closest to the target.
+            Generate test parameter coordinates for given target polar coords.
         """
         thrsh = 0.1
         def elementwise_sqdist(x,y):
