@@ -69,14 +69,11 @@ class BaseModel(object):
         # Create covariance matrix
         self.cov_coeff = cov_coeff
         self.cov_matrix = self.cov_coeff * np.eye(self.n_param)
-        ## build penalisation
-        ## build uncertainty
-        ## build selection
 
-        # Initialise search components
+        # Initialise informed search components
         self.pidf = self.prior_init
         self.uidf = self.prior_init
-        self.sidf = self.prior_init
+        self.sidf = self.prior_init  # np.ones(tuple(self.param_dims))
 
         # Initialise model components
         self.model_list = []
@@ -84,13 +81,13 @@ class BaseModel(object):
         self.mu_L = np.zeros(self.param_dims)
         self.var_alpha = np.ones(self.param_dims)
         self.var_L = np.ones(self.param_dims)
-        self.model_uncertainty = np.ones(self.param_dims)
+        self.uidf = np.ones(self.param_dims)
         #
         self.mu_pidf = 0.5*np.ones(self.param_dims)
         self.var_pidf = np.ones(self.param_dims)
         self.mu_uncert = 0*np.ones(self.param_dims)
         self.var_uncert = np.ones(self.param_dims)
-        self.current_uncertainty = self.model_uncertainty
+        self.previous_uncertainty = self.uncertainty
         self.delta_uncertainty = []
 
 
@@ -134,51 +131,67 @@ class BaseModel(object):
             Generate test parameter coordinates for given target polar coords.
         """
         thrsh = 0.1
+
         def elementwise_sqdist(x,y):
             return np.sqrt(x**2 + y**2)
-        # def getMeas(M_angle, M_dist, angle_s, dist_s):
-        #     diff_angle = M_angle - angle_s
-        #     diff_angle = (diff_angle - diff_angle.min())/(diff_angle.max() - diff_angle.min())
-        #     diff_dist  = M_dist - dist_s
-        #     diff_dist  = (diff_dist - diff_dist.min())/(diff_dist.max() - diff_dist.min())
-        #     return sqdist(diff_angle, diff_dist)
-        # Calculate goodness measure to select (angle, distance) pair which is closest to the desired one
-        # M_meas  = getMeas(M_angle, M_dist, angle_s, dist_s)
+
+        def scaled_sqdist(M_angle, M_dist, angle_s, dist_s):
+            diff_angle = M_angle - angle_s
+            diff_angle = (diff_angle - diff_angle.min()) \
+                            /(diff_angle.max() - diff_angle.min())
+            diff_dist  = M_dist - dist_s
+            diff_dist  = (diff_dist - diff_dist.min()) \
+                            /(diff_dist.max() - diff_dist.min())
+            return sqdist(diff_angle, diff_dist)
+
+        # Calculate model error for target point
         M_meas = elementwise_sqdist(self.mu_alpha-angle_s, self.mu_L-dist_s)
-        """
-        Check for known constraints/failures if the values of the pidf for the selected_coords 
-        are above a cetrain threshold this is probably a bad idea
-        """
+        # M_meas  = scaled_sqdist(M_angle, M_dist, angle_s, dist_s)
+
+        # Generate optimal parameters to reached the target point
         src = 0
         for cnt in range(len(M_meas.ravel())):
             src += 1
-            # Get candidate movement parameter vector
+            # get candidate movement parameter vector with smalles model error
             best_fit        = nsmallest(src, M_meas.ravel())
             selected_coord  = np.argwhere(M_meas==best_fit[src-1])[0]
             selected_params = np.array([self.param_list[i][selected_coord[i]] \
                                             for i in range(self.n_param)])
-            error_angle     = self.mu_alpha[tuple(selected_coord)] - angle_s
-            error_dist      = self.mu_L[tuple(selected_coord)]  - dist_s
+            selected_mu_alpha = self.mu_alpha[tuple(selected_coord)]
+            selected_mu_L = self.mu_L[tuple(selected_coord)]
+            error_angle     = selected_mu_alpha - angle_s
+            error_dist      = selected_mu_L - dist_s
             if cnt%50 == 0 and cnt > 100:
                 thrsh = cnt/1000.
                 src = 0
-            # print(self.pidf[tuple(selected_coord)], "DIFF",thrsh)
-            if self.pidf[tuple(selected_coord)] < thrsh:
-                # print("BREAK")
+            # check pidf constraint is below threshold (if close to failure)
+            pidf_value = self.pidf[tuple(selected_coord)]
+            if pidf_value < thrsh:
                 break
             else:    
-                # Continue to the next smallest number
+                # continue to the next smallest model error
                 if verbose:
-                    # print("--- generated coords:", selected_coord, "-> parameters:", selected_params)
-                    # print("--- ESTIMATED ERRORS > chosen (", M_angle[tuple(coords1)],",",M_dist[tuple(coords1)],") - desired (",angle_s,",",dist_s,") = error (",error_angle1,",",error_dist1,")")
-                    print("--- generated coords: {} -> parameters: {} (goodness measure: {})".format(selected_coord, selected_params, round(best_fit[src-1], 4)))
-                    print("--- ESTIMATED ERRORS: chosen ({}, {}) - desired ({}, {}) = error ({}, {})".format(round(self.mu_alpha[tuple(selected_coord)], 4), round(self.mu_L[tuple(selected_coord)], 4), angle_s, dist_s, round(error_angle,4), round(error_dist,4)))
-                    print("--- BAD SAMPLE #{}, resampling ...".format(cnt))
-    
+                    print("\n(Iteration: {}; search {}) "
+                          "--- BAD SAMPLE, resampling ..."
+                          "\n - PIDF: {:4.2}; UIDF: {:4.2}; SIDF: {:4.2};"
+                          "\n".format(cnt, src, 
+                                      pidf_value, uidf_value, sidf_value))
         if verbose:
-            print("--- generated coords: {} -> parameters: {} (goodness measure: {})".format(selected_coord, selected_params, round(best_fit[src-1], 4)))
-            print("--- ESTIMATED ERRORS: chosen ({}, {}) - desired ({}, {}) = error ({}, {})".format(round(self.mu_alpha[tuple(selected_coord)], 4), round(self.mu_L[tuple(selected_coord)], 4), angle_s, dist_s, round(error_angle,4), round(error_dist,4)))  
-        # return vector to execute as well as estimated polar error
+            uidf_value = self.uidf[tuple(selected_coord)]
+            sidf_value = self.sidf[tuple(selected_coord)]
+            print("\n(Iteration: {})"
+                  "\n - PIDF: {:4.2}; UIDF: {:4.2}; SIDF: {:4.2};"
+                  "\n - Generated coords: {} -> parameters: {} "
+                  "\n - Model polar error: {:4.2f}"
+                  "\n --- |selected ({:4.2f}, {:4.2f}) - target ({}, {})| = "
+                  "error ({:4.2f}, {:4.2f})\n".format(
+                                        cnt, pidf_value, uidf_value, sidf_value,
+                                        selected_coord, selected_params, 
+                                        best_fit[src-1],
+                                        selected_mu_alpha, selected_mu_L,
+                                        angle_s, dist_s,
+                                        error_angle, error_dist))
+        # Return vector to execute as well as estimated model polar error
         return selected_coord, selected_params, best_fit[src-1]
 
 
@@ -191,7 +204,7 @@ class BaseModel(object):
 
     @property
     def uncertainty(self):
-        return self.model_uncertainty.mean()
+        return self.uidf.mean()
 
 
     @property
@@ -278,10 +291,10 @@ class InformedSearch(BaseModel):
            
             # All trials: Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
-            self.model_uncertainty = self.update_GPR(all_trials, None, -1)
+            self.uidf = self.update_GPR(all_trials, None, -1)
             # There's some crazy bug here when using 5-link version, canot figure it out...
             # all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
-            # self.model_uncertainty = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
+            # self.uidf = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
             # SAVE CURRENT MODEL
             if save_model_progress: self.save_model()
 
@@ -382,8 +395,8 @@ class InformedSearch(BaseModel):
             based on the GPR model uncertainty and the penalisation IDF.
         """
         # Combine the model uncertainty with the PIDF 
-        # model_var = (self.prior_init * self.model_uncertainty)/np.sum(self.prior_init * self.model_uncertainty)
-        sidf = 1.0 * self.model_uncertainty * (1 - self.pidf)#/np.sum(1-self.pidf)
+        # model_var = (self.prior_init * self.uidf)/np.sum(self.prior_init * self.uidf)
+        sidf = 1.0 * self.uidf * (1 - self.pidf)#/np.sum(1-self.pidf)
         
         # Scale the selection IDF
         # info_pdf /= np.sum(info_pdf)
@@ -466,10 +479,10 @@ class UIDFSearch(BaseModel):
                 self.update_PIDF(info_list[-1]['parameters'], failed=1)
             # All trials: Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
-            self.model_uncertainty = self.update_GPR(all_trials, None, -1)
+            self.uidf = self.update_GPR(all_trials, None, -1)
             # There's some crazy bug here when using 5-link version, canot figure it out...
             # all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
-            # self.model_uncertainty = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
+            # self.uidf = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
             # SAVE CURRENT MODEL
             if save_model_progress: self.save_model()
 
@@ -518,8 +531,8 @@ class UIDFSearch(BaseModel):
         based ONLY on the GPR model uncertainty.
         """
         # Combine the model uncertainty with the penalisation IDF to get the most informative point  
-        # model_var = (self.prior_init * self.model_uncertainty)/np.sum(self.prior_init * self.model_uncertainty)
-        sidf = 1.0 * self.model_uncertainty #* (1 - self.pidf)#/np.sum(1-self.pidf)
+        # model_var = (self.prior_init * self.uidf)/np.sum(self.prior_init * self.uidf)
+        sidf = 1.0 * self.uidf #* (1 - self.pidf)#/np.sum(1-self.pidf)
         # info_pdf /= np.sum(info_pdf)
         self.sidf = sidf /(sidf.max() + _EPS)
         # Check if the parameters have already been used
@@ -584,10 +597,10 @@ class EntropySearch(BaseModel):
                 self.update_PIDF(info_list[-1]['parameters'], failed=1)
             # All trials: Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
-            self.model_uncertainty = self.update_GPR(all_trials, None, -1)
+            self.uidf = self.update_GPR(all_trials, None, -1)
             # There's some crazy bug here when using 5-link version, canot figure it out...
             # all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
-            # self.model_uncertainty = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
+            # self.uidf = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
             # SAVE CURRENT MODEL
             if save_model_progress: self.save_model()
 
@@ -636,8 +649,8 @@ class EntropySearch(BaseModel):
         based ONLY on the posterior distributions entropy
         """
         # Combine the model uncertainty with the penalisation IDF to get the most informative point  
-        # model_var = (self.prior_init * self.model_uncertainty)/np.sum(self.prior_init * self.model_uncertainty)
-        sidf = 0.5 * np.log(2 * np.pi * np.e * self.model_uncertainty )#* (1 - self.pidf)#/np.sum(1-self.pidf)
+        # model_var = (self.prior_init * self.uidf)/np.sum(self.prior_init * self.uidf)
+        sidf = 0.5 * np.log(2 * np.pi * np.e * self.uidf )#* (1 - self.pidf)#/np.sum(1-self.pidf)
         # info_pdf /= np.sum(info_pdf)
         self.sidf = sidf /(sidf.max() + _EPS)
         # Check if the parameters have already been used
@@ -704,14 +717,14 @@ class BOSearch(BaseModel):
 
             # All trials: Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
-            self.model_uncertainty = self.update_GPR(all_trials, None, -1)
+            self.uidf = self.update_GPR(all_trials, None, -1)
             # GPC for fail/success 
             all_nonfails = np.array([ 1 if tr['fail_status']>0 else 0 for tr in info_list])
             self.mu_pidf,     self.var_pidf     = self.update_GPR_reviewer(all_trials, all_nonfails)
 
-            temp = self.returnUncertainty()
-            self.delta_uncertainty.append(self.current_uncertainty - temp)
-            self.current_uncertainty = temp
+            temp = self.uncertainty
+            self.delta_uncertainty.append(self.previous_uncertainty - temp)
+            self.previous_uncertainty = temp
             assert len(self.delta_uncertainty)==len(info_list)
             self.mu_uncert,     self.var_uncert     = self.update_GPR_reviewer(all_trials, np.array(self.delta_uncertainty))
 
@@ -753,6 +766,29 @@ class BOSearch(BaseModel):
         return mu_post.reshape(self.param_dims), var_post.reshape(self.param_dims)#/np.sum(var_post)
 
 
+    def update_GPR(self, Xtrain, Ytrain, label_indicator):
+        """
+            Perform Gaussian Process Regression using successful trials as 
+            training points, and evaluate on the whole parameter space to get 
+            the new model and uncertainty estimates.
+        """
+        # Xtrain = np.array(Xtrain).reshape(-1,self.n_param)
+        Xtest = self.param_space
+        # Calculate kernel matrices
+        K = self.kernel_fn(Xtrain, Xtrain)
+        L = np.linalg.cholesky(K + _EPS*np.eye(len(Xtrain)))
+        Ks = self.kernel_fn(Xtrain, Xtest)
+        Lk = np.linalg.solve(L, Ks)
+        # Get posterior MU and SIGMA
+        var_post = np.sqrt(np.diag(self.Kss) - np.sum(Lk**2, axis=0))
+        if label_indicator != -1:
+            Ytrain = Ytrain[:, label_indicator].reshape(-1,1)
+            mu_post = np.dot(Lk.T, np.linalg.solve(L, Ytrain))
+            # Return the matrix version
+            return mu_post.reshape(self.param_dims), \
+                   var_post.reshape(self.param_dims)#/np.sum(var_post)
+        else:
+            return var_post.reshape(self.param_dims)#/np.sum(var_post)
 
     def update_GPR_reviewer(self, Xtrain, Ytrain):
         Xtest = self.param_space
@@ -852,10 +888,10 @@ class RandomSearch(BaseModel):
                 self.update_PIDF(info_list[-1]['parameters'], failed=1)
             # All trials: Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
-            self.model_uncertainty = self.update_GPR(all_trials, None, -1)
+            self.uidf = self.update_GPR(all_trials, None, -1)
             # There's some crazy bug here when using 5-link version, canot figure it out...
             # all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
-            # self.model_uncertainty = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
+            # self.uidf = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
             # SAVE CURRENT MODEL
             if save_model_progress: self.save_model()
 

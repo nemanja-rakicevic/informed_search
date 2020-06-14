@@ -29,7 +29,7 @@ def load_metadata(datapath):
 
 
 
-def main_test(load_path, display=True):
+def main_test(load_path):
 
     load_task_kwargs = load_metadata(load_path)
     experiment = expm.ExperimentManager(load_task_kwargs, 
@@ -46,22 +46,25 @@ def main_test(load_path, display=True):
             except Exception as i:
                 print(i)
                 continue
-        _, _, test_stats = experiment.evaluate_single_test(test_target, display)
+        _, _, test_stats = experiment.evaluate_single_test(test_target,
+                                                           display=False,
+                                                           verbose=True)
 
-        print("{} TEST TARGET angle: {}; distance: {} {}"
-              "\n - Trial outcome:     {}"
+        print("{} TEST TARGET (angle: {}; distance: {}) {}"
+              "\n - Trial outcome:     {} [{}]; ball ({:4.2f},{:4.2f})"
               "\n - Model polar error: {:4.2f}"
               "\n - Euclidian error:   {:4.2f}"
               "\n - Polar error norm:  {:4.2f}\n{}".format(
-                    '-'*10, angle_s, dist_s, '-'*10, 
-                    test_stats['trial_outcome'], 
+                    '-'*7, angle_s, dist_s, '-'*7, 
+                    test_stats['trial_outcome'], test_stats['fail_status'], 
+                    *test_stats['ball_polar'],
                     test_stats['model_polar_error'], 
                     test_stats['euclid_error'], 
                     test_stats['polar_error'], '-'*50))
 
         # Continue
         if input("\nEXECUTION DONE. "
-                 "Enter to try again, or (x) to quit ") == 'x':
+                 "Enter to try again, or (q) to quit ") == 'q':
             break
 
 

@@ -69,7 +69,6 @@ class SimulationExperiment(object):
                                                     error_string))
 
 
-            
 
     @property
     def n_total(self):
@@ -139,6 +138,7 @@ class SimulationExperiment(object):
                       'parameters': param_vals,
                       'coordinates': param_coords,
                       'fail_status': fail_status, 
+                      'trial_outcome': 'SUCCESS' if fail_status==0 else 'FAIL',
                       'ball_polar': ball_polar,
                       'target_dist': observation[-1],
                       'observations': np.vstack(obs_list)}
@@ -148,10 +148,10 @@ class SimulationExperiment(object):
 
 
 
-    def run_test_case(self, model_object, test_target):
+    def run_test_case(self, model_object, test_target, **kwargs):
         # Generate movement parameter vector
         tc_coords, tc_params, model_polar_error = \
-            model_object.query_target(*test_target)
+            model_object.query_target(*test_target, **kwargs)
         # Execute given parameter vector
         trial_info = self.execute_trial(tc_coords, tc_params, 
                                         test_target=test_target)
@@ -159,16 +159,13 @@ class SimulationExperiment(object):
         euclid_error = trial_info['target_dist']
         polar_error = np.linalg.norm(trial_info['ball_polar'] - test_target)
         # Trial stats dict
-        test_stats = {'test_target_polar': test_target,
-                      'trial_outcome': \
-                        'SUCCESS' if trial_info['fail_status']>0 else 'FAIL',
-                      'ball_polar': trial_info['ball_polar'],
-                      'fail_status': trial_info['fail_status'],
-                      'polar_error': polar_error,
-                      'euclid_error': euclid_error,
-                      'model_polar_error': model_polar_error}
+        test_stats = trial_info.copy()
+        test_stats.update({'euclid_error': euclid_error,
+                           'polar_error': polar_error,
+                           'model_polar_error': model_polar_error})
+
         # Return base on outcome
-        if trial_info['fail_status']>0:
+        if test_stats['fail_status']=='FAIL':
             return -1, -1, test_stats
         else:
             return polar_error, euclid_error, test_stats

@@ -72,8 +72,9 @@ class ExperimentManager(object):
                                     **kwargs)
 
 
-    def evaluate_single_test(self, test_target, display):
+    def evaluate_single_test(self, test_target, display=False, verbose=False):
         """ Wrapper to evaluate a single test case """
         self.environment.display = display
         return self.environment.run_test_case(model_object=self.model, 
-                                              test_target=test_target)
+                                              test_target=test_target,
+                                              verbose=verbose)
