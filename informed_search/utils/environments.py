@@ -55,17 +55,18 @@ class SimulationExperiment(object):
                                                  self.test_dist)))
 
 
-    def _log_trial(self, fail_status, ball_polar, target_dist, **kwargs):
+    def _log_trial(self, fail_status, ball_polar, target_dist, test_target, 
+                         **kwargs):
         if self.verbose:
             error_string = ''
             if fail_status:
                 outcome_string = "FAIL ({})".format(fail_status)
             else:
                 outcome_string = "SUCCESS\t> ball_polar: {}".format(ball_polar)
-                if test_params is not None:
-                    error_string = "; test error: {}".format(target_dist)
-            logger.info("--- trial executed: {}{}{}".format(outcome_string,
-                                                            error_string))
+                if test_target is not None:
+                    error_string = "; euclid error: {}".format(target_dist)
+            print("--- trial executed: {}{}".format(outcome_string, 
+                                                    error_string))
 
     @property
     def n_total(self):
@@ -88,17 +89,17 @@ class SimulationExperiment(object):
 
 
     def execute_trial(self, param_coords, param_vals, 
-                            num_trial=None, test_params=None):
+                            num_trial=None, test_target=None):
         """ Execute a trial defined by parameters """
         # Set up sequence of intermediate positions
         param_seq = np.array([np.linspace(0, p, self._num_steps) \
                                                      for p in param_vals]).T
         # Place target for testing or just hide it
-        if test_params is not None:
+        if test_target is not None:
             self.env.unwrapped.init_qpos[-2] = \
-                    -test_params[1] * np.sin(np.deg2rad(test_params[0])) / 100.
+                    -test_target[1] * np.sin(np.deg2rad(test_target[0])) / 100.
             self.env.unwrapped.init_qpos[-1] = \
-                    test_params[1] * np.cos(np.deg2rad(test_params[0])) / 100.
+                    test_target[1] * np.cos(np.deg2rad(test_target[0])) / 100.
         else:
             self.env.unwrapped.init_qpos[-2] = 0.0
             self.env.unwrapped.init_qpos[-1] = 1.3
@@ -131,6 +132,7 @@ class SimulationExperiment(object):
 
         # Compile trial info
         trial_info = {'trial_num': num_trial,
+                      'test_target': test_target,
                       'parameters': param_vals,
                       'coordinates': param_coords,
                       'fail_status': fail_status, 
@@ -149,7 +151,7 @@ class SimulationExperiment(object):
             model_object.query_target(*test_target)
         # Execute given parameter vector
         trial_info = self.execute_trial(tc_coords, tc_params, 
-                                        test_params=test_target)
+                                        test_target=test_target)
         # Get test performance
         euclid_error = trial_info['target_dist']
         polar_error = np.linalg.norm(trial_info['ball_polar'] - test_target)
@@ -171,20 +173,18 @@ class SimulationExperiment(object):
 
 
     def full_tests_sequential(self, num_trial, model_object,
-                                    save_test_progress=True):
+                                    save_test_progress=True, **kwargs):
         ldist, langle = len(self.test_dist), len(self.test_angles)
 
         euclid_plot = []
         polar_plot = []
         statistics = []
-        for t in range(len(self.test_cases)):
+        for t, tcase in enumerate(self.test_cases):
             if self.verbose:
-                print("\nTRIAL {}\nTEST # {} > angle, distance: ({},{})".format(
-                        tr_num, t+1, *self.test_cases[t]))
+                print("\nTEST # {} > angle, distance: ({},{})".format(t,*tcase))
             # Get parameter for test case and execute
             polar_error, euclid_error, test_stats = \
-                self.run_test_case(model_object=model_object,
-                                   test_target=self.test_cases[t])
+                self.run_test_case(model_object=model_object, test_target=tcase)
             euclid_plot.append(euclid_error)
             polar_plot.append(polar_error)
             statistics.append(test_stats)
@@ -194,7 +194,8 @@ class SimulationExperiment(object):
         # Save statistics and plots
         if save_test_progress:
             self.save_test_results(num_trial, statistics,
-                                   euclid_plot, polar_plot)
+                                   euclid_plot, polar_plot, **kwargs)
+        return statistics
 
 
     def save_trial_data(self):  
@@ -205,7 +206,7 @@ class SimulationExperiment(object):
 
     def save_test_results(self, num_trial, statistics, 
                                 euclid_plot, polar_plot, 
-                                save_plots=True, save_data=True):
+                                save_plots=True, save_data=True, **kwargs):
         test_dict = {'angles': self.test_angles, 
                      'dist': self.test_dist}
         errors_all = np.array([[x['euclid_error'], x['polar_error']] \

@@ -1,16 +1,14 @@
 
 """
-Author: Nemanja Rakicevic
-Date  : January 2018
-
-Load the model from a file and perform a user defined test
+Author:         Nemanja Rakicevic
+Date  :         January 2018
+Description:
+                Load the model from a file and perform a user defined test
 """
 
 
 import json
-import pickle
 import argparse
-import numpy as np
 
 import utils.experiment_manage as expm
 from utils.misc import _TAB
@@ -48,7 +46,7 @@ def main_test(load_path, display=True):
             except Exception as i:
                 print(i)
                 continue
-        _, _, test_stats = experiment.run_single_test(test_target, display)
+        _, _, test_stats = experiment.evaluate_single_test(test_target, display)
 
         print("{} TEST TARGET angle: {}; distance: {} {}"
               "\n - Trial outcome:     {}"

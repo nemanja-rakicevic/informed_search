@@ -30,7 +30,8 @@ class ExperimentManager(object):
         stype = stype if stype.isupper() else stype.capitalize()
         self.model = umodel.__dict__[stype+'Search'](
             parameter_list=self.environment.parameter_list, **task_kwargs)
-        if load_model_path is not None:
+        self.load_model_path = load_model_path
+        if self.load_model_path is not None:
             self.model.load_model(load_model_path)
     
 
@@ -58,15 +59,20 @@ class ExperimentManager(object):
                         self.model.uncertainty))
 
 
-    def evaluate_test_cases(self, num_trial):
+    def evaluate_test_cases(self, num_trial, verbose=False, save_model=True, 
+                                  save_test_progress=True, **kwargs):
         # Save current model that is evaluated
-        self.model.save_model(num_trial=num_trial)
+        if save_model: self.model.save_model(num_trial=num_trial, **kwargs)
         # Evaluate on environments test cases, save results
-        self.environment.full_tests_sequential(num_trial=num_trial, 
-                                               model_object=self.model)
+        self.environment.verbose = verbose
+        return self.environment.full_tests_sequential(
+                                    num_trial=num_trial, 
+                                    model_object=self.model,
+                                    save_test_progress=save_test_progress, 
+                                    **kwargs)
 
 
-    def run_single_test(self, test_target, display):
+    def evaluate_single_test(self, test_target, display):
         """ Wrapper to evaluate a single test case """
         self.environment.display = display
         return self.environment.run_test_case(model_object=self.model, 

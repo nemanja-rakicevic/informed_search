@@ -199,7 +199,7 @@ class BaseModel(object):
         return self.mu_alpha, self.mu_L, self.var_alpha, self.var_L
 
 
-    def save_model(self, num_trial, save_plots=True, save_data=True):
+    def save_model(self, num_trial, save_plots=True, save_data=True, **kwargs):
         if save_plots:
             uplot.plot_model(model_object=self,
                              dimensions=[0,1],
