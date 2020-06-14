@@ -2,7 +2,8 @@
 
 # Informed Search
 
-Implementation of the Informed Search approach to parameter space exploration. For more details see:
+Implementation of the Informed Search approach to parameter space exploration. 
+For more details see:
 
 [Full paper](https://link.springer.com/article/10.1007%2Fs10514-019-09842-7)
 
@@ -11,10 +12,14 @@ Implementation of the Informed Search approach to parameter space exploration. F
 
 ## Motivation and Method Description
 
-- The goal is to efficiently explore the movement parameter space in as few trials as possible. 
-- By evaluating the potentially most informative regions of the parameter space, a robust forward model is obtained.
-- The forward model can be used at test time to find the appropriate parameters to perform a desired action.
-- The informative regions are obtained via Informed Search, by using 3 functions defined over the parameter space:
+- The goal is to efficiently explore the movement parameter space in as few 
+trials as possible. 
+- By evaluating the potentially most informative regions of the parameter space, 
+a robust forward model is obtained.
+- The forward model can be used at test time to find the appropriate parameters 
+to perform a desired action.
+- The informative regions are obtained via Informed Search, by using 3 
+functions defined over the parameter space:
     - Penalisation function 
     - Model uncertainty
     - Selection function
@@ -25,14 +30,18 @@ Implementation of the Informed Search approach to parameter space exploration. F
 </p>
 
 
-- This approach has been implemented in simulation on a puck striking task as well as on the real dual-arm robot.
+- This approach has been implemented in simulation on a puck striking task, 
+as well as on the real dual-arm robot.
 
 
 &emsp;Simulation Experiment
-&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
+&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
 &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Robot Experiment
 <p align="center">
-  <img src="img/simulation_experiment.png" width="400"  align="left"  title="Simulation Experiment"/>   <img src="img/deniro_hockey.jpg" width="350"  align="top" title="Robot Experiment"/> 
+  <img src="img/simulation_experiment.png" width="400"  align="left"  
+       title="Simulation Experiment"/>   
+  <img src="img/deniro_hockey.jpg" width="350"  align="top" 
+       title="Robot Experiment"/> 
 </p>
 
 
@@ -118,7 +127,8 @@ python load_target_test.py --load <path to experiment directory>
 # Reference
 ```
 @article{rakicevic2019active,
-  title={Active learning via informed search in movement parameter space for efficient robot task learning and transfer},
+  title={Active learning via informed search in movement parameter space for 
+         efficient robot task learning and transfer},
   author={Rakicevic, Nemanja and Kormushev, Petar},
   journal={Autonomous Robots},
   volume={43},
