@@ -68,6 +68,9 @@ class SimulationExperiment(object):
             print("--- trial executed: {}{}".format(outcome_string, 
                                                     error_string))
 
+
+            
+
     @property
     def n_total(self):
         return len(self.info_list)
