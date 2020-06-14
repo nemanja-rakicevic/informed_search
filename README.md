@@ -28,11 +28,16 @@ Implementation of the Informed Search approach to parameter space exploration. F
 - This approach has been implemented in simulation on a puck striking task as well as on the real dual-arm robot.
 
 
+&emsp;Simulation Experiment
+&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
+&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Robot Experiment
 <p align="center">
-  <img src="img/simulation_experiment.png" width="400"  align="top"/>   <img src="img/deniro_hockey.jpg" width="330"  align="top"/> 
+  <img src="img/simulation_experiment.png" width="400"  align="left"  title="Simulation Experiment"/>   <img src="img/deniro_hockey.jpg" width="350"  align="top" title="Robot Experiment"/> 
 </p>
 
+
 ---
+
 
 # Using the code
 
@@ -95,11 +100,16 @@ python main_training.py --config_file config_experiments/{striker, walker, quadr
 ```
 
 
-##  Preview saved behaviours
+##  Load saved models
 
+Evaluate the learned model from a specified path, on the whole test set:
 ```
-cd $INFOSEARCH_PATH
-python test_run_env.py --load <path to experiment directory>
+python load_full_test.py --load <path to experiment directory>
+```
+
+Check performace of the loaded model for specific test target positions:
+```
+python load_target_test.py --load <path to experiment directory>
 ```
 
 
