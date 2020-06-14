@@ -108,8 +108,7 @@ class SimulationExperiment(object):
         init_pos = init_pos[:self._num_links]
         obs_list = []
         for i in range(self._num_steps):
-            if self.display and not isinstance(test_params, bool):
-                self.env.render()
+            if self.display: self.env.render()
             control = init_pos + param_seq[i]
             observation, _, done, info_dict = self.env.step(control) 
             obs_list.append(observation)
@@ -117,8 +116,7 @@ class SimulationExperiment(object):
             if done:
                 fail_status = 1
                 break
-        if self.display and test_params is not None:
-            self.env.close()
+        if self.display: self.env.close()
 
         # Check ball movement and calculate polar coords
         ball_xy = info_dict['ball_xy']
@@ -145,22 +143,25 @@ class SimulationExperiment(object):
 
 
 
-    def run_test_case(self, model, test_target):
+    def run_test_case(self, model_object, test_target):
         # Generate movement parameter vector
-        tc_coords, tc_params, model_error = model.query_target(*test_target)
+        tc_coords, tc_params, model_polar_error = \
+            model_object.query_target(*test_target)
         # Execute given parameter vector
         trial_info = self.execute_trial(tc_coords, tc_params, 
-                                                   test_params=test_target)
+                                        test_params=test_target)
         # Get test performance
-        polar_error = np.linalg.norm(trial_info['ball_polar'] - test_target)
         euclid_error = trial_info['target_dist']
+        polar_error = np.linalg.norm(trial_info['ball_polar'] - test_target)
         # Trial stats dict
         test_stats = {'test_target_polar': test_target,
-                       'ball_polar': trial_info['ball_polar'],
-                       'fail_status': trial_info['fail_status'],
-                       'polar_error': polar_error,
-                       'euclid_error': euclid_error,
-                       'model_error': model_error}
+                      'trial_outcome': \
+                        'SUCCESS' if trial_info['fail_status']>0 else 'FAIL',
+                      'ball_polar': trial_info['ball_polar'],
+                      'fail_status': trial_info['fail_status'],
+                      'polar_error': polar_error,
+                      'euclid_error': euclid_error,
+                      'model_polar_error': model_polar_error}
         # Return base on outcome
         if trial_info['fail_status']>0:
             return -1, -1, test_stats
@@ -182,7 +183,7 @@ class SimulationExperiment(object):
                         tr_num, t+1, *self.test_cases[t]))
             # Get parameter for test case and execute
             polar_error, euclid_error, test_stats = \
-                self.run_test_case(model=model_object,
+                self.run_test_case(model_object=model_object,
                                    test_target=self.test_cases[t])
             euclid_plot.append(euclid_error)
             polar_plot.append(polar_error)
@@ -214,14 +215,14 @@ class SimulationExperiment(object):
         num_total = len(statistics)
         num_fails = sum([x['fail_status']>0 for x in statistics])
         num_success = num_total-num_fails
-        model_error_mean = np.mean([x['model_error'] for x in statistics])
+        model_error_mean = np.mean([x['model_polar_error'] for x in statistics])
 
         # Log test results
         logger.info("{} TESTING {} cases {}"
-                    "\n{} - Sucessful/Failed:      {} / {} ({})"
-                    "\n{} - Model error mean:      {:4.2f}"
-                    "\n{} - Euclidian error mean:  {:4.2f}"
-                    "\n{} - Polar error norm mean: {:4.2f}\n{}{}".format(
+                    "\n{} - Sucessful/Failed:       {} / {} ({})"
+                    "\n{} - Model polar error mean: {:4.2f}"
+                    "\n{} - Euclidian error mean:   {:4.2f}"
+                    "\n{} - Polar error norm mean:  {:4.2f}\n{}{}".format(
                         '-'*15, num_total, '-'*15, _TAB, num_success, num_fails, 
                         num_total, _TAB, model_error_mean, _TAB, errors_mean[0],
                         _TAB, errors_mean[1], _TAB, '-'*50))

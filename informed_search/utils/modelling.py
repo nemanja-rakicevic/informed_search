@@ -45,7 +45,6 @@ class BaseModel(object):
 
         # Generate experiment directory
         self.dirname = dirname
-        os.makedirs(self.dirname+'/plots')
 
         # Initialise parameter space
         self.param_list = parameter_list
@@ -179,7 +178,7 @@ class BaseModel(object):
         if verbose:
             print("--- generated coords: {} -> parameters: {} (goodness measure: {})".format(selected_coord, selected_params, round(best_fit[src-1], 4)))
             print("--- ESTIMATED ERRORS: chosen ({}, {}) - desired ({}, {}) = error ({}, {})".format(round(self.mu_alpha[tuple(selected_coord)], 4), round(self.mu_L[tuple(selected_coord)], 4), angle_s, dist_s, round(error_angle,4), round(error_dist,4)))  
-        # return vector to execute
+        # return vector to execute as well as estimated polar error
         return selected_coord, selected_params, best_fit[src-1]
 
 

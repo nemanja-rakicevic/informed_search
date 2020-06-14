@@ -22,7 +22,7 @@ class ExperimentManager(object):
         Manages interfacing the search algorithm, model and the environment.
     """
 
-    def __init__(self, task_kwargs):
+    def __init__(self, task_kwargs, load_model_path=None):
         # Initialise the experiment type
         self.environment = uenv.SimulationExperiment(**task_kwargs)
         # Initialise the search algorithm
@@ -30,6 +30,8 @@ class ExperimentManager(object):
         stype = stype if stype.isupper() else stype.capitalize()
         self.model = umodel.__dict__[stype+'Search'](
             parameter_list=self.environment.parameter_list, **task_kwargs)
+        if load_model_path is not None:
+            self.model.load_model(load_model_path)
     
 
     def execute_trial(self, num_trial):
@@ -62,3 +64,10 @@ class ExperimentManager(object):
         # Evaluate on environments test cases, save results
         self.environment.full_tests_sequential(num_trial=num_trial, 
                                                model_object=self.model)
+
+
+    def run_single_test(self, test_target, display):
+        """ Wrapper to evaluate a single test case """
+        self.environment.display = display
+        return self.environment.run_test_case(model_object=self.model, 
+                                              test_target=test_target)
