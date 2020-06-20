@@ -1,0 +1,14 @@
+{
+    "environment": "sim5link",
+    "eval_freq": 10,
+    "kernel_lenscale": 0.01,
+    "kernel_name": "se",
+    "kernel_sigma": 1.0,
+    "num_trial": 300,
+    "pidf_cov": 0.1,
+    "resolution": 7,
+    "search_type": "informed",
+    "seed": 100,
+    "show_plots": 0,
+    "verbose": 0
+}
