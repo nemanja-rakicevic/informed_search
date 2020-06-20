@@ -27,8 +27,10 @@ parser.add_argument('--config_file', required=True)
 # Experiment
 parser.add_argument('-s', '--seed', default=100,      
                     type=int, help="Experiment seed.")
+
 parser.add_argument('-ntrial', '--num_trial', default=300,  
                     type=int, help="Number of trials to run.")
+
 parser.add_argument('-efreq', '--eval_freq', default=10,  
                     type=int, help="How often to evaluate on test set.")
 
@@ -72,6 +74,7 @@ parser.add_argument('-p', '--show_plots', default=0,
                              "1: model plots\n"
                              "2: test plots\n"
                              "3: both model and test plots\n")
+
 parser.add_argument('-v', '--verbose', default=0,       
                     help="Define verbose level\n"
                              "0: basic info\n"

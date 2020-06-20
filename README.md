@@ -126,15 +126,15 @@ python load_target_test.py --load <path to experiment directory>
 
 # Reference
 ```
-@article{rakicevic2019active,
-  title={Active learning via informed search in movement parameter space for 
-         efficient robot task learning and transfer},
-  author={Rakicevic, Nemanja and Kormushev, Petar},
-  journal={Autonomous Robots},
-  volume={43},
-  number={8},
-  pages={1917--1935},
-  year={2019},
-  publisher={Springer}
+@Article{Rakicevic2019informed,
+         author="Rakicevic, Nemanja and Kormushev, Petar",
+         title="Active learning via informed search in movement parameter space for efficient robot task learning and transfer",
+         journal="Autonomous Robots",
+         year="2019",
+         month="Feb",
+         day="21",
+         issn="1573-7527",
+         doi="10.1007/s10514-019-09842-7",
+         url="https://doi.org/10.1007/s10514-019-09842-7"
 }
 ```
