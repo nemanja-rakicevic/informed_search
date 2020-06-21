@@ -145,7 +145,7 @@ def main_run():
     # Run main loop
     for ntrial_ in range(1, task_kwargs['num_trial']+1):         
         experiment.execute_trial(ntrial_)
-        if ntrial_%task_kwargs['eval_freq'] == 0:
+        if ntrial_ % task_kwargs['eval_freq'] == 0:
             experiment.evaluate_test_cases(ntrial_)
     # Training done
     logger.info("\t>>> TRAINING DONE [successful: {}; failed: {}]".format(

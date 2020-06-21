@@ -127,25 +127,25 @@ def plot_model(model_object, dimensions,
                 model_alpha  = model_object.mu_alpha[:,:,3,3,4].reshape(len(dim1),len(dim2))
                 model_L      = model_object.mu_L[:,:,3,3,4].reshape(len(dim1),len(dim2))
                 model_PIDF   = model_object.pidf[:,:,3,3,4].reshape(len(dim1),len(dim2))
-                model_var    = model_object.model_uncertainty[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                model_var    = model_object.uidf[:,:,3,3,4].reshape(len(dim1),len(dim2))
                 model_select = model_object.sidf[:,:,3,3,4].reshape(len(dim1),len(dim2))
 
                 # model_alpha  = model_object.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                 # model_L      = model_object.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                 # model_PIDF   = model_object.pidf[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
-                # model_var    = model_object.model_uncertainty[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                # model_var    = model_object.uidf[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                 # model_select = model_object.sidf[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
             else:
                 model_alpha  = model_object.mu_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                 model_L      = model_object.mu_L[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                 model_PIDF   = model_object.pidf[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
-                model_var    = model_object.model_uncertainty[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
+                model_var    = model_object.uidf[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                 model_select = model_object.sidf[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
         else:
             model_alpha  = model_object.mu_alpha
             model_L      = model_object.mu_L
             model_PIDF   = model_object.pidf
-            model_var    = model_object.model_uncertainty
+            model_var    = model_object.uidf
             model_select = model_object.sidf
         # Set ticks
         xticks = np.linspace(min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 5).round(1)
@@ -155,7 +155,7 @@ def plot_model(model_object, dimensions,
         #
         zticks_alpha = np.linspace(model_object.mu_alpha.min(), model_object.mu_alpha.max(), 4).round()
         zticks_L = np.linspace(model_object.mu_L.min(), model_object.mu_L.max(), 4).round()
-        zticks_unc = np.linspace(model_object.model_uncertainty.min(), model_object.model_uncertainty.max(), 4).round(2)
+        zticks_unc = np.linspace(model_object.uidf.min(), model_object.uidf.max(), 4).round(2)
         # zticks_PIDF = np.linspace(model_object.pidf.min(), model_object.pidf.max(), 7).round(1)
         # ANGLE MODEL
         ax = plt.subplot2grid((2,6),(0, 0), colspan=2, projection='3d')
@@ -326,25 +326,25 @@ def plot_model_separate(model_object, dimensions,
                 model_alpha  = model_object.mu_alpha[:,:,3,3,4].reshape(len(dim1),len(dim2))
                 model_L      = model_object.mu_L[:,:,3,3,4].reshape(len(dim1),len(dim2))
                 model_PIDF   = model_object.pidf[:,:,3,3,4].reshape(len(dim1),len(dim2))
-                model_var    = model_object.model_uncertainty[:,:,3,3,4].reshape(len(dim1),len(dim2))
+                model_var    = model_object.uidf[:,:,3,3,4].reshape(len(dim1),len(dim2))
                 model_select = model_object.sidf[:,:,3,3,4].reshape(len(dim1),len(dim2))
 
                 # model_alpha  = model_object.mu_alpha[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                 # model_L      = model_object.mu_L[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                 # model_PIDF   = model_object.pidf[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
-                # model_var    = model_object.model_uncertainty[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
+                # model_var    = model_object.uidf[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
                 # model_select = model_object.sidf[0,3,:,3,:,4].reshape(len(dim1),len(dim2))
             else:
                 model_alpha  = model_object.mu_alpha[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                 model_L      = model_object.mu_L[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                 model_PIDF   = model_object.pidf[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
-                model_var    = model_object.model_uncertainty[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
+                model_var    = model_object.uidf[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
                 model_select = model_object.sidf[0,0,:,0,:,0].reshape(len(dim1),len(dim2))
         else:
             model_alpha  = model_object.mu_alpha
             model_L      = model_object.mu_L
             model_PIDF   = model_object.pidf
-            model_var    = model_object.model_uncertainty
+            model_var    = model_object.uidf
             model_select = model_object.sidf
         # Set ticks
         xticks = np.linspace(min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 5).round(1)
@@ -354,7 +354,7 @@ def plot_model_separate(model_object, dimensions,
         #
         zticks_alpha = np.linspace(model_object.mu_alpha.min(), model_object.mu_alpha.max(), 4).round()
         zticks_L = np.linspace(model_object.mu_L.min(), model_object.mu_L.max(), 4).round()
-        zticks_unc = np.linspace(model_object.model_uncertainty.min(), model_object.model_uncertainty.max(), 4).round(2)
+        zticks_unc = np.linspace(model_object.uidf.min(), model_object.uidf.max(), 4).round(2)
         # zticks_PIDF = np.linspace(model_object.pidf.min(), model_object.pidf.max(), 7).round(1)
         
 

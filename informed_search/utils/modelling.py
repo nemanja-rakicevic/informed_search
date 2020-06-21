@@ -3,7 +3,14 @@
 Author:         Nemanja Rakicevic
 Date  :         January 2018
 Description:
-                Classes containing different model implementations
+                Classes containing different search algorithm implementations 
+                and auxiliary functions to interface the learned model. 
+                Search algorithms:
+                - random
+                - uidf-based
+                - entropy
+                - bayesian optimisation based
+                - informed search
 """
 
 import os
@@ -22,6 +29,9 @@ from heapq import nlargest, nsmallest
 
 import utils.plotting as uplot
 from utils.misc import _EPS
+
+
+import pdb
 
 
 logger = logging.getLogger(__name__)
@@ -192,7 +202,7 @@ class BaseModel(object):
                                         angle_s, dist_s,
                                         error_angle, error_dist))
         # Return vector to execute as well as estimated model polar error
-        return selected_coord, selected_params, best_fit[src-1]
+        return selected_coord, selected_params, best_fit[src-1], pidf_value
 
 
     def update_model():
@@ -264,16 +274,12 @@ class InformedSearch(BaseModel):
             variance, and the failed ones to update the penalisation IDF.
         """
         if len(info_list):
-
             # Successful trial: Update task models and PIDF
             if info_list[-1]['fail_status']==0:
                 good_trials = np.vstack([[tr['parameters'], tr['ball_polar']] \
-                                        for tr in info_list if tr['fail_status']==0])
+                                for tr in info_list if tr['fail_status']==0])
                 good_params = np.vstack(good_trials[:, 0])
                 good_fevals = np.vstack(good_trials[:, 1])
-
-
-                # pdb.set_trace()
 
                 # Update the Angle and Distance GPR models, as well as PIDF
                 self.mu_alpha, self.var_alpha = self.update_GPR(good_params, 
@@ -862,13 +868,68 @@ class BOSearch(BaseModel):
 
 class RandomSearch(BaseModel):
     """
-        Purely random search in the parameter space, without replacement.
+        Random search in the parameter space, without replacement.
     """
+    def update_model(self, info_list, save_model_progress=False, **kwargs):
+        """
+            Uses successful trials to estimate the GPR model mean and variance,
+            and whole trial history to update the uncertainty
+        """
+        if len(info_list):
+            # Successful trial: Update task models
+            if info_list[-1]['fail_status']==0:
+                ### WHY NOT?
+                # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail_status']==0])
+                # good_params = good_trials[:,0]
+                # good_fevals = good_trials[:,1]
+                succ_params = np.array([tr['parameters'] for tr in info_list \
+                                                    if tr['fail_status']==0])
+                succ_fevals = np.array([tr['ball_polar'] for tr in info_list \
+                                                    if tr['fail_status']==0])
+                # Update the Angle and Distance GPR models
+                self.mu_alpha, self.var_alpha = self.update_GPR(succ_params, 
+                                                               succ_fevals[:,0])
+                self.mu_L, self.var_L = self.update_GPR(succ_params, 
+                                                        succ_fevals[:,1])
+            if save_model_progress: self.save_model()
+
+
+
+
+
+    def update_gpr(self, xtrain, ytrain=None):
+        """
+            Update GPR model over the parameter set
+        """
+        xtest = self.param_space
+        K = self.kernel_fn(xtrain, xtrain)
+        L = np.linalg.cholesky(K + _EPS*np.eye(len(xtrain)))
+        Ks = self.kernel_fn(xtrain, xtest)
+        Lk = np.linalg.solve(L, Ks)
+        var_post = np.sqrt(np.diag(self.Kss) - np.sum(Lk**2, axis=0))
+
+        if ytrain is None:
+            # Return overall model uncertainty
+            return var_post.reshape(self.param_dims)
+        else:
+            # Update model GPR using successful trial datapoints
+            mu_post = np.dot(Lk.T, np.linalg.solve(L, ytrain))
+            return mu_post.reshape(self.param_dims), \
+                   var_post.reshape(self.param_dims)#/np.sum(var_post)
+
+
+
+
+
+
+
+
+
 
     def update_model(self, info_list, save_model_progress=False, **kwargs):
         """
-        Select successful trials to estimate the GPR model mean and variance,
-        and the failed ones to update the penalisation IDF.
+            Uses successful trials to estimate the GPR model mean and variance,
+            and whole trial history to update the uncertainty
         """
         if len(info_list):
             # Successful trial: Update task models
@@ -876,8 +937,10 @@ class RandomSearch(BaseModel):
                 # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail_status']==0])
                 # good_params = good_trials[:,0]
                 # good_fevals = good_trials[:,1]
-                good_params = np.array([tr['parameters'] for tr in info_list if tr['fail_status']==0])
-                good_fevals = np.array([tr['ball_polar'] for tr in info_list if tr['fail_status']==0])
+                good_params = np.array([tr['parameters'] for tr in info_list \
+                                                    if tr['fail_status']==0])
+                good_fevals = np.array([tr['ball_polar'] for tr in info_list \
+                                                    if tr['fail_status']==0])
                 # Estimate the Angle and Distance GPR models, as well as PIDF
                 self.mu_alpha, self.var_alpha = self.update_GPR(good_params, good_fevals, 0)
                 self.mu_L,     self.var_L     = self.update_GPR(good_params, good_fevals, 1)
@@ -896,9 +959,10 @@ class RandomSearch(BaseModel):
             if save_model_progress: self.save_model()
 
 
+
     def update_GPR(self, Xtrain, Ytrain, label_indicator):
         """
-        Update GPR uncertainty over the parameter space.
+            Update GPR uncertainty over the parameter space.
         """
         if label_indicator == -1:
             # Xtrain = np.array(Xtrain).reshape(-1,self.n_param)
@@ -936,16 +1000,18 @@ class RandomSearch(BaseModel):
 
     def generate_sample(self, *args, **kwargs):
         """
-        Generate the random movement parameter vector to evaluate next. (with replacement)
+            Generate the random movement parameter vector to evaluate next. 
+            (without replacement)
         """
         param_sizes = [range(i) for i in self.param_dims]
         temp = np.array([xs for xs in itertools.product(*param_sizes)])
-        
         temp_good = np.array([])
-        cnt=1
+        
+        cnt = 1
         while len(temp_good)==0:
-            temp_sel = np.array([temp[np.random.choice(len(temp)),:]])
-            temp_good = set(map(tuple, temp_sel)) - set(map(tuple,self.coord_explored))
+            temp_sel = np.array([temp[np.random.choice(len(temp)), :]])
+            temp_good = set(map(tuple, temp_sel)) \
+                        - set(map(tuple, self.coord_explored))
             temp_good = np.array(list(temp_good))
             cnt+=1
             if cnt > self.n_coords:
@@ -953,7 +1019,8 @@ class RandomSearch(BaseModel):
                 break
 
         selected_coord = temp_good[0]
-        selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(self.n_param)])
+        selected_params = np.array([self.param_list[i][selected_coord[i]] \
+                                                for i in range(self.n_param)])
         self.coord_explored.append(selected_coord)
         # return the next sample vector
         return selected_coord, selected_params

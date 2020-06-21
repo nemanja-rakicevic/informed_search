@@ -150,7 +150,7 @@ class SimulationExperiment(object):
 
     def run_test_case(self, model_object, test_target, **kwargs):
         # Generate movement parameter vector
-        tc_coords, tc_params, model_polar_error = \
+        tc_coords, tc_params, model_polar_error, model_pidf = \
             model_object.query_target(*test_target, **kwargs)
         # Execute given parameter vector
         trial_info = self.execute_trial(tc_coords, tc_params, 
@@ -162,7 +162,8 @@ class SimulationExperiment(object):
         test_stats = trial_info.copy()
         test_stats.update({'euclid_error': euclid_error,
                            'polar_error': polar_error,
-                           'model_polar_error': model_polar_error})
+                           'model_polar_error': model_polar_error,
+                           'model_pidf': model_pidf})
 
         # Return base on outcome
         if test_stats['fail_status']=='FAIL':

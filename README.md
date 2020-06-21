@@ -105,7 +105,7 @@ Basic usage example:
 ```
 cd $INFOSEARCH_PATH
 
-python main_training.py --config_file config_experiments/{striker, walker, quadruped}/nn_policy__ls_mape_ae.json
+python main_training.py --config_file config_experiments/{striker_2_link, striker_5_link}/paper_{informed, random, uidf, bo, entropy}.json
 ```
 
 
@@ -127,8 +127,8 @@ python load_target_test.py --load <path to experiment directory>
 # Reference
 ```
 @Article{Rakicevic2019informed,
-         author="Rakicevic, Nemanja and Kormushev, Petar",
          title="Active learning via informed search in movement parameter space for efficient robot task learning and transfer",
+         author="Rakicevic, Nemanja and Kormushev, Petar",
          journal="Autonomous Robots",
          year="2019",
          month="Feb",
