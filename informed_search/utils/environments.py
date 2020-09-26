@@ -31,32 +31,39 @@ logger = logging.getLogger(__name__)
 
 class SimulationExperiment(object):
 
-    def __init__(self, dirname, environment, resolution, 
-                       animation_steps=100, verbose=False, display=False, 
-                       **kwargs):
+    def __init__(self,
+                 dirname,
+                 environment,
+                 resolution, 
+                 animation_steps=None,
+                 verbose=False,
+                 display=False,
+                 **kwargs):
+
         self.dirname = dirname
         self.verbose = verbose
         self.display = display
 
-        if environment=='sim2link':
+        if environment == 'sim2link':
             self.env = gym.make('Striker2LinkEnv-v0', resolution=resolution)
-        elif environment=='sim5link':
+        elif environment == 'sim5link':
             self.env = gym.make('Striker5LinkEnv-v0', resolution=resolution)
-        
+
         self.parameter_list = self.env.unwrapped.parameter_list
         self._num_links = len(self.parameter_list) 
-        self._num_steps = animation_steps # self.env.env.spec.max_episode_steps
+        self._num_steps = animation_steps if animation_steps is not None else\
+            self.env.unwrapped.spec.max_episode_steps
 
         self.info_list = []
         self.results_test_list = []
         self.test_angles = np.arange(-65, 31, 5)
-        self.test_dist   = np.arange(5, 36, 5)
-        self.test_cases = np.vstack(list(product(self.test_angles, 
+        self.test_dist = np.arange(5, 36, 5)
+        self.test_cases = np.vstack(list(product(self.test_angles,
                                                  self.test_dist)))
 
 
     def _log_trial(self, fail_status, ball_polar, target_dist, test_target, 
-                         **kwargs):
+                   **kwargs):
         if self.verbose:
             error_string = ''
             if fail_status:
@@ -67,7 +74,6 @@ class SimulationExperiment(object):
                     error_string = "; euclid error: {}".format(target_dist)
             print("--- trial executed: {}{}".format(outcome_string, 
                                                     error_string))
-
 
 
     @property
@@ -91,7 +97,7 @@ class SimulationExperiment(object):
 
 
     def execute_trial(self, param_coords, param_vals, 
-                            num_trial=None, test_target=None):
+                      num_trial=None, test_target=None):
         """ Execute a trial defined by parameters """
         # Set up sequence of intermediate positions
         param_seq = np.array([np.linspace(0, p, self._num_steps) \
@@ -174,7 +180,7 @@ class SimulationExperiment(object):
 
 
     def full_tests_sequential(self, num_trial, model_object,
-                                    save_test_progress=True, **kwargs):
+                              save_test_progress=True, **kwargs):
         ldist, langle = len(self.test_dist), len(self.test_angles)
 
         euclid_plot = []
@@ -199,15 +205,35 @@ class SimulationExperiment(object):
         return statistics
 
 
+    # def full_tests_parallel(self, num_trial, save_progress=True, heatmap=True):
+    #     test_dict = {'angles': self.test_angles, 'dist': self.test_dist}
+    #     ldist, langle = len(self.test_dist), len(self.test_angles)
+
+    #     tc = [self.model.query_target(*test_target)+tuple(test_target) \
+    #                 for test_target in self.test_cases]
+
+    #     with mp.Pool(processes=self.num_cpu) as pool:
+    #         polar_error, euclid_error, trial_stats = \
+    #             pool.starmap(self.run_test_case, tc)
+
+    #     euclid_plot = np.array(euclid_plot[::-1]).reshape((langle, ldist)).T
+    #     polar_plot = np.array(polar_plot[::-1]).reshape((langle, ldist)).T
+
+    #     # Save statistics and plots
+    #     if save_progress:
+    #         self.save_test_results(num_trial, statistics, test_dict,
+    #                                euclid_plot, polar_plot, 
+    #                                savepath=self.model.dirname)
+
+
     def save_trial_data(self):  
         # self.env.close()
         with open(self.dirname + "/data_trial_statistics.pickle", "wb") as f:
                 pickle.dump(self.info_list, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-    def save_test_results(self, num_trial, statistics, 
-                                euclid_plot, polar_plot, 
-                                save_plots=True, save_data=True, **kwargs):
+    def save_test_results(self, num_trial, statistics, euclid_plot, polar_plot, 
+                          save_plots=True, save_data=True, **kwargs):
         test_dict = {'angles': self.test_angles, 
                      'dist': self.test_dist}
         errors_all = np.array([[x['euclid_error'], x['polar_error']] \
@@ -243,25 +269,14 @@ class SimulationExperiment(object):
 
 
 
-    # def full_tests_parallel(self, num_trial, save_progress=True, heatmap=True):
-    #     test_dict = {'angles': self.test_angles, 'dist': self.test_dist}
-    #     ldist, langle = len(self.test_dist), len(self.test_angles)
 
-    #     tc = [self.model.query_target(*test_target)+tuple(test_target) \
-    #                 for test_target in self.test_cases]
 
-    #     with mp.Pool(processes=self.num_cpu) as pool:
-    #         polar_error, euclid_error, trial_stats = \
-    #             pool.starmap(self.run_test_case, tc)
 
-    #     euclid_plot = np.array(euclid_plot[::-1]).reshape((langle, ldist)).T
-    #     polar_plot = np.array(polar_plot[::-1]).reshape((langle, ldist)).T
 
-    #     # Save statistics and plots
-    #     if save_progress:
-    #         self.save_test_results(num_trial, statistics, test_dict,
-    #                                euclid_plot, polar_plot, 
-    #                                savepath=self.model.dirname)
+
+
+
+
 
 
 

@@ -27,8 +27,8 @@ class BaseStriker(object):
 
     def _check_collision(self):
         if self.sim.data.ncon:
-            self.contact_cnt+=1
-            vec = self.get_body_com("fingertip")-self.get_body_com("ball")
+            self.contact_cnt += 1
+            vec = self.get_body_com("fingertip") - self.get_body_com("ball")
             if self.contact_cnt > 5 and not np.linalg.norm(vec[:2])>0:
                 return True
 
@@ -89,6 +89,7 @@ class Striker2LinkEnv(BaseStriker, mujoco_env.MujocoEnv, utils.EzPickle):
     """ 2 link Reacher one shot agent """
     
     def __init__(self, resolution):
+        self.contact_cnt = 0
         utils.EzPickle.__init__(self)
         path = os.getcwd()+'/envs/mujoco/assets/'
         mujoco_env.MujocoEnv.__init__(self, path+'reacher_oneshot.xml', 2)
@@ -104,6 +105,7 @@ class Striker5LinkEnv(BaseStriker, mujoco_env.MujocoEnv, utils.EzPickle):
     """ 5 link Reacher one shot agent """
 
     def __init__(self, resolution):
+        self.contact_cnt = 0
         utils.EzPickle.__init__(self)
         path = os.getcwd()+'/envs/mujoco/assets/'
         mujoco_env.MujocoEnv.__init__(self, path+'reacher_oneshot_v1.xml', 2)
