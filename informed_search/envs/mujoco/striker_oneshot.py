@@ -24,7 +24,6 @@ class BaseStriker(object):
     #            contact.geom2 in self.body_geoms:
     #             return True
 
-
     def _check_collision(self):
         if self.sim.data.ncon:
             self.contact_cnt += 1
@@ -32,11 +31,8 @@ class BaseStriker(object):
             if self.contact_cnt > 5 and not np.linalg.norm(vec[:2])>0:
                 return True
 
-
     def reset_model(self):
-
         self.contact_cnt = 0
-
         qpos =  self.init_qpos 
         # joint positions
         qpos[:self.num_joints] = self.init_qvals
@@ -46,7 +42,6 @@ class BaseStriker(object):
         qvel = self.init_qvel 
         self.set_state(qpos, qvel)
         return self._get_obs()
-
 
     def step(self, a):
         # a = a / 180. * np.pi
@@ -62,7 +57,6 @@ class BaseStriker(object):
                                       reward_ctrl=reward_ctrl,
                                       ball_xy=self.get_body_com("ball")[:2])
 
-
     def _get_obs(self):
         vec = self.get_body_com("real_target")-self.get_body_com("ball")
         target_dist = 100*np.linalg.norm(vec[:2])
@@ -71,7 +65,6 @@ class BaseStriker(object):
             self.sim.data.qvel.flat[:-2],     # velocities joint0, .., jointN, ballx, bally
             target_dist                       # error distance: x,y
         ])
-
 
     def viewer_setup(self):
         self.viewer.cam.trackbodyid = 0
@@ -91,8 +84,9 @@ class Striker2LinkEnv(BaseStriker, mujoco_env.MujocoEnv, utils.EzPickle):
     def __init__(self, resolution):
         self.contact_cnt = 0
         utils.EzPickle.__init__(self)
-        path = os.getcwd()+'/envs/mujoco/assets/'
-        mujoco_env.MujocoEnv.__init__(self, path+'reacher_oneshot.xml', 2)
+        xml_path = os.path.join(os.getcwd(),
+                                'envs/mujoco/assets/reacher_oneshot_2link.xml')
+        mujoco_env.MujocoEnv.__init__(self, xml_path, 2)
 
         self.num_joints = 2
         self.parameter_list = np.array([np.linspace(-1.57, 1.57, resolution),
@@ -107,8 +101,9 @@ class Striker5LinkEnv(BaseStriker, mujoco_env.MujocoEnv, utils.EzPickle):
     def __init__(self, resolution):
         self.contact_cnt = 0
         utils.EzPickle.__init__(self)
-        path = os.getcwd()+'/envs/mujoco/assets/'
-        mujoco_env.MujocoEnv.__init__(self, path+'reacher_oneshot_v1.xml', 2)
+        xml_path = os.path.join(os.getcwd(),
+                                'envs/mujoco/assets/reacher_oneshot_5link.xml')
+        mujoco_env.MujocoEnv.__init__(self, xml_path, 2)
 
         self.num_joints = 5
         self.parameter_list = np.array([np.linspace(-1.57, 1.57, resolution),
@@ -116,5 +111,4 @@ class Striker5LinkEnv(BaseStriker, mujoco_env.MujocoEnv, utils.EzPickle):
                                         np.linspace(-3.14, 3.14, resolution),
                                         np.linspace(-3.14, 3.14, resolution),
                                         np.linspace(-3.14, 3.14, resolution)])
-        self.init_qvals = np.array([-1.2,  2.5,  0. , -2.5,  1.2])
-
+        self.init_qvals = np.array([-1.2, 2.5, 0., -2.5, 1.2])
