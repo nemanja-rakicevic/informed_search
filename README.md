@@ -100,13 +100,13 @@ Other arguments are optional. For more information refer to the code.
 ```
 cd $INFOSEARCH_PATH
 
-python main_training.py --config_file config_experiments/{striker_2_link, striker_5_link}/paper_{informed, random, uidf, bo, entropy}.json
+python main_training.py --config_file configs/{striker_2_link, striker_5_link}/paper_{informed, random, uidf, bo, entropy}.json
 ```
 
 An example of a basic usage that runs a 2-link striker simulated experiment with the 
 proposed informed search algorithm:
 ```
-python main_training.py --config_file config_experiments/striker_2_link/paper_informed.json
+python main_training.py --config_file configs/striker_2_link/paper_informed.json
 ```
 
 
