@@ -29,7 +29,8 @@ from functools import partial
 
 import utils.plotting as uplot
 import utils.kernels as kern
-from utils.misc import _EPS
+
+from utils.misc import _EPS, elementwise_sqdist, scaled_sqdist
 
 
 logger = logging.getLogger(__name__)
@@ -114,37 +115,25 @@ class BaseModel(object):
         """
         thrsh = 0.1
 
-        def elementwise_sqdist(x,y):
-            return np.sqrt(x**2 + y**2)
-
-        def scaled_sqdist(M_angle, M_dist, angle_s, dist_s):
-            diff_angle = M_angle - angle_s
-            diff_angle = (diff_angle - diff_angle.min()) \
-                            /(diff_angle.max() - diff_angle.min())
-            diff_dist  = M_dist - dist_s
-            diff_dist  = (diff_dist - diff_dist.min()) \
-                            /(diff_dist.max() - diff_dist.min())
-            return sqdist(diff_angle, diff_dist)
-
         # Calculate model error for target point
-        M_meas = elementwise_sqdist(self.mu_alpha-angle_s, self.mu_L-dist_s)
         # M_meas  = scaled_sqdist(M_angle, M_dist, angle_s, dist_s)
+        M_meas = elementwise_sqdist(self.mu_alpha-angle_s, self.mu_L-dist_s)
 
         # Generate optimal parameters to reached the target point
         src = 0
         for cnt in range(len(M_meas.ravel())):
             src += 1
             # get candidate movement parameter vector with smalles model error
-            best_fit        = nsmallest(src, M_meas.ravel())
-            selected_coord  = np.argwhere(M_meas==best_fit[src-1])[0]
-            selected_params = np.array([self.param_list[i][selected_coord[i]] \
-                                            for i in range(self.n_param)])
+            best_fit = nsmallest(src, M_meas.ravel())
+            selected_coord = np.argwhere(M_meas == best_fit[src - 1])[0]
+            selected_params = np.array([self.param_list[i][selected_coord[i]]
+                                       for i in range(self.n_param)])
             selected_mu_alpha = self.mu_alpha[tuple(selected_coord)]
             selected_mu_L = self.mu_L[tuple(selected_coord)]
-            error_angle     = selected_mu_alpha - angle_s
-            error_dist      = selected_mu_L - dist_s
-            if cnt%50 == 0 and cnt > 100:
-                thrsh = cnt/1000.
+            error_angle = selected_mu_alpha - angle_s
+            error_dist = selected_mu_L - dist_s
+            if cnt % 50 == 0 and cnt > 100:
+                thrsh = cnt / 1000.
                 src = 0
             # check pidf constraint is below threshold (if close to failure)
             pidf_value = self.pidf[tuple(selected_coord)]
@@ -156,7 +145,7 @@ class BaseModel(object):
                     print("\n(Iteration: {}; search {}) "
                           "--- BAD SAMPLE, resampling ..."
                           "\n - PIDF: {:4.2}; UIDF: {:4.2}; SIDF: {:4.2};"
-                          "\n".format(cnt, src, 
+                          "\n".format(cnt, src,
                                       pidf_value, uidf_value, sidf_value))
         if verbose:
             uidf_value = self.uidf[tuple(selected_coord)]

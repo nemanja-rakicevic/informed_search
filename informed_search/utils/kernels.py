@@ -11,25 +11,22 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 
-def se_kernel(a, b, kernel_lenscale, kernel_sigma):
+def se_kernel(a, b, kernel_lenscale=0.01, kernel_sigma=1.):
     """ SE squared exponential kernel """
-    # kernel_lenscale = 0.01 # 1 0.5 0.3 0.1 
     sqdist = (1. / kernel_lenscale) * cdist(a, b, 'sqeuclidean')
     return kernel_sigma * np.exp(-.5 * sqdist)
 
 
-def mat_kernel(a, b, kernel_lenscale, kernel_sigma):
+def mat_kernel(a, b, kernel_lenscale=0.03, kernel_sigma=1.):
     """ MT Matern 5/2 kernel """
-    # kernel_lenscale = 0.03 # 1
     sqdist = (1. / kernel_lenscale) * cdist(a, b, 'sqeuclidean')
     return kernel_sigma \
         * (1 + np.sqrt(5 * sqdist) + 5 * sqdist / 3.) \
         * np.exp(-np.sqrt(5. * sqdist))
 
 
-def rq_kernel(a, b, kernel_lenscale, kernel_sigma):
+def rq_kernel(a, b, kernel_lenscale=1., kernel_sigma=1.):
     """ RQ rational quadratic kernel """
-    # kernel_lenscale = 1
     alpha = a.shape[1] / 2.  # a.shape[1]/2. #np.exp(1) #len(a)/2.
     sqdist = (1. / kernel_lenscale) * cdist(a, b, 'sqeuclidean')
     return kernel_sigma * np.power(1 + 0.5 * sqdist / alpha, -alpha)
