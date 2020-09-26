@@ -93,12 +93,20 @@ This automatically adds `$INFOSEARCH_PATH` to `$PYTHON_PATH`.
 
 ##  Training
 
-Basic usage example:
+In order to perform the training, it is necessary to chose the environment (striker_2_link or striker_5_link),
+and the algorithm to run (informed, random, uidf, bo and entropy).
+Other arguments are optional. For more information refer to the code.
 
 ```
 cd $INFOSEARCH_PATH
 
 python main_training.py --config_file config_experiments/{striker_2_link, striker_5_link}/paper_{informed, random, uidf, bo, entropy}.json
+```
+
+An example of a basic usage that runs a 2-link striker simulated experiment with the 
+proposed informed search algorithm:
+```
+python main_training.py --config_file config_experiments/striker_2_link/paper_informed.json
 ```
 
 
