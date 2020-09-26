@@ -147,7 +147,7 @@ def main_run():
     for ntrial_ in range(1, task_kwargs['num_trial'] + 1):
         if experiment.execute_trial(ntrial_) is not None:
             break
-        if ntrial_ % task_kwargs['eval_freq'] == 0:
+        if task_kwargs['eval_freq'] and ntrial_ % task_kwargs['eval_freq'] == 0:
             experiment.evaluate_test_cases(ntrial_)
 
     # Training done

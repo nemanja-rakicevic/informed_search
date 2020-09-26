@@ -19,18 +19,16 @@ import pdb
 import os
 import time
 import logging
-from numpy.core.umath_tests import inner1d
-
 import pickle
-import logging
 import itertools
 import numpy as np
-import scipy as sp
-import scipy.spatial
-from heapq import nlargest, nsmallest
 
+from numpy.core.umath_tests import inner1d
+from heapq import nlargest, nsmallest
+from functools import partial
 
 import utils.plotting as uplot
+import utils.kernels as kern
 from utils.misc import _EPS
 
 
@@ -39,15 +37,16 @@ logger = logging.getLogger(__name__)
 
 class BaseModel(object):
 
-    def __init__(self, parameter_list, 
-                       dirname,
-                       kernel_name='se',   # SE, MT, RQ
-                       kernel_lenscale=0.1,
-                       kernel_sigma=1,
-                       cov_coeff=1,
-                       seed=100,
-                       is_training=False,
-                       show_plots=False, **kwargs):
+    def __init__(self,
+                 parameter_list,
+                 dirname,
+                 kernel_name='se',   # SE, MT, RQ
+                 kernel_lenscale=0.1,
+                 kernel_sigma=1,
+                 cov_coeff=1,
+                 seed=100,
+                 is_training=False,
+                 show_plots=False, **kwargs):
         # Fix numpy seed
         np.random.seed(seed)
         self.show_plots = show_plots
@@ -102,38 +101,12 @@ class BaseModel(object):
 
     def _build_kernel(self, kernel_name, kernel_lenscale, kernel_sigma):
         """ Construct the kernel function and initialise Kss """
-        if kernel_name == 'se':
-            # SE squared exponential kernel
-            def se_kernel(a, b):
-                # kernel_lenscale = 0.01 # 1 0.5 0.3 0.1 
-                sqdist = (1. / kernel_lenscale) * \
-                         sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-                return kernel_sigma * np.exp(-.5 * sqdist)
-            self.kernel_fn = se_kernel
-        elif kernel_name == 'mt':
-            def mat_kernel(a, b):
-                # MT Matern 5/2 kernel
-                # kernel_lenscale = 0.03 # 1
-                sqdist = (1. / kernel_lenscale) * \
-                         sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-                return kernel_sigma \
-                       * (1 + np.sqrt(5 * sqdist) + 5 * sqdist / 3.) \
-                       * np.exp(-np.sqrt(5.*sqdist))
-            self.kernel_fn = mat_kernel
-        elif kernel_name == 'rq':
-            def rq_kernel(a, b):
-                # RQ rational quadratic kernel
-                # kernel_lenscale = 1
-                alpha = a.shape[1] / 2. #a.shape[1]/2. #np.exp(1) #len(a)/2.
-                sqdist = (1. / kernel_lenscale) * \
-                         sp.spatial.distance.cdist(a, b, 'sqeuclidean')
-                return kernel_sigma * np.power(1 + 0.5 * sqdist / alpha, -alpha)
-            self.kernel_fn = rq_kernel
-        else:
-            raise AttributeError("Undefined kernel name!")
+        self.kernel_fn = partial(getattr(kern, kernel_name + '_kernel'),
+                                 kernel_lenscale=kernel_lenscale,
+                                 kernel_sigma=kernel_sigma)
         # Construct Kss matrix
         self.Kss = self.kernel_fn(a=self.param_space, b=self.param_space)
-        
+
 
     def query_target(self, angle_s, dist_s, verbose=False):
         """ 
@@ -445,7 +418,7 @@ class InformedSearch(BaseModel):
         tmp = np.dot((x_sample - mu), np.linalg.inv(cov))
         tmp_T = (x_sample - mu).T
         denom = np.sqrt(2 * np.pi * np.linalg.det(cov))
-        f = (1 / denom) * np.exp(-0.5*inner1d(tmp, tmp_T.T))
+        f = (1 / denom) * np.exp(-0.5 * inner1d(tmp, tmp_T.T))
         return f 
 
 
@@ -475,12 +448,11 @@ class UIDFSearch(BaseModel):
         """
         if len(info_list):
             # Successful trial: Update task models
-            if info_list[-1]['fail_status']==0:
-                # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail_status']==0])
-                # good_params = good_trials[:,0]
-                # good_fevals = good_trials[:,1]
-                good_params = np.array([tr['parameters'] for tr in info_list if tr['fail_status']==0])
-                good_fevals = np.array([tr['ball_polar'] for tr in info_list if tr['fail_status']==0])
+            if info_list[-1]['fail_status'] == 0:
+                good_params = np.vstack([tr['parameters'] for tr in info_list
+                                        if tr['fail_status'] == 0])
+                good_fevals = np.vstack([tr['ball_polar'] for tr in info_list
+                                        if tr['fail_status'] == 0])
                 # Estimate the Angle and Distance GPR models, as well as PIDF
                 self.mu_alpha, self.var_alpha = self.update_GPR(good_params, good_fevals, 0)
                 self.mu_L,     self.var_L     = self.update_GPR(good_params, good_fevals, 1)
@@ -593,12 +565,11 @@ class EntropySearch(BaseModel):
         """
         if len(info_list):
             # Successful trial: Update task models
-            if info_list[-1]['fail_status']==0:
-                # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail_status']==0])
-                # good_params = good_trials[:,0]
-                # good_fevals = good_trials[:,1]
-                good_params = np.array([tr['parameters'] for tr in info_list if tr['fail_status']==0])
-                good_fevals = np.array([tr['ball_polar'] for tr in info_list if tr['fail_status']==0])
+            if info_list[-1]['fail_status'] == 0:
+                good_params = np.vstack([tr['parameters'] for tr in info_list
+                                        if tr['fail_status'] == 0])
+                good_fevals = np.vstack([tr['ball_polar'] for tr in info_list
+                                        if tr['fail_status'] == 0])
                 # Estimate the Angle and Distance GPR models, as well as PIDF
                 self.mu_alpha, self.var_alpha = self.update_GPR(good_params, good_fevals, 0)
                 self.mu_L,     self.var_L     = self.update_GPR(good_params, good_fevals, 1)
@@ -712,12 +683,11 @@ class BOSearch(BaseModel):
         """
         if len(info_list):
             # Successful trial: Update task models
-            if info_list[-1]['fail_status']==0:
-                # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail_status']==0])
-                # good_params = good_trials[:,0]
-                # good_fevals = good_trials[:,1]
-                good_params = np.array([tr['parameters'] for tr in info_list if tr['fail_status']==0])
-                good_fevals = np.array([tr['ball_polar'] for tr in info_list if tr['fail_status']==0])
+            if info_list[-1]['fail_status'] == 0:
+                good_params = np.vstack([tr['parameters'] for tr in info_list
+                                        if tr['fail_status'] == 0])
+                good_fevals = np.vstack([tr['ball_polar'] for tr in info_list
+                                        if tr['fail_status'] == 0])
                 # Estimate the Angle and Distance GPR models, as well as PIDF
                 self.mu_alpha, self.var_alpha = self.update_GPR(good_params, good_fevals, 0)
                 self.mu_L,     self.var_L     = self.update_GPR(good_params, good_fevals, 1)
@@ -883,20 +853,16 @@ class RandomSearch(BaseModel):
         """
         if len(info_list):
             # Successful trial: Update task models
-            if info_list[-1]['fail_status']==0:
-                ### WHY NOT?
-                # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail_status']==0])
-                # good_params = good_trials[:,0]
-                # good_fevals = good_trials[:,1]
-                succ_params = np.array([tr['parameters'] for tr in info_list \
-                                                    if tr['fail_status']==0])
-                succ_fevals = np.array([tr['ball_polar'] for tr in info_list \
-                                                    if tr['fail_status']==0])
+            if info_list[-1]['fail_status'] == 0:
+                good_params = np.vstack([tr['parameters'] for tr in info_list
+                                        if tr['fail_status'] == 0])
+                good_fevals = np.vstack([tr['ball_polar'] for tr in info_list
+                                        if tr['fail_status'] == 0])
                 # Update the Angle and Distance GPR models
-                self.mu_alpha, self.var_alpha = self.update_GPR(succ_params, 
-                                                               succ_fevals[:,0])
-                self.mu_L, self.var_L = self.update_GPR(succ_params, 
-                                                        succ_fevals[:,1])
+                self.mu_alpha, self.var_alpha = self.update_GPR(good_params, 
+                                                                good_fevals[:,0])
+                self.mu_L, self.var_L = self.update_GPR(good_params, 
+                                                        good_fevals[:,1])
             if save_model_progress: self.save_model()
 
 
