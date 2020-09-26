@@ -2,8 +2,8 @@
 
 # Informed Search
 
-Implementation of the Informed Search approach to parameter space exploration. 
-For more details see:
+Informed Search of the movement parameter space, that gathers most informative
+samples for fitting the forward model.
 
 [Full paper](https://link.springer.com/article/10.1007%2Fs10514-019-09842-7)
 
@@ -12,38 +12,34 @@ For more details see:
 
 ## Motivation and Method Description
 
-- The goal is to efficiently explore the movement parameter space in as few 
+The main goal is to build an invertible forward model 
+(maps movement parameters to trial outputs) by fitting a Gaussian Process Regression model
+to the movement parameter space.
+The forward model can be used at test time to generate the appropriate parameters 
+to achieve a desired trial output.
+Model learning requires a set of {movement parameter, trial outcome} pairs, 
+where each trial is costly to evaluate.
+To increase efficiency, it is necessary to explore the movement parameter space in as few 
 trials as possible. 
-- By evaluating the potentially most informative regions of the parameter space, 
-a robust forward model is obtained.
-- The forward model can be used at test time to find the appropriate parameters 
-to perform a desired action.
-- The informative regions are obtained via Informed Search, by using 3 
-functions defined over the parameter space:
-    - Penalisation function 
-    - Model uncertainty
-    - Selection function
 
-<!-- ![Method components](img/method_components.png) -->
+This is done by evaluating only the potentially most informative regions of the parameter space.
+Informed Search uses three functions defined over the parameter space.
+The selection function gives us the most informative regions at each trial iteration. 
+
 <p align="center">
   <img src="img/method_components.png" width="700" /> 
 </p>
 
 
-- This approach has been implemented in simulation on a puck striking task, 
-as well as on the real dual-arm robot.
+## Experiments
+
+The approach has been evaluated in simulation on a puck striking task, 
+as well as on the real dual-arm hockey-playing robot.
 
 
-&emsp;Simulation Experiment
-&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Robot Experiment
-<p align="center">
-  <img src="img/simulation_experiment.png" width="400"  align="left"  
-       title="Simulation Experiment"/>   
-  <img src="img/deniro_hockey.jpg" width="350"  align="top" 
-       title="Robot Experiment"/> 
-</p>
-
+Simulation Experiment | Robot Experiment |
+:-------------------------:|:-------------------------:|
+<img src="img/simulation_experiment.png" width="450" align="left" title="Simulation Experiment"/> | <img src="img/deniro_hockey.jpg" width="400" align="top" title="Robot Experiment"/> 
 
 ---
 
@@ -51,9 +47,7 @@ as well as on the real dual-arm robot.
 # Using the code
 
 
-## Prerequisites
-
-MuJoCo: MuJoCo licence
+__Prerequisites:__ Conda, Python 3, MuJoCo licence
 
 
 ##  Installation
@@ -81,8 +75,7 @@ Sync to latest repo (*This will overwrite any local untracked changes!*):
 
 
 
-Set up Conda environment with all dependencies. 
-Choose whether to use GPU or not:
+Set up Conda environment with all dependencies:
 
 ```
 conda env create -f infosearch_env.yml
