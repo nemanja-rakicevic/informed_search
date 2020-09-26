@@ -6,11 +6,14 @@ Description:
                 Managing and interfacing within the experiment 
 """
 
+import pdb
+
 import logging
 import numpy as np
 
-import utils.modelling  as umodel
+import utils.modelling as umodel
 import utils.environments as uenv
+
 from utils.misc import _TAB
 
 
@@ -28,8 +31,10 @@ class ExperimentManager(object):
         # Initialise the search algorithm
         stype = task_kwargs['search_type']
         stype = stype if stype.isupper() else stype.capitalize()
-        self.model = umodel.__dict__[stype+'Search'](
-            parameter_list=self.environment.parameter_list, **task_kwargs)
+        self.model = getattr(umodel, stype + 'Search')(
+            parameter_list=self.environment.parameter_list,
+            **task_kwargs)
+        # Load previous experiment
         self.load_model_path = load_model_path
         if self.load_model_path is not None:
             self.model.load_model(load_model_path)
@@ -38,6 +43,8 @@ class ExperimentManager(object):
     def execute_trial(self, num_trial):
         # Generate trial parameters
         trial_coords, trial_params = self.model.generate_sample()
+        if trial_coords is None: 
+            return 0
         # Execute trial
         trial_info = self.environment.execute_trial(trial_coords, 
                                                     trial_params, 
@@ -48,33 +55,36 @@ class ExperimentManager(object):
         self.model.update_model(self.environment.info_list)
         # Log trial info
         logger.info("TRIAL {}:"
-                    "\n{} - Trial_coords: {}"
+                    "\n{} - Trial coords: {} params: {}"
                     "\n{} - Fail_status: {}; Distance to target: {:4.2f}"
                     "\n{} - Total (failed: {}; successful: {})"
-                    "\n{} - Updated model uncertainty: {:4.2}".format(num_trial, 
-                        _TAB, trial_coords, _TAB, 
+                    "\n{} - Updated model uncertainty: {:4.2}".format(
+                        num_trial,
+                        _TAB, trial_coords, trial_params, _TAB,
                         trial_info['fail_status'], trial_info['target_dist'],
-                        _TAB, self.environment.n_fail, 
-                        self.environment.n_success, _TAB, 
+                        _TAB, self.environment.n_fail,
+                        self.environment.n_success, _TAB,
                         self.model.uncertainty))
 
 
-    def evaluate_test_cases(self, num_trial, verbose=False, save_model=True, 
-                                  save_test_progress=True, **kwargs):
+    def evaluate_test_cases(self, num_trial, verbose=False, save_model=True,
+                            save_test_progress=True, **kwargs):
         # Save current model that is evaluated
-        if save_model: self.model.save_model(num_trial=num_trial, **kwargs)
+        if save_model:
+            self.model.save_model(num_trial=num_trial, **kwargs)
         # Evaluate on environments test cases, save results
         self.environment.verbose = verbose
         return self.environment.full_tests_sequential(
-                                    num_trial=num_trial, 
-                                    model_object=self.model,
-                                    save_test_progress=save_test_progress, 
-                                    **kwargs)
+            num_trial=num_trial,
+            model_object=self.model,
+            save_test_progress=save_test_progress, 
+            **kwargs)
 
 
     def evaluate_single_test(self, test_target, display=False, verbose=False):
         """ Wrapper to evaluate a single test case """
         self.environment.display = display
-        return self.environment.run_test_case(model_object=self.model, 
-                                              test_target=test_target,
-                                              verbose=verbose)
+        return self.environment.run_test_case(
+            model_object=self.model,
+            test_target=test_target,
+            verbose=verbose)

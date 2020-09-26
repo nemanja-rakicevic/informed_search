@@ -13,6 +13,9 @@ Description:
                 - informed search
 """
 
+import pdb
+
+
 import os
 import time
 import logging
@@ -31,11 +34,7 @@ import utils.plotting as uplot
 from utils.misc import _EPS
 
 
-import pdb
-
-
 logger = logging.getLogger(__name__)
-
 
 
 class BaseModel(object):
@@ -275,11 +274,16 @@ class InformedSearch(BaseModel):
         """
         if len(info_list):
             # Successful trial: Update task models and PIDF
-            if info_list[-1]['fail_status']==0:
-                good_trials = np.vstack([[tr['parameters'], tr['ball_polar']] \
-                                for tr in info_list if tr['fail_status']==0])
-                good_params = np.vstack(good_trials[:, 0])
-                good_fevals = np.vstack(good_trials[:, 1])
+            if info_list[-1]['fail_status'] == 0:
+                # good_trials = np.vstack([[tr['parameters'], tr['ball_polar']]
+                #                         for tr in info_list
+                #                         if tr['fail_status'] == 0])
+                # good_params = np.vstack(good_trials[:, 0])
+                # good_fevals = np.vstack(good_trials[:, 1])
+                good_params = np.vstack([tr['parameters'] for tr in info_list
+                                        if tr['fail_status'] == 0])
+                good_fevals = np.vstack([tr['ball_polar'] for tr in info_list
+                                        if tr['fail_status'] == 0])
 
                 # Update the Angle and Distance GPR models, as well as PIDF
                 self.mu_alpha, self.var_alpha = self.update_GPR(good_params, 
@@ -402,7 +406,7 @@ class InformedSearch(BaseModel):
         """
         # Combine the model uncertainty with the PIDF 
         # model_var = (self.prior_init * self.uidf)/np.sum(self.prior_init * self.uidf)
-        sidf = 1.0 * self.uidf * (1 - self.pidf)#/np.sum(1-self.pidf)
+        sidf = 1.0 * self.uidf * (1 - self.pidf)  # /np.sum(1-self.pidf)
         
         # Scale the selection IDF
         # info_pdf /= np.sum(info_pdf)
@@ -411,22 +415,24 @@ class InformedSearch(BaseModel):
         # Check if the parameters have already been used
         temp_good = np.array([])
         cnt = 1
-        while len(temp_good)==0:
-            sample = np.array([sidf==c for c in nlargest(cnt*1, sidf.ravel())])
-            sample = sample.reshape([-1]+list(self.param_dims))
-            sample_idx = np.argwhere(sample)[:,1:]
-            temp_good = np.array(list(set(map(tuple, sample_idx)) \
-                        - set(map(tuple, self.coord_explored)))) 
+        while len(temp_good) == 0:
+            sample = np.array([sidf == c for c
+                              in nlargest(cnt * 1, sidf.ravel())])
+            sample = sample.reshape([-1] + list(self.param_dims))
+            sample_idx = np.argwhere(sample)[:, 1:]
+            temp_good = np.array(list(set(map(tuple, sample_idx))
+                                 - set(map(tuple, self.coord_explored))))
             cnt += 1
             if cnt > self.n_coords:
                 logger.info("All parameters have been explored!\tEXITING...")
-                break
+                return None, None
 
         # Convert from coordinates to parameters
-        selected_coord = temp_good[np.random.choice(len(temp_good)),:]
-        selected_params = np.array([self.param_list[i][selected_coord[i]] \
-                                                for i in range(self.n_param)])
+        selected_coord = temp_good[np.random.choice(len(temp_good)), :]
+        selected_params = np.array([self.param_list[i][selected_coord[i]]
+                                    for i in range(self.n_param)])
         self.coord_explored.append(selected_coord)
+
         # Return the next parameter vector
         return selected_coord, selected_params
 
