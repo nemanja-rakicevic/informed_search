@@ -89,8 +89,9 @@ class Striker2LinkEnv(BaseStriker, mujoco_env.MujocoEnv, utils.EzPickle):
         mujoco_env.MujocoEnv.__init__(self, xml_path, 2)
 
         self.num_joints = 2
-        self.parameter_list = np.array([np.linspace(-1.57, 1.57, resolution),
-                                        np.linspace(-3.14, 3.14, resolution)])
+        self.parameter_list = np.vstack(
+            [np.linspace(-1.57, 1.57, resolution),
+                [np.linspace(-3.14, 3.14, resolution)] * (self.num_joints - 1)])
         self.init_qvals = np.array([-1, 2])
 
 
@@ -106,9 +107,7 @@ class Striker5LinkEnv(BaseStriker, mujoco_env.MujocoEnv, utils.EzPickle):
         mujoco_env.MujocoEnv.__init__(self, xml_path, 2)
 
         self.num_joints = 5
-        self.parameter_list = np.array([np.linspace(-1.57, 1.57, resolution),
-                                        np.linspace(-3.14, 3.14, resolution),
-                                        np.linspace(-3.14, 3.14, resolution),
-                                        np.linspace(-3.14, 3.14, resolution),
-                                        np.linspace(-3.14, 3.14, resolution)])
+        self.parameter_list = np.vstack(
+            [np.linspace(-1.57, 1.57, resolution),
+                [np.linspace(-3.14, 3.14, resolution)] * (self.num_joints - 1)])
         self.init_qvals = np.array([-1.2, 2.5, 0., -2.5, 1.2])
