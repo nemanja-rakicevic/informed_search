@@ -118,7 +118,6 @@ class BaseModel(object):
         # Calculate model error for target point
         # M_meas  = scaled_sqdist(M_angle, M_dist, angle_s, dist_s)
         M_meas = elementwise_sqdist(self.mu_alpha-angle_s, self.mu_L-dist_s)
-
         # Generate optimal parameters to reached the target point
         src = 0
         for cnt in range(len(M_meas.ravel())):
@@ -145,8 +144,9 @@ class BaseModel(object):
                     print("\n(Iteration: {}; search {}) "
                           "--- BAD SAMPLE, resampling ..."
                           "\n - PIDF: {:4.2}; UIDF: {:4.2}; SIDF: {:4.2};"
-                          "\n".format(cnt, src,
-                                      pidf_value, uidf_value, sidf_value))
+                          "\n".format(
+                              cnt, src,
+                              pidf_value, uidf_value, sidf_value))
         if verbose:
             uidf_value = self.uidf[tuple(selected_coord)]
             sidf_value = self.sidf[tuple(selected_coord)]
@@ -156,12 +156,12 @@ class BaseModel(object):
                   "\n - Model polar error: {:4.2f}"
                   "\n --- |selected ({:4.2f}, {:4.2f}) - target ({}, {})| = "
                   "error ({:4.2f}, {:4.2f})\n".format(
-                                        cnt, pidf_value, uidf_value, sidf_value,
-                                        selected_coord, selected_params, 
-                                        best_fit[src-1],
-                                        selected_mu_alpha, selected_mu_L,
-                                        angle_s, dist_s,
-                                        error_angle, error_dist))
+                      cnt, pidf_value, uidf_value, sidf_value,
+                      selected_coord, selected_params, 
+                      best_fit[src - 1],
+                      selected_mu_alpha, selected_mu_L,
+                      angle_s, dist_s,
+                      error_angle, error_dist))
         # Return vector to execute as well as estimated model polar error
         return selected_coord, selected_params, best_fit[src-1], pidf_value
 
@@ -173,6 +173,7 @@ class BaseModel(object):
     def generate_sample():
         raise NotImplementedError
 
+
     @property
     def uncertainty(self):
         return self.uidf.mean()
@@ -180,26 +181,35 @@ class BaseModel(object):
 
     @property
     def components(self):
+        """ Return model components """
         return self.mu_alpha, self.mu_L, self.var_alpha, self.var_L
 
 
     def save_model(self, num_trial, save_plots=True, save_data=True, **kwargs):
+        """ Save model data """
         if save_plots:
-            uplot.plot_model(model_object=self,
-                             dimensions=[0,1],
-                             num_trial=num_trial, 
-                             savepath=self.dirname)  
-                             # param_names=['joint_1', 'joint_0'])
+            uplot.plot_model(
+                model_object=self,
+                dimensions=[0, 1],
+                num_trial=num_trial,
+                savepath=self.dirname)
+                # param_names=['joint_1', 'joint_0'])
         if save_data:
-            self.model_list.append([self.mu_alpha, self.mu_L, 
-                                    self.uidf, self.pidf, self.sidf, 
-                                    self.param_list])
-            with open(self.dirname+"/model_checkpoints.pickle", "wb") as f:
+            self.model_list.append([
+                self.mu_alpha,
+                self.mu_L, 
+                self.uidf,
+                self.pidf,
+                self.sidf, 
+                self.param_list])
+            filename = os.path.join(self.dirname, "model_checkpoints.pkl")
+            with open(filename, "wb") as f:
                 pickle.dump(self.model_list, f, 
                             protocol=pickle.HIGHEST_PROTOCOL)
 
 
     def load_model(self, loadpath):
+        """ Load model data """
         # list_models = sorted([d for d in \
         #     os.listdir('./DATA/'+self.exp_type+'/') if d[0:6]=='TRIAL_'])
         # for idx, t in enumerate(list_models):
@@ -207,11 +217,15 @@ class BaseModel(object):
         # test_num = input("\nEnter number of model to load > ")
         # self.dirname = './DATA/'+self.exp_type+'/'+list_models[int(test_num)]
         logger.info("Loading: ", loadpath)
-        with open(loadpath + "/model_checkpoints.pickle", "rb") as f:
+        filename = os.path.join(self.dirname, "model_checkpoints.pkl")
+        with open(filename, "rb") as f:
             self.model_list = pickle.load(f)
-            self.mu_alpha, self.mu_L, \
-            self.uidf, self.pidf, self.sidf, \
-            self.param_list = self.model_list[-1]
+            self.mu_alpha, \
+                self.mu_L, \
+                self.uidf, \
+                self.pidf, \
+                self.sidf, \
+                self.param_list = self.model_list[-1]
 
 
 
@@ -237,38 +251,77 @@ class InformedSearch(BaseModel):
         if len(info_list):
             # Successful trial: Update task models and PIDF
             if info_list[-1]['fail_status'] == 0:
-                # good_trials = np.vstack([[tr['parameters'], tr['ball_polar']]
-                #                         for tr in info_list
-                #                         if tr['fail_status'] == 0])
-                # good_params = np.vstack(good_trials[:, 0])
-                # good_fevals = np.vstack(good_trials[:, 1])
                 good_params = np.vstack([tr['parameters'] for tr in info_list
                                         if tr['fail_status'] == 0])
                 good_fevals = np.vstack([tr['ball_polar'] for tr in info_list
                                         if tr['fail_status'] == 0])
 
                 # Update the Angle and Distance GPR models, as well as PIDF
-                self.mu_alpha, self.var_alpha = self.update_GPR(good_params, 
-                                                                good_fevals, 0)
-                self.mu_L, self.var_L = self.update_GPR(good_params, 
-                                                        good_fevals, 1)
-                # Update PIDF
+                self.mu_alpha, self.var_alpha = self.update_GPR(
+                    good_params, good_fevals, 0)
+                self.mu_L, self.var_L = self.update_GPR(
+                    good_params, good_fevals, 1)
                 self.update_PIDF(info_list[-1]['parameters'], failed=-1)
 
             # Failed trial: Update PIDF
-            elif info_list[-1]['fail_status']>0:
-                self.coord_failed = np.array([tr['coordinates'] for tr \
-                                        in info_list if tr['fail_status']>0])
+            elif info_list[-1]['fail_status'] > 0:
+                self.coord_failed = np.array([tr['coordinates'] for tr
+                                             in info_list
+                                             if tr['fail_status'] > 0])
                 self.update_PIDF(info_list[-1]['parameters'], failed=1)
            
             # All trials: Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
             self.uidf = self.update_GPR(all_trials, None, -1)
+
             # There's some crazy bug here when using 5-link version, canot figure it out...
-            # all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
-            # self.uidf = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
-            # SAVE CURRENT MODEL
-            if save_model_progress: self.save_model()
+    
+            if save_model_progress:
+                self.save_model()
+
+
+    def generate_sample(self, info_list=None, **kwargs):
+        """
+            Generate the movement parameter vector to evaluate next, 
+            based on the GPR model uncertainty and the penalisation IDF.
+        """
+        # Combine the model uncertainty with the PIDF 
+        sidf = 1.0 * self.uidf * (1 - self.pidf) 
+        # Scale the selection IDF
+        self.sidf = sidf / (sidf.max() + _EPS)  # np.sum(info_pdf + _EPS)
+        # Check if the parameters have already been used
+        temp_good = np.array([])
+        cnt = 1
+        while len(temp_good) == 0:
+            sample = np.array([sidf == c for c
+                              in nlargest(cnt * 1, sidf.ravel())])
+            sample = sample.reshape([-1] + list(self.param_dims))
+            sample_idx = np.argwhere(sample)[:, 1:]
+            temp_good = np.array(list(set(map(tuple, sample_idx))
+                                 - set(map(tuple, self.coord_explored))))
+            cnt += 1
+            if cnt > self.n_coords:
+                logger.info("All parameters have been explored!\tEXITING...")
+                return None, None
+        # Convert from coordinates to parameters
+        selected_coord = temp_good[np.random.choice(len(temp_good)), :]
+        selected_params = np.array([self.param_list[i][selected_coord[i]]
+                                    for i in range(self.n_param)])
+        self.coord_explored.append(selected_coord)
+        # Return the next parameter vector
+        return selected_coord, selected_params
+
+
+
+    def generate_pdf_matrix(self, x_sample, mu, cov):
+        """ 
+            Create a multivariate Gaussian over the parameter space 
+        """
+        tmp = np.dot((x_sample - mu), np.linalg.inv(cov))
+        tmp_T = (x_sample - mu).T
+        denom = np.sqrt(2 * np.pi * np.linalg.det(cov))
+        f = (1 / denom) * np.exp(-0.5 * inner1d(tmp, tmp_T.T))
+        return f 
 
 
     def update_GPR(self, Xtrain, Ytrain, label_indicator):
@@ -361,19 +414,58 @@ class InformedSearch(BaseModel):
         
 
 
+
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+
+
+
+class UIDFSearch(BaseModel):
+    """
+        Uncertainty-only model;
+        Uses only the uncertainty IDF to select the next trial. Does not update
+        the penalisation IDF.
+    """
+
+    def update_model(self, info_list, save_model_progress=False, **kwargs):
+        """
+            Select successful trials to estimate the GPR model mean and 
+            variance, and the failed ones to update the penalisation IDF.
+        """
+        if len(info_list):
+            # Successful trial: Update task models
+            if info_list[-1]['fail_status'] == 0:
+                good_params = np.vstack([tr['parameters'] for tr in info_list
+                                        if tr['fail_status'] == 0])
+                good_fevals = np.vstack([tr['ball_polar'] for tr in info_list
+                                        if tr['fail_status'] == 0])
+                # Estimate the Angle and Distance GPR models, as well as PIDF
+                self.mu_alpha, self.var_alpha = self.update_GPR(
+                    good_params, good_fevals, 0)
+                self.mu_L, self.var_L = self.update_GPR(
+                    good_params, good_fevals, 1)
+            
+            # All trials: Update UIDF
+            all_trials = np.array([tr['parameters'] for tr in info_list])
+            self.uidf = self.update_GPR(all_trials, None, -1)
+            
+            # There's some crazy bug here when using 5-link version, canot figure it out...
+            
+            if save_model_progress:
+                self.save_model()
+
+
     def generate_sample(self, info_list=None, **kwargs):
         """
             Generate the movement parameter vector to evaluate next, 
-            based on the GPR model uncertainty and the penalisation IDF.
+            based ONLY on the GPR model uncertainty.
         """
-        # Combine the model uncertainty with the PIDF 
-        # model_var = (self.prior_init * self.uidf)/np.sum(self.prior_init * self.uidf)
-        sidf = 1.0 * self.uidf * (1 - self.pidf)  # /np.sum(1-self.pidf)
-        
+        # Use only the model uncertainty
+        sidf = 1.0 * self.uidf
         # Scale the selection IDF
-        # info_pdf /= np.sum(info_pdf)
-        self.sidf = sidf / (sidf.max() + _EPS)
-
+        self.sidf = sidf / (sidf.max() + _EPS)  # np.sum(info_pdf + _EPS)
         # Check if the parameters have already been used
         temp_good = np.array([])
         cnt = 1
@@ -388,98 +480,22 @@ class InformedSearch(BaseModel):
             if cnt > self.n_coords:
                 logger.info("All parameters have been explored!\tEXITING...")
                 return None, None
-
         # Convert from coordinates to parameters
         selected_coord = temp_good[np.random.choice(len(temp_good)), :]
         selected_params = np.array([self.param_list[i][selected_coord[i]]
                                     for i in range(self.n_param)])
         self.coord_explored.append(selected_coord)
-
         # Return the next parameter vector
         return selected_coord, selected_params
 
 
-
-    def generate_pdf_matrix(self, x_sample, mu, cov):
-        """ 
-            Create a multivariate gaussian over the parameter space 
-        """
-        tmp = np.dot((x_sample - mu), np.linalg.inv(cov))
-        tmp_T = (x_sample - mu).T
-        denom = np.sqrt(2 * np.pi * np.linalg.det(cov))
-        f = (1 / denom) * np.exp(-0.5 * inner1d(tmp, tmp_T.T))
-        return f 
-
-
-
-
-
-##############################################################################
-##############################################################################
-##############################################################################
-##############################################################################
-
-
-
-
-
-class UIDFSearch(BaseModel):
-    """
-        Uncertainty-only model;
-        Uses only the uncertainty IDF to select the next trial. Does not update
-        the penalisation IDF.
-    """
-
-    def update_model(self, info_list, save_model_progress=False, **kwargs):
-        """
-        Select successful trials to estimate the GPR model mean and variance,
-        and the failed ones to update the penalisation IDF.
-        """
-        if len(info_list):
-            # Successful trial: Update task models
-            if info_list[-1]['fail_status'] == 0:
-                good_params = np.vstack([tr['parameters'] for tr in info_list
-                                        if tr['fail_status'] == 0])
-                good_fevals = np.vstack([tr['ball_polar'] for tr in info_list
-                                        if tr['fail_status'] == 0])
-                # Estimate the Angle and Distance GPR models, as well as PIDF
-                self.mu_alpha, self.var_alpha = self.update_GPR(good_params, good_fevals, 0)
-                self.mu_L,     self.var_L     = self.update_GPR(good_params, good_fevals, 1)
-                self.update_PIDF(info_list[-1]['parameters'], failed=-1)
-            # Failed trial: Update PIDF
-            elif info_list[-1]['fail_status']>0:
-                self.coord_failed = [tr['coordinates'] for tr in info_list if tr['fail_status']>0]
-                self.update_PIDF(info_list[-1]['parameters'], failed=1)
-            # All trials: Update UIDF
-            all_trials = np.array([tr['parameters'] for tr in info_list])
-            self.uidf = self.update_GPR(all_trials, None, -1)
-            # There's some crazy bug here when using 5-link version, canot figure it out...
-            # all_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list])
-            # self.uidf = self.update_GPR(all_trials[:,0], all_trials[:,1], -1)
-            # SAVE CURRENT MODEL
-            if save_model_progress: self.save_model()
-
-
     def update_GPR(self, Xtrain, Ytrain, label_indicator):
         """
-        Update GPR uncertainty over the parameter space.
+            Perform Gaussian Process Regression using successful trials as 
+            training points, and evaluate on the whole parameter space to get 
+            the new model and uncertainty estimates.
         """
-        if label_indicator == -1:
-            # Xtrain = np.array(Xtrain).reshape(-1,self.n_param)
-            Xtest = self.param_space
-            # Calculate kernel matrices
-            K = self.kernel_fn(Xtrain, Xtrain)
-            L = np.linalg.cholesky(K + _EPS*np.eye(len(Xtrain)))
-            Ks = self.kernel_fn(Xtrain, Xtest)
-            Lk = np.linalg.solve(L, Ks)
-            # Get overall model uncertainty
-            return np.sqrt(np.diag(self.Kss) - np.sum(Lk**2, axis=0)).reshape(self.param_dims)
-
-        """
-        Perform Gaussian Process Regression using good performed trials as training points,
-        and evaluate on the whole parameter space to get the new model and uncertainty estimates.
-        """
-        Ytrain = Ytrain[:, label_indicator].reshape(-1,1)
+        # Xtrain = np.array(Xtrain).reshape(-1,self.n_param)
         Xtest = self.param_space
         # Calculate kernel matrices
         K = self.kernel_fn(Xtrain, Xtrain)
@@ -487,44 +503,17 @@ class UIDFSearch(BaseModel):
         Ks = self.kernel_fn(Xtrain, Xtest)
         Lk = np.linalg.solve(L, Ks)
         # Get posterior MU and SIGMA
-        mu_post = np.dot(Lk.T, np.linalg.solve(L, Ytrain))
         var_post = np.sqrt(np.diag(self.Kss) - np.sum(Lk**2, axis=0))
-        # Return the matrix version
-        return mu_post.reshape(self.param_dims), var_post.reshape(self.param_dims)#/np.sum(var_post)
+        if label_indicator != -1:
+            Ytrain = Ytrain[:, label_indicator].reshape(-1,1)
+            mu_post = np.dot(Lk.T, np.linalg.solve(L, Ytrain))
+            # Return the matrix version
+            return mu_post.reshape(self.param_dims), \
+                   var_post.reshape(self.param_dims)  # /np.sum(var_post)
+        else:
+            return var_post.reshape(self.param_dims)  # /np.sum(var_post)
 
 
-
-    def update_PIDF(self, mu, failed=1):
-        pass
-        
-
-    def generate_sample(self, info_list=None, **kwargs):
-        """
-        Generate the movement parameter vector to evaluate next, 
-        based ONLY on the GPR model uncertainty.
-        """
-        # Combine the model uncertainty with the penalisation IDF to get the most informative point  
-        # model_var = (self.prior_init * self.uidf)/np.sum(self.prior_init * self.uidf)
-        sidf = 1.0 * self.uidf #* (1 - self.pidf)#/np.sum(1-self.pidf)
-        # info_pdf /= np.sum(info_pdf)
-        self.sidf = sidf /(sidf.max() + _EPS)
-        # Check if the parameters have already been used
-        temp_good = np.array([])
-        cnt=1
-        while len(temp_good)==0:
-            temp = np.argwhere(np.array([sidf==c for c in nlargest(cnt*1, sidf.ravel())]).reshape(tuple(np.append(-1, self.param_dims))))[:,1:]
-            temp_good = set(map(tuple, temp)) - set(map(tuple,self.coord_explored))
-            temp_good = np.array(list(temp_good)) 
-            cnt+=1
-            if cnt > self.n_coords:
-                logger.info("ALL COMBINATIONS HAVE BEEN EXPLORED! EXITING...")
-                break
-
-        selected_coord = temp_good[np.random.choice(len(temp_good)),:]
-        selected_params = np.array([self.param_list[i][selected_coord[i]] for i in range(self.n_param)])
-        self.coord_explored.append(selected_coord)
-        # return the next sample vector
-        return selected_coord, selected_params
 
 
 
@@ -549,8 +538,8 @@ class EntropySearch(BaseModel):
 
     def update_model(self, info_list, save_model_progress=False, **kwargs):
         """
-        Select successful trials to estimate the GPR model mean and variance,
-        and the failed ones to update the penalisation IDF.
+            Select successful trials to estimate the GPR model mean and variance,
+            and the failed ones to update the penalisation IDF.
         """
         if len(info_list):
             # Successful trial: Update task models
@@ -894,14 +883,11 @@ class RandomSearch(BaseModel):
         """
         if len(info_list):
             # Successful trial: Update task models
-            if info_list[-1]['fail_status']==0:
-                # good_trials = np.array([[tr['parameters'], tr['ball_polar']] for tr in info_list if tr['fail_status']==0])
-                # good_params = good_trials[:,0]
-                # good_fevals = good_trials[:,1]
-                good_params = np.array([tr['parameters'] for tr in info_list \
-                                                    if tr['fail_status']==0])
-                good_fevals = np.array([tr['ball_polar'] for tr in info_list \
-                                                    if tr['fail_status']==0])
+            if info_list[-1]['fail_status'] == 0:
+                good_params = np.array([tr['parameters'] for tr in info_list
+                                       if tr['fail_status'] == 0])
+                good_fevals = np.array([tr['ball_polar'] for tr in info_list
+                                        if tr['fail_status'] == 0])
                 # Estimate the Angle and Distance GPR models, as well as PIDF
                 self.mu_alpha, self.var_alpha = self.update_GPR(good_params, good_fevals, 0)
                 self.mu_L,     self.var_L     = self.update_GPR(good_params, good_fevals, 1)

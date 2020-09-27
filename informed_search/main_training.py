@@ -56,7 +56,10 @@ parser.add_argument('--pidf_cov', default=0.1,
                     help="Penalisation function covariance coefficient.")
 
 parser.add_argument('--kernel_name', default='se',
-                    help="Gaussian Process Regression kernel function.")
+                    help="Gaussian Process Regression kernel function: "
+                         "se\n"
+                         "mat\n"
+                         "rq")
 
 parser.add_argument('--kernel_lenscale', default=0.01,
                     type=float,
