@@ -2,7 +2,7 @@
     "environment": "sim5link",
     "eval_freq": 10,
     "kernel_lenscale": 0.01,
-    "kernel_name": "se",
+    "kernel_name": "rq",
     "kernel_sigma": 1.0,
     "num_trial": 300,
     "pidf_cov": 0.1,

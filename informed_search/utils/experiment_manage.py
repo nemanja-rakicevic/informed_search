@@ -38,7 +38,6 @@ class ExperimentManager(object):
         self.load_model_path = load_model_path
         if self.load_model_path is not None:
             self.model.load_model(load_model_path)
-    
 
     def execute_trial(self, num_trial):
         # Generate trial parameters
@@ -66,7 +65,6 @@ class ExperimentManager(object):
                         self.environment.n_success, _TAB,
                         self.model.uncertainty))
 
-
     def evaluate_test_cases(self, num_trial, verbose=False, save_model=True,
                             save_test_progress=True, **kwargs):
         # Save current model that is evaluated
@@ -79,7 +77,6 @@ class ExperimentManager(object):
             model_object=self.model,
             save_test_progress=save_test_progress, 
             **kwargs)
-
 
     def evaluate_single_test(self, test_target, display=False, verbose=False):
         """ Wrapper to evaluate a single test case """

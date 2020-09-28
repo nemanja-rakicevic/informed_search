@@ -93,8 +93,12 @@ This automatically adds `$INFOSEARCH_PATH` to `$PYTHON_PATH`.
 
 ##  Training
 
-In order to perform the training, it is necessary to chose the environment (striker_2_link or striker_5_link),
+In order to perform the training, it is necessary to chose the environment 
+(striker_2_link or striker_5_link), 
 and the algorithm to run (informed, random, uidf, bo and entropy).
+The config files for striker_2_link contain default values corresponding to 
+the experiments presented in figure 6b in the original
+[paper](https://link.springer.com/article/10.1007%2Fs10514-019-09842-7)].
 Other arguments are optional. For more information refer to the code.
 
 ```

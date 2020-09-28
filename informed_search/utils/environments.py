@@ -63,7 +63,6 @@ class SimulationExperiment(object):
         self.test_cases = np.vstack(list(product(self.test_angles,
                                                  self.test_dist)))
 
-
     def _log_trial(self, fail_status, ball_polar, target_dist, test_target, 
                    **kwargs):
         if self.verbose:
@@ -77,11 +76,9 @@ class SimulationExperiment(object):
             print("--- trial executed: {}{}".format(outcome_string, 
                                                     error_string))
 
-
     @property
     def n_total(self):
         return len(self.info_list)
-
 
     @property
     def n_fail(self):
@@ -96,7 +93,6 @@ class SimulationExperiment(object):
             return self.n_total - self.n_fail
         else:
             return 0
-
 
     def execute_trial(self, param_coords, param_vals, 
                       num_trial=None, test_target=None):
@@ -155,7 +151,6 @@ class SimulationExperiment(object):
         return trial_info
 
 
-
     def run_test_case(self, model_object, test_target, **kwargs):
         # Generate movement parameter vector
         tc_coords, tc_params, model_polar_error, model_pidf = \
@@ -178,7 +173,6 @@ class SimulationExperiment(object):
             return -1, -1, test_stats
         else:
             return polar_error, euclid_error, test_stats
-
 
 
     def full_tests_sequential(self, num_trial, model_object,

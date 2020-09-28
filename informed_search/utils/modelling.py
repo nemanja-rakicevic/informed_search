@@ -613,4 +613,3 @@ class RandomSearch(BaseModel):
         self.coord_explored.append(selected_coord)
         # return the next sample vector
         return selected_coord, selected_params
-
