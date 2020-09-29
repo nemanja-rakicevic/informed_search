@@ -11,7 +11,7 @@ Description:
 import json
 import argparse
 
-import utils.experiment_manage as expm
+import informed_search.utils.experiment_manage as expm
 
 
 parser = argparse.ArgumentParser()

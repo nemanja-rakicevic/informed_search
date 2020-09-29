@@ -118,12 +118,12 @@ python main_training.py --config_file configs/striker_2_link/paper_informed.json
 
 Evaluate the learned model from a specified path, on the whole test set:
 ```
-python load_full_test.py --load <path to experiment directory>
+python analysis/evaluate_test_full.py --load <path to experiment directory>
 ```
 
 Check performace of the loaded model for specific test target positions:
 ```
-python load_target_test.py --load <path to experiment directory>
+python analysis/evaluate_test_target.py --load <path to experiment directory>
 ```
 
 
