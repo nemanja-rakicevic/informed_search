@@ -25,7 +25,7 @@ from heapq import nlargest, nsmallest
 from functools import partial
 
 import informed_search.utils.plotting as uplot
-import informed_search.utils.kernels as kern
+import informed_search.models.kernels as kern
 
 from informed_search.utils.misc import _EPS, elementwise_sqdist, scaled_sqdist
 

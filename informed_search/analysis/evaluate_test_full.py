@@ -12,7 +12,7 @@ import json
 import argparse
 import numpy as np
 
-import informed_search.utils.experiment_manage as expm
+import informed_search.tasks.experiment_manage as expm
 
 
 parser = argparse.ArgumentParser()

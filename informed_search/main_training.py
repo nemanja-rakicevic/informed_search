@@ -13,7 +13,7 @@ import logging
 import argparse
 import datetime
 
-import informed_search.utils.experiment_manage as expm
+import informed_search.tasks.experiment_manage as expm
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ def _load_args():
     # Task
     parser.add_argument('--resolution', default=7,
                         help="Select discretisation resolution")
-    parser.add_argument('--environment', default='sim5link',
+    parser.add_argument('--environment', default='sim2link',
                         help="Select which environment to use: "
                              "'sim2link'\n"
                              "'sim5link'\n"
@@ -133,7 +133,7 @@ def main_run():
     experiment = expm.ExperimentManager(task_kwargs)
     # Run main loop
     for ntrial_ in range(1, task_kwargs['num_trial'] + 1):
-        if experiment.execute_trial(ntrial_) is not None:
+        if experiment.run_trial(ntrial_) is not None:
             break
         if task_kwargs['eval_freq'] and ntrial_ % task_kwargs['eval_freq'] == 0:
             experiment.evaluate_test_cases(ntrial_)

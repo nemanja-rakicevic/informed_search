@@ -3,7 +3,7 @@
 Author:         Nemanja Rakicevic
 Date:           January 2020
 Description:
-                Managing and interfacing within the experiment 
+                Managing and interfacing within the experiment
 """
 
 import pdb
@@ -11,23 +11,21 @@ import pdb
 import logging
 import numpy as np
 
-import utils.modelling as umodel
-import utils.environments as uenv
+import informed_search.models.modelling as umodel
+import informed_search.tasks.environments as uenv
 
-from utils.misc import _TAB
+from informed_search.utils.misc import _TAB
 
 
 logger = logging.getLogger(__name__) 
 
 
 class ExperimentManager(object):
-    """
-        Manages interfacing the search algorithm, model and the environment.
-    """
+    """Manages interfacing the search algorithm, model and the environment."""
 
-    def __init__(self, task_kwargs, load_model_path=None):
+    def __init__(self, task_kwargs, load_model_path=None, **kwargs):
         # Initialise the experiment type
-        self.environment = uenv.SimulationExperiment(**task_kwargs)
+        self.environment = uenv.SimulationExperiment(**task_kwargs, **kwargs)
         # Initialise the search algorithm
         stype = task_kwargs['search_type']
         stype = stype if stype.isupper() else stype.capitalize()
@@ -39,15 +37,14 @@ class ExperimentManager(object):
         if self.load_model_path is not None:
             self.model.load_model(load_model_path)
 
-    def execute_trial(self, num_trial):
+    def run_trial(self, num_trial):
         # Generate trial parameters
         trial_coords, trial_params = self.model.generate_sample()
-        if trial_coords is None: 
+        if trial_coords is None:
             return 0
         # Execute trial
-        trial_info = self.environment.execute_trial(trial_coords, 
-                                                    trial_params, 
-                                                    num_trial=num_trial)
+        trial_info = self.environment.execute_trial(
+            trial_coords, trial_params, num_trial=num_trial)
         self.environment.info_list.append(trial_info)
         self.environment.save_trial_data()
         # Update model
@@ -65,7 +62,8 @@ class ExperimentManager(object):
                         self.environment.n_success, _TAB,
                         self.model.uncertainty))
 
-    def evaluate_test_cases(self, num_trial, verbose=False, save_model=True,
+    def evaluate_test_cases(self, num_trial, 
+                            verbose=False, save_model=True,
                             save_test_progress=True, **kwargs):
         # Save current model that is evaluated
         if save_model:
@@ -75,11 +73,11 @@ class ExperimentManager(object):
         return self.environment.full_tests_sequential(
             num_trial=num_trial,
             model_object=self.model,
-            save_test_progress=save_test_progress, 
+            save_test_progress=save_test_progress,
             **kwargs)
 
     def evaluate_single_test(self, test_target, display=False, verbose=False):
-        """ Wrapper to evaluate a single test case """
+        """Wrapper to evaluate a single test case"""
         self.environment.display = display
         return self.environment.run_test_case(
             model_object=self.model,
