@@ -3,8 +3,8 @@
 Author:         Nemanja Rakicevic
 Date  :         January 2018
 Description:
-                Classes containing different search algorithm implementations 
-                and auxiliary functions to interface the learned model. 
+                Classes containing different search algorithm implementations
+                and auxiliary functions to interface the learned model.
                 Search algorithms:
                 - informed search
                 - uidf-based
@@ -12,9 +12,6 @@ Description:
                 - bayesian optimisation based
                 - random
 """
-
-import pdb
-
 
 import os
 import logging
@@ -27,16 +24,17 @@ from numpy.core.umath_tests import inner1d
 from heapq import nlargest, nsmallest
 from functools import partial
 
-import utils.plotting as uplot
-import utils.kernels as kern
+import informed_search.utils.plotting as uplot
+import informed_search.utils.kernels as kern
 
-from utils.misc import _EPS, elementwise_sqdist, scaled_sqdist
+from informed_search.utils.misc import _EPS, elementwise_sqdist, scaled_sqdist
 
 
 logger = logging.getLogger(__name__)
 
 
 class BaseModel(object):
+    """Base task model learning class"""
 
     def __init__(self,
                  parameter_list,
@@ -63,11 +61,12 @@ class BaseModel(object):
         # Initialise statistics
         self.coord_explored = []
         self.coord_failed = []
-        # Initialise attributes 
+        # Initialise attributes
         self._build_model(cov_coeff)
         self._build_kernel(kernel_name, kernel_lenscale, kernel_sigma)
 
     def _build_model(self, cov_coeff):
+        """Initialise task model and exploration components."""
         # Prior distribution
         self.prior_init = np.ones(self.param_dims) / np.product(self.param_dims)
         # Create covariance matrix
@@ -93,27 +92,25 @@ class BaseModel(object):
         self.delta_uncertainty = []
 
     def _build_kernel(self, kernel_name, kernel_lenscale, kernel_sigma):
-        """ Construct the kernel function and initialise Kss """
+        """Construct the kernel function and initialise Kss."""
         self.kernel_fn = partial(getattr(kern, kernel_name + '_kernel'),
                                  kernel_lenscale=kernel_lenscale,
                                  kernel_sigma=kernel_sigma)
         self.Kss = self.kernel_fn(a=self.param_space, b=self.param_space)
 
     def query_target(self, angle_s, dist_s, verbose=False):
-        """ 
-            Generate test parameter coordinates for given target polar coords.
-        """
+        """Generate test parameter coordinates for given target polar coords."""
         thrsh = 0.1
         # Calculate model error for target point
-        # M_meas  = scaled_sqdist(M_angle, M_dist, angle_s, dist_s)
-        M_meas = elementwise_sqdist(self.mu_alpha-angle_s, self.mu_L-dist_s)
+        m_meas = elementwise_sqdist(self.mu_alpha - angle_s, self.mu_L - dist_s)
+        # m_meas  = scaled_sqdist(M_angle, M_dist, angle_s, dist_s)
         # Generate optimal parameters to reached the target point
         src = 0
-        for cnt in range(len(M_meas.ravel())):
+        for cnt in range(len(m_meas.ravel())):
             src += 1
             # get candidate movement parameter vector with smalles model error
-            best_fit = nsmallest(src, M_meas.ravel())
-            selected_coord = np.argwhere(M_meas == best_fit[src - 1])[0]
+            best_fit = nsmallest(src, m_meas.ravel())
+            selected_coord = np.argwhere(m_meas == best_fit[src - 1])[0]
             selected_params = np.array([self.param_list[i][selected_coord[i]]
                                        for i in range(self.n_param)])
             selected_mu_alpha = self.mu_alpha[tuple(selected_coord)]
@@ -155,9 +152,7 @@ class BaseModel(object):
         return selected_coord, selected_params, best_fit[src - 1], pidf_value
 
     def update_GPR(self, xtrain, ytrain=None):
-        """
-            Update GPR model over the parameter set
-        """
+        """Update Gaussian Process Regression model over the parameter set."""
         xtest = self.param_space
         # Calculate kernel matrices
         K = self.kernel_fn(xtrain, xtrain)
@@ -175,29 +170,28 @@ class BaseModel(object):
                 var_post.reshape(self.param_dims)  # /np.sum(var_post)
 
     def save_model(self, num_trial, save_plots=True, save_data=True, **kwargs):
-        """ Save model data """
+        """Save model data as checkpoints."""
         if save_plots:
             uplot.plot_model(
                 model_object=self,
                 dimensions=[0, 1],
                 num_trial=num_trial,
                 savepath=self.dirname)
-                # param_names=['joint_1', 'joint_0'])
         if save_data:
             self.model_list.append([
                 self.mu_alpha,
-                self.mu_L, 
+                self.mu_L,
                 self.uidf,
                 self.pidf,
-                self.sidf, 
+                self.sidf,
                 self.param_list])
             filename = os.path.join(self.dirname, "model_checkpoints.pkl")
             with open(filename, "wb") as f:
-                pickle.dump(self.model_list, f, 
+                pickle.dump(self.model_list, f,
                             protocol=pickle.HIGHEST_PROTOCOL)
 
     def load_model(self, loadpath):
-        """ Load model data """
+        """Load model data from checkpoint."""
         logger.info("Loading: ", loadpath)
         filename = os.path.join(self.dirname, "model_checkpoints.pkl")
         with open(filename, "rb") as f:
@@ -211,11 +205,12 @@ class BaseModel(object):
 
     @property
     def uncertainty(self):
+        """Return model uncertainty."""
         return self.uidf.mean()
 
     @property
     def components(self):
-        """ Return model components """
+        """Return model components."""
         return self.mu_alpha, self.mu_L, self.var_alpha, self.var_L
 
     def update_model():
@@ -227,13 +222,14 @@ class BaseModel(object):
 
 class InformedSearch(BaseModel):
     """
-        Proposed Informed Search model class; 
-        Uses the penalisation and uncertainty IDF's to determine the next trial.
+    Proposed Informed Search model class;
+    Uses the penalisation and uncertainty IDF's to determine the next trial.
     """
+
     def update_model(self, info_list, save_model_progress=False, **kwargs):
         """
-            Select successful trials to estimate the GPR model's mean and 
-            variance, and the failed ones to update the penalisation IDF.
+        Select successful trials to estimate the GPR model's mean and
+        variance, and the failed ones to update the penalisation IDF.
         """
         if len(info_list):
             # Update task models
@@ -262,11 +258,11 @@ class InformedSearch(BaseModel):
 
     def generate_sample(self, info_list=None, **kwargs):
         """
-            Generate the movement parameter vector to evaluate next, 
-            based on the GPR model uncertainty and the penalisation IDF.
+        Generate the movement parameter vector to evaluate next,
+        based on the GPR model uncertainty and the penalisation IDF.
         """
-        # Combine the model uncertainty with the PIDF 
-        sidf = 1.0 * self.uidf * (1 - self.pidf) 
+        # Combine the model uncertainty with the PIDF
+        sidf = 1.0 * self.uidf * (1 - self.pidf)
         # Scale the selection IDF
         self.sidf = sidf / (sidf.max() + _EPS)  # np.sum(info_pdf + _EPS)
         # Check if the parameters have already been used
@@ -277,8 +273,8 @@ class InformedSearch(BaseModel):
                               in nlargest(cnt * 1, sidf.ravel())])
             sample = sample.reshape([-1] + list(self.param_dims))
             sample_idx = np.argwhere(sample)[:, 1:]
-            temp_good = np.array(list(set(map(tuple, sample_idx))
-                                 - set(map(tuple, self.coord_explored))))
+            temp_good = np.array(list(set(map(tuple, sample_idx)) -
+                                 set(map(tuple, self.coord_explored))))
             cnt += 1
             if cnt > self.n_coords:
                 logger.info("All parameters have been explored!\tEXITING...")
@@ -292,25 +288,23 @@ class InformedSearch(BaseModel):
         return selected_coord, selected_params
 
     def generate_pdf_matrix(self, x_sample, mu, cov):
-        """ 
-            Create a multivariate Gaussian over the parameter space 
-        """
+        """Create a multivariate Gaussian over the parameter space."""
         tmp = np.dot((x_sample - mu), np.linalg.inv(cov))
-        tmp_T = (x_sample - mu).T
+        tmp_t = (x_sample - mu).T
         denom = np.sqrt(2 * np.pi * np.linalg.det(cov))
-        f = (1 / denom) * np.exp(-0.5 * inner1d(tmp, tmp_T.T))
-        return f 
+        f = (1 / denom) * np.exp(-0.5 * inner1d(tmp, tmp_t.T))
+        return f
 
     def update_PIDF(self, mu, failed=1):
-        """ 
-            Update the PIDF based on the failed trials, by centering a
-            negative multivariate Gaussian on the point in the parameter space 
-            corresponding to the movement vector of the failed trial.
-
-            For successful trials a positive Gaussian with a larger variance 
-            is used.
         """
-        # Modify the Gaussian covariance matrix, depending on trial outcome  
+        Update the PIDF based on the failed trials, by centering a
+        negative multivariate Gaussian on the point in the parameter space
+        corresponding to the movement vector of the failed trial.
+
+        For successful trials a positive Gaussian with a larger variance
+        is used.
+        """
+        # Modify the Gaussian covariance matrix, depending on trial outcome
         previous_pidf = self.pidf.copy()
         # Failed trial
         if failed == 1:
@@ -361,14 +355,15 @@ class InformedSearch(BaseModel):
 
 class UIDFSearch(BaseModel):
     """
-        Uncertainty-only model;
-        Uses only the uncertainty IDF to select the next trial. Does not update
-        the penalisation IDF.
+    Uncertainty-only model class;
+    Uses only the uncertainty IDF to select the next trial. Does not update
+    the penalisation IDF.
     """
+
     def update_model(self, info_list, save_model_progress=False, **kwargs):
         """
-            Select successful trials to estimate the GPR model mean and 
-            variance, and the failed ones to update the penalisation IDF.
+        Select successful trials to estimate the GPR model mean and variance,
+        and the failed ones to update the penalisation IDF.
         """
         if len(info_list):
             # Update task models
@@ -385,14 +380,14 @@ class UIDFSearch(BaseModel):
             # Update UIDF for evaluation purposes
             all_trials = np.array([tr['parameters'] for tr in info_list])
             self.uidf = self.update_GPR(all_trials, None)
-            
+
             if save_model_progress:
                 self.save_model()
 
     def generate_sample(self, info_list=None, **kwargs):
         """
-            Generate the movement parameter vector to evaluate next, 
-            based ONLY on the GPR model uncertainty.
+        Generate the movement parameter vector to evaluate next,
+        based ONLY on the GPR model uncertainty.
         """
         # Use only the model uncertainty
         sidf = 1.0 * self.uidf
@@ -406,8 +401,8 @@ class UIDFSearch(BaseModel):
                               in nlargest(cnt * 1, sidf.ravel())])
             sample = sample.reshape([-1] + list(self.param_dims))
             sample_idx = np.argwhere(sample)[:, 1:]
-            temp_good = np.array(list(set(map(tuple, sample_idx))
-                                 - set(map(tuple, self.coord_explored))))
+            temp_good = np.array(list(set(map(tuple, sample_idx)) -
+                                 set(map(tuple, self.coord_explored))))
             cnt += 1
             if cnt > self.n_coords:
                 logger.info("All parameters have been explored!\tEXITING...")
@@ -423,14 +418,15 @@ class UIDFSearch(BaseModel):
 
 class EntropySearch(BaseModel):
     """
-        Entropy-based model;
-        Uses the entropy of uncertainty IDF to select the next trial. 
-        Does not update the penalisation IDF.
+    Entropy-based model class;
+    Uses the entropy of uncertainty IDF to select the next trial.
+    Does not update the penalisation IDF.
     """
+
     def update_model(self, info_list, save_model_progress=False, **kwargs):
         """
-            Use successful trials to estimate the GPR model mean, and
-            all trials to estimate the UIDF.
+        Use successful trials to estimate the GPR model mean, and
+        all trials to estimate the UIDF.
         """
         if len(info_list):
             # Update task models
@@ -446,14 +442,14 @@ class EntropySearch(BaseModel):
             # Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
             self.uidf = self.update_GPR(all_trials, None)
-            
+
             if save_model_progress:
                 self.save_model()
 
     def generate_sample(self, info_list=None, **kwargs):
         """
-            Generate the movement parameter vector to evaluate next, 
-            based ONLY on the posterior distributions entropy
+        Generate the movement parameter vector to evaluate next,
+        based ONLY on the posterior distributions entropy
         """
         # Use the model entropy
         sidf = 0.5 * np.log(2 * np.pi * np.e * self.uidf)
@@ -467,8 +463,8 @@ class EntropySearch(BaseModel):
                               in nlargest(cnt * 1, sidf.ravel())])
             sample = sample.reshape([-1] + list(self.param_dims))
             sample_idx = np.argwhere(sample)[:, 1:]
-            temp_good = np.array(list(set(map(tuple, sample_idx))
-                                 - set(map(tuple, self.coord_explored))))
+            temp_good = np.array(list(set(map(tuple, sample_idx)) -
+                                 set(map(tuple, self.coord_explored))))
             cnt += 1
             if cnt > self.n_coords:
                 logger.info("All parameters have been explored!\tEXITING...")
@@ -484,14 +480,15 @@ class EntropySearch(BaseModel):
 
 class BOSearch(BaseModel):
     """
-        A modified BO approach from Englert and Toussaint (2016), adapted to 
-        next trial selection. 
-        This comparison was proposed by the reviewer.
+    A modified BO approach based model class;
+    adapted from Englert and Toussaint (2016) to next trial selection.
+    This comparison was proposed by the reviewer.
     """
+
     def update_model(self, info_list, save_model_progress=False, **kwargs):
         """
-            Use successful trials to estimate the GPR model mean,
-            all trials to estimate the Bayesian Optimisation components.
+        Use successful trials to estimate the GPR model mean,
+        all trials to estimate the Bayesian Optimisation components.
         """
         if len(info_list):
             # Update task models
@@ -525,8 +522,8 @@ class BOSearch(BaseModel):
 
     def generate_sample(self, info_list=None, **kwargs):
         """
-            Calculate only PI for samples classified as successful, and for 
-            those on the border, use their variance.
+        Calculate only PI for samples classified as successful,
+        and for those on the border, use their variance.
         """
         sidf = np.zeros(self.param_dims)
         if len(self.delta_uncertainty) > 0:
@@ -550,8 +547,8 @@ class BOSearch(BaseModel):
                               in nlargest(cnt * 1, sidf.ravel())])
             sample = sample.reshape([-1] + list(self.param_dims))
             sample_idx = np.argwhere(sample)[:, 1:]
-            temp_good = np.array(list(set(map(tuple, sample_idx))
-                                 - set(map(tuple, self.coord_explored))))
+            temp_good = np.array(list(set(map(tuple, sample_idx)) -
+                                 set(map(tuple, self.coord_explored))))
             cnt += 1
             if cnt > self.n_coords:
                 logger.info("All parameters have been explored!\tEXITING...")
@@ -567,11 +564,13 @@ class BOSearch(BaseModel):
 
 class RandomSearch(BaseModel):
     """
-        Random search in the parameter space, without replacement.
+    Random search based class;
+    Performs random search in the parameter space, without replacement.
     """
+
     def update_model(self, info_list, save_model_progress=False, **kwargs):
         """
-            Use successful trials to estimate the GPR model mean and variance.
+        Use successful trials to estimate the GPR model mean and variance.
         """
         if len(info_list):
             # Update task models
@@ -590,8 +589,8 @@ class RandomSearch(BaseModel):
 
     def generate_sample(self, *args, **kwargs):
         """
-            Generate the random movement parameter vector to evaluate next.
-            (without replacement)
+        Generate the random movement parameter vector to evaluate next.
+        (without replacement)
         """
         param_sizes = [range(i) for i in self.param_dims]
         temp = np.array([xs for xs in itertools.product(*param_sizes)])
@@ -600,8 +599,8 @@ class RandomSearch(BaseModel):
         cnt = 1
         while len(temp_good) == 0:
             sample = np.array([temp[np.random.choice(len(temp)), :]])
-            temp_good = np.array(list(set(map(tuple, sample))
-                                 - set(map(tuple, self.coord_explored))))
+            temp_good = np.array(list(set(map(tuple, sample)) -
+                                 set(map(tuple, self.coord_explored))))
             cnt += 1
             if cnt > self.n_coords:
                 logger.info("All parameters have been explored!\tEXITING...")
