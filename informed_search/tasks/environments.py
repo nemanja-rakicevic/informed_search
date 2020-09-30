@@ -10,6 +10,7 @@ Description:
 """
 
 import gym
+import envs
 import pickle
 import logging
 
