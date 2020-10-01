@@ -3,14 +3,13 @@
 Author:         Nemanja Rakicevic
 Date  :         January 2018
 Description:
-                Plot experiment evaluations, filtered using keyworkds, 
+                Plot experiment evaluations, filtered using keyworkds,
                 averaged over their hyperparameters:
                 Plots the three graphs:
                 - test error mean
                 - test error std
                 - number of failed trials
 """
-
 
 import os
 import glob
@@ -24,21 +23,6 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter, MaxNLocator, MultipleLocator
 
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument('-load', '--load_path', 
-                    default=None, required=True,
-                    help="Path to directory to plot.")
-
-parser.add_argument('-save', '--save_path', 
-                    default=None, required=False,
-                    help="Path to directory where to save.")
-
-parser.add_argument('-f', '--filter_string', 
-                    default='',
-                    help="Take into account experiments that contain this.")
-
-
 def plot_performance(load_path,
                      filter_string,
                      savepath=None,
@@ -46,9 +30,7 @@ def plot_performance(load_path,
                      img_format='jpg',
                      dpi=300,
                      **kwargs):
-    """ 
-        Plots based on trial evaluation statistics on full test set
-    """
+    """Plot based on trial evaluation statistics on full test set."""
     CUTOFF = 300
     idx = -2 if load_path[-1] == '/' else -1
     graph_name = load_path.split('/')[idx] + '__plot_comparison'
@@ -176,5 +158,15 @@ def plot_performance(load_path,
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-load', '--load_path', 
+                        default=None, required=True,
+                        help="Path to directory to plot.")
+    parser.add_argument('-save', '--save_path', 
+                        default=None, required=False,
+                        help="Path to directory where to save.")
+    parser.add_argument('-f', '--filter_string', 
+                        default='',
+                        help="Take into account experiments that contain this.")
     args = parser.parse_args()
     plot_performance(args.load_path, args.filter_string)

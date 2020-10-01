@@ -15,22 +15,15 @@ import numpy as np
 import informed_search.tasks.experiment_manage as expm
 
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument('-load', '--load_path',
-                    default=None, required=True,
-                    help="Path to the learned model file.")
-
-
 def load_metadata(datapath):
-    """Extract class experiment metadata """
+    """Extract class experiment metadata."""
     with open(datapath + '/experiment_metadata.json', 'r') as f:
         args_dict = json.load(f)
     return args_dict
 
 
 def main_test(load_path):
-    """ Run model evaluation on full test set """
+    """Run model evaluation on full test set."""
     load_task_kwargs = load_metadata(load_path)
     experiment = expm.ExperimentManager(
         load_task_kwargs,
@@ -65,5 +58,10 @@ def main_test(load_path):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-load', '--load_path',
+                        default=None, required=True,
+                        help="Path to the learned model file.")
     args = parser.parse_args()
     main_test(load_path=args.load_path)

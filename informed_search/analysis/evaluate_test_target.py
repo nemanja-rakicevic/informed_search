@@ -14,29 +14,18 @@ import argparse
 import informed_search.tasks.experiment_manage as expm
 
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument('-load', '--load_path',
-                    default=None, required=True,
-                    help="Path to the learned model file.")
-
-parser.add_argument('-disp', '--display',
-                    default=False,
-                    help="Show execution.")
-
-
 def load_metadata(datapath):
-    """ Extract class experiment metadata """
+    """Extract class experiment metadata."""
     with open(datapath + '/experiment_metadata.json', 'r') as f:
         args_dict = json.load(f)
     return args_dict
 
 
 def main_test(load_path, display):
-    """ Run model evaluation on test targets """
+    """Run model evaluation on test targets."""
     load_task_kwargs = load_metadata(load_path)
     experiment = expm.ExperimentManager(
-        load_task_kwargs, 
+        load_task_kwargs,
         load_model_path=load_path)
     # Allow evaluation of multiple test positions
     while True:
@@ -72,5 +61,12 @@ def main_test(load_path, display):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-load', '--load_path',
+                        default=None, required=True,
+                        help="Path to the learned model file.")
+    parser.add_argument('-disp', '--display',
+                        default=False,
+                        help="Show execution.")
     args = parser.parse_args()
     main_test(load_path=args.load_path, display=args.display)
