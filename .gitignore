@@ -12,3 +12,4 @@ informed_search/experiment_data/*
 *.pyc
 notused
 informed_search/trained_model_data/*
+*_ignore.py
