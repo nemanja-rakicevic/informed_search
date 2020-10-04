@@ -9,7 +9,6 @@ Description:
                     - model and exploration components separate files
 """
 
-import pdb
 import os
 import logging
 import numpy as np
@@ -44,7 +43,7 @@ def plot_evals(euclid_plot,
                num_trial=None,
                show_plots=False,
                img_format='png',
-               dpi=300):
+               dpi=150):
     """Plot task model evaluation heatmap over test targets"""
     # Set axis ticks
     xticks = np.arange(1, len(test_dict['angles']), 2)
@@ -108,8 +107,9 @@ def plot_model(model_object,
                num_trial=None,
                show_points=False,
                show_plots=False,
+               ds_plots=True,
                img_format='png',
-               dpi=300):
+               dpi=150):
     """
     Plot task model components and exploration components,
     if multidimensions then along custom dims.
@@ -124,7 +124,6 @@ def plot_model(model_object,
             fig.get_size_inches()[1] * 2)
         dim1 = model_object.param_list[dimensions[0]]
         dim2 = model_object.param_list[dimensions[1]]
-        X, Y = np.meshgrid(dim2, dim1)
         # Extract values to plot
         if len(model_object.param_dims) > 2:
             if model_object.param_dims[0] > 1:
@@ -155,6 +154,20 @@ def plot_model(model_object,
             model_PIDF = model_object.pidf
             model_var = model_object.uidf
             model_select = model_object.sidf
+        # Creat 3D plot meshgrid
+        X, Y = np.meshgrid(dim2, dim1)
+        # Downsample for memory contstraints
+        ds1 = max(1, len(dim1) // 50) if ds_plots else 1
+        ds2 = max(1, len(dim2) // 50) if ds_plots else 1
+        dim1 = dim1[::ds1]
+        dim2 = dim2[::ds2]
+        model_alpha = model_alpha[::ds1, ::ds2]
+        model_L = model_L[::ds1, ::ds2]
+        model_PIDF = model_PIDF[::ds1, ::ds2]
+        model_var = model_var[::ds1, ::ds2]
+        model_select = model_select[::ds1, ::ds2]
+        X = X[::ds1, ::ds2]
+        Y = Y[::ds1, ::ds2]
         # Set ticks
         xticks = np.linspace(
             min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 5).round(1)
@@ -174,7 +187,7 @@ def plot_model(model_object,
             model_object.pidf.min(), model_object.pidf.max(), 7).round(1)
         # Task models
         # Angle task model
-        ax = plt.subplot2grid((2, 6), (0, 0), colspan=2, projection='3d')
+        ax = fig.add_subplot(2, 3, 1, projection='3d')
         ax.set_title('ANGLE MODEL')
         ax.set_ylabel(param_names[1], labelpad=5)
         ax.set_xlabel(param_names[0], labelpad=5)
@@ -190,7 +203,7 @@ def plot_model(model_object,
         ax.plot_surface(X, Y, model_alpha, rstride=1, cstride=1,
                         cmap=cm.coolwarm, linewidth=0, antialiased=False)
         # Distance task model
-        ax = plt.subplot2grid((2, 6), (0, 2), colspan=2, projection='3d')
+        ax = fig.add_subplot(2, 3, 2, projection='3d')
         ax.set_title('DISTANCE MODEL')
         ax.set_ylabel(param_names[1], labelpad=5)
         ax.set_xlabel(param_names[0], labelpad=5)
@@ -207,35 +220,35 @@ def plot_model(model_object,
                         cmap=cm.coolwarm, linewidth=0, antialiased=False)
         # Exploration components
         # Selection IDF (top view)
-        ax1 = plt.subplot2grid((2, 6), (0, 4), colspan=2)
-        ax1.set_title('Selection function')
-        ax1.set_xlabel(param_names[0])
-        ax1.set_ylabel(param_names[1])
-        # ax1.set_xlim(len(dim1), 0)
-        ax1.set_xlim(0, len(dim1))
-        ax1.set_ylim(0, len(dim2))
-        # ax1.set_xticks(np.linspace(len(dim1)-1, -1, 5))
-        ax1.set_xticks(np.linspace(-1, len(dim1), 5))
-        ax1.set_yticks(np.linspace(-1, len(dim2), 5))
-        ax1.set_xticklabels([str(x) for x in xticks])
-        ax1.set_yticklabels([str(y) for y in yticks1])
-        ax1.yaxis.tick_right()
-        ax1.yaxis.set_label_position("right")
-        sidf = ax1.imshow(model_select, cmap=cm.summer, origin='lower')
-        for spine in ax1.spines.values():
+        ax = fig.add_subplot(2, 3, 3)
+        ax.set_title('Selection function')
+        ax.set_xlabel(param_names[0])
+        ax.set_ylabel(param_names[1])
+        # ax.set_xlim(len(dim1), 0)
+        ax.set_xlim(0, len(dim1))
+        ax.set_ylim(0, len(dim2))
+        # ax.set_xticks(np.linspace(len(dim1)-1, -1, 5))
+        ax.set_xticks(np.linspace(-1, len(dim1), 5))
+        ax.set_yticks(np.linspace(-1, len(dim2), 5))
+        ax.set_xticklabels([str(x) for x in xticks])
+        ax.set_yticklabels([str(y) for y in yticks1])
+        ax.yaxis.tick_right()
+        ax.yaxis.set_label_position("right")
+        sidf = ax.imshow(model_select, cmap=cm.summer, origin='lower')
+        for spine in ax.spines.values():
             spine.set_visible(False)
         # add also the trial points
         for tr in model_object.coord_explored:
             if list(tr) in [list(x) for x in model_object.coord_failed]:
-                ax1.scatter(x=tr[1], y=tr[0], c='r', s=15)
+                ax.scatter(x=tr[1] // ds1, y=tr[0] // ds2, c='r', s=15)
             else:
-                ax1.scatter(x=tr[1], y=tr[0], c='c', s=15)
+                ax.scatter(x=tr[1] // ds1, y=tr[0] // ds2, c='c', s=15)
         cbar = plt.colorbar(
             sidf, shrink=0.5, aspect=20, pad=0.17, orientation='horizontal',
             ticks=[0.0, 0.5, 1.0])
         sidf.set_clim(-0.001, 1.001)
         # Penalisation IDF
-        ax = plt.subplot2grid((2, 6), (1, 0), colspan=2, projection='3d')
+        ax = fig.add_subplot(2, 3, 4, projection='3d')
         ax.set_title('Penalisation function: {} points'.format(
             len(model_object.coord_failed)))
         ax.set_ylabel(param_names[1], labelpad=5)
@@ -251,7 +264,7 @@ def plot_model(model_object,
         ax.plot_surface(X, Y, (1 - model_PIDF), rstride=1, cstride=1,
                         cmap=cm.copper, linewidth=0, antialiased=False)
         # Uncertainty IDF
-        ax = plt.subplot2grid((2, 6), (1, 2), colspan=2, projection='3d')
+        ax = fig.add_subplot(2, 3, 5, projection='3d')
         ax.set_title('Model uncertainty: {:4.2f}'.format(
             model_object.uncertainty))
         ax.set_ylabel(param_names[1], labelpad=5)
@@ -267,7 +280,7 @@ def plot_model(model_object,
         ax.plot_surface(X, Y, model_var, rstride=1, cstride=1,
                         cmap=cm.winter, linewidth=0, antialiased=False)
         # Selection IDF (3D view)
-        ax = plt.subplot2grid((2, 6), (1, 4), colspan=2, projection='3d')
+        ax = fig.add_subplot(2, 3, 6, projection='3d')
         ax.set_title('Selection function')
         ax.set_ylabel(param_names[1], labelpad=5)
         ax.set_xlabel(param_names[0], labelpad=5)
@@ -278,19 +291,19 @@ def plot_model(model_object,
         ax.tick_params(axis='x', direction='out', pad=-5)
         ax.tick_params(axis='y', direction='out', pad=-3)
         ax.tick_params(axis='z', direction='out', pad=2)
-        surf = ax.plot_surface(X, Y, model_select, rstride=1, cstride=1,
-                               cmap=cm.summer, linewidth=0, antialiased=False)
+        ax.plot_surface(X, Y, model_select, rstride=1, cstride=1,
+                        cmap=cm.summer, linewidth=0, antialiased=False)
         # add also the trial points
         if show_points:
             for tr in model_object.coord_explored:
                 if list(tr) in [list(x) for x in model_object.coord_failed]:
-                    ax.plot([dim2[tr[1]], dim2[tr[1]]],
-                            [dim1[tr[0]], dim1[tr[0]]],
+                    ax.plot([dim2[tr[1] // ds2], dim2[tr[1] // ds2]],
+                            [dim1[tr[0] // ds1], dim1[tr[0] // ds1]],
                             [model_select.min(), model_select.max()],
                             linewidth=1, color='k', alpha=0.7)
                 else:
-                    ax.plot([dim2[tr[1]], dim2[tr[1]]],
-                            [dim1[tr[0]], dim1[tr[0]]],
+                    ax.plot([dim2[tr[1] // ds2], dim2[tr[1] // ds2]],
+                            [dim1[tr[0] // ds1], dim1[tr[0] // ds1]],
                             [model_select.min(), model_select.max()],
                             linewidth=1, color='m', alpha=0.7)
 
@@ -325,7 +338,7 @@ def plot_model_separate(model_object,
                         show_points=False,
                         show_plots=False,
                         img_format='png',
-                        dpi=300):
+                        dpi=150):
     """
     Plot task model components and exploration components,
     each in a separate file
