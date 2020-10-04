@@ -300,12 +300,12 @@ def plot_model(model_object,
                     ax.plot([dim2[tr[1] // ds2], dim2[tr[1] // ds2]],
                             [dim1[tr[0] // ds1], dim1[tr[0] // ds1]],
                             [model_select.min(), model_select.max()],
-                            linewidth=1, color='k', alpha=0.7)
+                            linewidth=1, color='r', alpha=0.7)
                 else:
                     ax.plot([dim2[tr[1] // ds2], dim2[tr[1] // ds2]],
                             [dim1[tr[0] // ds1], dim1[tr[0] // ds1]],
                             [model_select.min(), model_select.max()],
-                            linewidth=1, color='m', alpha=0.7)
+                            linewidth=1, color='c', alpha=0.7)
 
         savepath = os.path.join(savepath, "plots_model")
         if savepath is not None:
@@ -337,6 +337,7 @@ def plot_model_separate(model_object,
                         num_trial=None,
                         show_points=False,
                         show_plots=False,
+                        ds_plots=True,
                         img_format='png',
                         dpi=150):
     """
@@ -356,7 +357,6 @@ def plot_model_separate(model_object,
             fig.get_size_inches()[1] * 2)
         dim1 = model_object.param_list[dimensions[0]]
         dim2 = model_object.param_list[dimensions[1]]
-        X, Y = np.meshgrid(dim2, dim1)
         # Extract values to plot
         if len(model_object.param_dims) > 2:
             if model_object.param_dims[0] > 1:
@@ -387,6 +387,20 @@ def plot_model_separate(model_object,
             model_PIDF = model_object.pidf
             model_var = model_object.uidf
             model_select = model_object.sidf
+        # Creat 3D plot meshgrid
+        X, Y = np.meshgrid(dim2, dim1)
+        # Downsample for memory contstraints
+        ds1 = max(1, len(dim1) // 50) if ds_plots else 1
+        ds2 = max(1, len(dim2) // 50) if ds_plots else 1
+        dim1 = dim1[::ds1]
+        dim2 = dim2[::ds2]
+        model_alpha = model_alpha[::ds1, ::ds2]
+        model_L = model_L[::ds1, ::ds2]
+        model_PIDF = model_PIDF[::ds1, ::ds2]
+        model_var = model_var[::ds1, ::ds2]
+        model_select = model_select[::ds1, ::ds2]
+        X = X[::ds1, ::ds2]
+        Y = Y[::ds1, ::ds2]
         # Set ticks
         xticks = np.linspace(
             min(dim2[0], dim2[-1]), max(dim2[0], dim2[-1]), 5).round(1)
@@ -476,9 +490,9 @@ def plot_model_separate(model_object,
         # add also the trial points
         for tr in model_object.coord_explored:
             if list(tr) in [list(x) for x in model_object.coord_failed]:
-                ax1.scatter(x=tr[1], y=tr[0], c='r', s=15)
+                ax1.scatter(x=tr[1] // ds1, y=tr[0] // ds2, c='r', s=15)
             else:
-                ax1.scatter(x=tr[1], y=tr[0], c='c', s=15)
+                ax1.scatter(x=tr[1] // ds1, y=tr[0] // ds2, c='c', s=15)
         cbar = plt.colorbar(sidf, shrink=0.5, aspect=20, pad=0.17,
                             orientation='horizontal', ticks=[0.0, 0.5, 1.0])
         sidf.set_clim(-0.001, 1.001)
@@ -548,15 +562,15 @@ def plot_model_separate(model_object,
         if show_points:
             for tr in model_object.coord_explored:
                 if list(tr) in [list(x) for x in model_object.coord_failed]:
-                    ax1.plot([dim2[tr[1]], dim2[tr[1]]],
-                             [dim1[tr[0]], dim1[tr[0]]],
+                    ax1.plot([dim2[tr[1] // ds2], dim2[tr[1] // ds2]],
+                             [dim1[tr[0] // ds1], dim1[tr[0] // ds1]],
                              [model_select.min(), model_select.max()],
-                             linewidth=1, color='k', alpha=0.7)
+                             linewidth=1, color='r', alpha=0.7)
                 else:
-                    ax1.plot([dim2[tr[1]], dim2[tr[1]]],
-                             [dim1[tr[0]], dim1[tr[0]]],
+                    ax1.plot([dim2[tr[1] // ds2], dim2[tr[1] // ds2]],
+                             [dim1[tr[0] // ds1], dim1[tr[0] // ds1]],
                              [model_select.min(), model_select.max()],
-                             linewidth=1, color='m', alpha=0.7)
+                             linewidth=1, color='c', alpha=0.7)
         plt.savefig("{}/img_trial_{:05d}_sidf.png".format(
             savepath, num_trial),
             format="png")
