@@ -3,10 +3,8 @@
 Author:         Nemanja Rakicevic
 Date:           January 2020
 Description:
-                Managing and interfacing within the experiment
+                Managing and interfacing within the experiment.
 """
-
-import pdb
 
 import logging
 import numpy as np
@@ -17,7 +15,7 @@ import informed_search.tasks.environments as uenv
 from informed_search.utils.misc import _TAB
 
 
-logger = logging.getLogger(__name__) 
+logger = logging.getLogger(__name__)
 
 
 class ExperimentManager(object):
@@ -37,7 +35,11 @@ class ExperimentManager(object):
         if self.load_model_path is not None:
             self.model.load_model(load_model_path)
 
-    def run_trial(self, num_trial):
+    def run_trial(self, num_trial, **kwargs):
+        """
+        Interface to generate and execute a parameter vector,
+        and update the model based on the outcome.
+        """
         # Generate trial parameters
         trial_coords, trial_params = self.model.generate_sample()
         if trial_coords is None:
@@ -48,7 +50,7 @@ class ExperimentManager(object):
         self.environment.info_list.append(trial_info)
         self.environment.save_trial_data()
         # Update model
-        self.model.update_model(self.environment.info_list)
+        self.model.update_model(self.environment.info_list, **kwargs)
         # Log trial info
         logger.info("TRIAL {}:"
                     "\n{} - Trial coords: {} params: {}"
@@ -62,13 +64,14 @@ class ExperimentManager(object):
                         self.environment.n_success, _TAB,
                         self.model.uncertainty))
 
-    def evaluate_test_cases(self, num_trial, 
-                            verbose=False, save_model=True,
+    def evaluate_test_cases(self, num_trial,
+                            verbose=False,
+                            save_model=True,
                             save_test_progress=True, **kwargs):
-        # Save current model that is evaluated
+        """Interface to evaluate all test cases."""
+        # Evaluate on environments test cases, save results
         if save_model:
             self.model.save_model(num_trial=num_trial, **kwargs)
-        # Evaluate on environments test cases, save results
         self.environment.verbose = verbose
         return self.environment.full_tests_sequential(
             num_trial=num_trial,
@@ -77,7 +80,7 @@ class ExperimentManager(object):
             **kwargs)
 
     def evaluate_single_test(self, test_target, display=False, verbose=False):
-        """Wrapper to evaluate a single test case"""
+        """Interface to evaluate a single test case."""
         self.environment.display = display
         return self.environment.run_test_case(
             model_object=self.model,
