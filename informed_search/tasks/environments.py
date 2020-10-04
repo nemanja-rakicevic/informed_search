@@ -9,6 +9,7 @@ Description:
                 - (TODO) Baxter robot
 """
 
+import os
 import gym
 import envs
 import pickle
@@ -28,8 +29,8 @@ logger = logging.getLogger(__name__)
 
 class SimulationExperiment(object):
     """
-        Wrapper around a simulated environment task for trial execution and
-        testing
+    Wrapper around a simulated environment task for trial execution and
+    testing.
     """
 
     def __init__(self,
@@ -43,8 +44,10 @@ class SimulationExperiment(object):
         self.verbose = verbose
         self.display = display
         # Initialise environment info
-        envname = 'Striker{}LinkEnv-v0'.format(environment.strip('simlink'))
-        self.env = gym.make(envname, resolution=resolution)
+        ename = environment.split('_')[0]
+        elim = 'NL' if len(environment.split('_')) > 1 else ''
+        env_name = 'Striker{}Link{}Env-v0'.format(ename.strip('simlink'), elim)
+        self.env = gym.make(env_name, resolution=resolution)
         self.parameter_list = self.env.unwrapped.parameter_list
         self._num_links = len(self.parameter_list)
         self._action_steps = 100
@@ -57,7 +60,7 @@ class SimulationExperiment(object):
         self.test_cases = np.vstack(
             list(product(self.test_angles, self.test_dist)))
 
-    def _log_trial(self, fail_status, ball_polar, target_dist, test_target, 
+    def _log_trial(self, fail_status, ball_polar, target_dist, test_target,
                    **kwargs):
         if self.verbose:
             error_string = ''
@@ -90,7 +93,7 @@ class SimulationExperiment(object):
 
     def execute_trial(self, param_coords, param_vals,
                       num_trial=None, test_target=None):
-        """Execute a trial defined by parameters"""
+        """Execute a trial defined by parameters."""
         # Set up sequence of intermediate positions
         param_seq = np.array([np.linspace(0, p, self._action_steps)
                              for p in param_vals]).T
@@ -121,7 +124,7 @@ class SimulationExperiment(object):
             self.env.close()
         # Check ball movement and calculate polar coords
         ball_xy = info_dict['ball_xy']
-        if np.linalg.norm(ball_xy) > 0:
+        if np.linalg.norm(ball_xy) > 1e-04:
             fail_status = 0
             ball_polar = np.array([
                 np.rad2deg(np.arctan2(-ball_xy[0], ball_xy[1])),
@@ -144,12 +147,12 @@ class SimulationExperiment(object):
         return trial_info
 
     def run_test_case(self, model_object, test_target, **kwargs):
-        """Evaluate the learned model on a single test set"""
+        """Evaluate the learned model on a single test target."""
         # Generate movement parameter vector
         tc_coords, tc_params, model_polar_error, model_pidf = \
             model_object.query_target(*test_target, **kwargs)
         # Execute given parameter vector
-        trial_info = self.execute_trial(tc_coords, tc_params, 
+        trial_info = self.execute_trial(tc_coords, tc_params,
                                         test_target=test_target)
         # Get test performance
         euclid_error = trial_info['target_dist']
@@ -161,16 +164,15 @@ class SimulationExperiment(object):
                            'model_polar_error': model_polar_error,
                            'model_pidf': model_pidf})
         # Return based on outcome
-        if test_stats['fail_status'] == 'FAIL':
+        if test_stats['trial_outcome'] == 'FAIL':
             return -1, -1, test_stats
         else:
             return polar_error, euclid_error, test_stats
 
     def full_tests_sequential(self, num_trial, model_object,
                               save_test_progress=True, **kwargs):
-        """Evaluate the learned model on the full test set"""
+        """Evaluate the learned model on the full test set."""
         ldist, langle = len(self.test_dist), len(self.test_angles)
-
         euclid_plot = []
         polar_plot = []
         statistics = []
@@ -211,16 +213,22 @@ class SimulationExperiment(object):
     #     # Save statistics and plots
     #     if save_progress:
     #         self.save_test_results(num_trial, statistics, test_dict,
-    #                                euclid_plot, polar_plot, 
+    #                                euclid_plot, polar_plot,
     #                                savepath=self.model.dirname)
 
-    def save_trial_data(self):  
-        with open(self.dirname + "/statistics_trials.pkl", "wb") as f:
+    def save_trial_data(self):
+        """Save training data."""
+        with open(self.dirname + "/statistics_trials.dat", "wb") as f:
                 pickle.dump(self.info_list, f, protocol=pickle.HIGHEST_PROTOCOL)
+        # Avoid crashing during writing
+        os.system("mv {} {}".format(
+            self.dirname + "/statistics_trials.dat",
+            self.dirname + "/statistics_trials.pkl"))
 
-    def save_test_results(self, num_trial, statistics, euclid_plot, polar_plot, 
+    def save_test_results(self, num_trial, statistics, euclid_plot, polar_plot,
                           save_plots=True, save_data=True, **kwargs):
-        test_dict = {'angles': self.test_angles, 
+        """Save evaluation data."""
+        test_dict = {'angles': self.test_angles,
                      'dist': self.test_dist}
         errors_all = np.array([[x['euclid_error'], x['polar_error']]
                                for x in statistics])
@@ -249,229 +257,18 @@ class SimulationExperiment(object):
             self.results_test_list.append(
                 [num_trial, statistics, euclid_plot, polar_plot,
                  errors_mean, errors_std, num_fails])
-            with open(self.dirname + "/statistics_evaluation.pkl", "wb") as f:
+            with open(self.dirname + "/statistics_evaluation.dat", "wb") as f:
                 pickle.dump(
                     self.results_test_list, f, protocol=pickle.HIGHEST_PROTOCOL)
+            # Avoid crashing during writing
+            os.system("mv {} {}".format(
+                self.dirname + "/statistics_evaluation.dat",
+                self.dirname + "/statistics_evaluation.pkl"))
 
+class RobotExperiment(object):
+    """
+    (TODO) Wrapper around the Baxter robot,
+    for physical robot experiments trial execution and testing.
+    """
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# # check files from paper_data/robot_experiments
-
-# ##################################################################
-# #  FINISH THIS AND test_params ON ROBOT
-# ##################################################################
-# class RobotExperiment:
-
-#     # import rospy
-#     # import baxter_interface as BI
-#     # CONSTANTS - speed 
-#     SPEED_MIN = 0.5
-#     SPEED_MAX = 1
-#     # CONSTANTS - left arm
-#     LEFT_X_MIN = -0.3   #(-0.35)
-#     LEFT_X_MAX = 0.1    #(0.12)
-#     LEFT_Y_MIN = -0.1   #(-0.8)
-#     LEFT_Y_MAX = 0.1   #(0.30)
-#     # CONSTANTS - left wrist
-#     WRIST_MIN = -0.97   #(max = -3.) lean front
-#     WRIST_MAX = 0.4     #(max = +3.) lean back
-#     # CONSTANTS - right arm
-#     RIGHT_X_MIN = 0.0   #(-0.05)
-#     RIGHT_X_MAX = 0.17  #(0.20)
-#     RIGHT_Y_MIN = -0.1  #(-0.5)
-#     RIGHT_Y_MAX = 0.5   #(0.5)
-#     ##################################################################
-#     ## max length of combination vector should be 25000 - 8/7/8/7/8
-#     # # ### FULL MOTION SPACE
-#     __range_l_dx  = np.round(np.linspace(LEFT_X_MIN, LEFT_X_MAX, 5), 3)
-#     __range_l_dy  = np.round(np.linspace(LEFT_Y_MIN, LEFT_Y_MAX, 5), 3)
-#     __range_r_dx  = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 5), 3)
-#     __range_r_dy  = np.round(np.linspace(RIGHT_Y_MIN, RIGHT_Y_MAX, 5), 3)
-#     __range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 6), 3)
-#     __range_speed = np.round(np.linspace(SPEED_MIN, SPEED_MAX, 5), 3)
-#     ################################################################(-0.3, 0.1, 0.05, 0.4, w=-0.97, speed=s) #(-0.1,0, 0.2,0, s)
-#     # # ### PARTIAL JOINT SPACE
-#     # __range_l_dx = np.round(np.linspace(-0.3, -0.3, 1), 3)
-#     # __range_l_dy = np.round(np.linspace(0.1, 0.1, 1), 3)
-#     # __range_r_dx = np.round(np.linspace(RIGHT_X_MIN, RIGHT_X_MAX, 5), 3)
-#     # __range_r_dy = np.round(np.linspace(0.4, 0.4, 1), 3)
-#     # __range_wrist = np.round(np.linspace(WRIST_MIN, WRIST_MAX, 6), 3)
-#     # __range_speed = np.round(np.linspace(1, 1, 1), 3)
-#     # ##################################################################
-
-#     def __init__(self):
-#         self.parameter_list = np.array([self.__range_l_dx, self.__range_l_dy, self.__range_r_dx, self.__range_r_dy, self.__range_wrist, self.__range_speed])
-#         self.type = 'ROBOT'
-#         self.info_list = []
-
-
-#     # def executeTrial_ROBOT(params):  
-#     #     # CHECK 1) Stick constraints
-#     #     if checkStickConstraints(*params):
-#     #         print '>> FAILED (Error 1: Stick constraints)'   
-#     #         print "Repeating...\n"
-#     #         return 0
-#     #     print "> TRIAL CHECK 1): OK Stick constraint"
-
-#     #     # GET IK SOLUTION
-#     #     joint_values_left, joint_values_right, speed_left, speed_right, new_pos_left, new_pos_right = getNewPose(*params) 
-#     #     # joint_values_left['left_w2'] = params[4]
-#     #     # CHECK 2) Inverse Kinematic solution
-#     #     if joint_values_left == -1 or joint_values_right == -1:
-#     #         print '>> TRIAL # - FAILED (Error 2: No IK solution)'
-#     #         print "Repeating...\n"
-#     #         return 0
-#     #     print "> TRIAL CHECK 2): OK IK solution"
-
-#     #     # Passed constraint check ready to execute
-#     #     raw_input(">>> Ready to execute configuration: "+str((params))+"?\n")
-#     #     # os.system("ssh petar@192.168.0.2 \"espeak -v fr -s 95 'Stand clear'\"")   
-#     #     time.sleep(1)
-#     #     # EXECUTE MOTION
-#     #     # Set tip hit angle
-#     #     angle_left = limb_left.joint_angles()
-#     #     angle_left['left_w2'] = params[4]
-#     #     limb_left.set_joint_position_speed(1)
-#     #     limb_left.move_to_joint_positions(angle_left, timeout=2)
-#     #     # Set the speeds
-#     #     limb_left.set_joint_position_speed(speed_left)
-#     #     limb_right.set_joint_position_speed(speed_right)
-#     #     #
-#     #     # joint_values_left['left_w2'] = params[4]
-#     #     # EXECUTE MOTION and save/track progress
-#     #     # while not (tuple(np.asarray(new_pos_left)-THRSH_POS) <= tuple(limb_left.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_left)+THRSH_POS)) and \
-#     #     #     not (tuple(np.asarray(new_pos_right)-THRSH_POS) <= tuple(limb_right.endpoint_pose()['position']) <= tuple(np.asarray(new_pos_right)+THRSH_POS)):
-#     #     cnt = 0
-#     #     while (not (tuple(np.array(joint_values_left.values())-THRSH_POS) <= tuple(limb_left.joint_angles().values()) <= tuple(np.array(joint_values_left.values())+THRSH_POS)) or \
-#     #         not (tuple(np.array(joint_values_right.values())-THRSH_POS) <= tuple(limb_right.joint_angles().values()) <= tuple(np.array(joint_values_right.values())+THRSH_POS))) and cnt <30000:
-#     #         cnt+=1
-#     #         # send joint commands
-#     #         limb_left.set_joint_positions(joint_values_left)
-#     #         limb_right.set_joint_positions(joint_values_right)
-
-#     #     return 1
-
-
-
-
-#     def executeTrial(num_trial, params):
-#         theta_list = np.array([np.linspace(0, params[0], NUM_STEPS), np.linspace(0, params[1], NUM_STEPS)]).T
-#         init_pos = env.reset()
-#         init_pos = init_pos[:2]
-#         # EXECUTE TRIAL
-#         contact_cnt = 0
-#         obs_list = []
-#         for i in range(NUM_STEPS):
-#             env.render()
-#             control = init_pos + theta_list[i]
-#             observation, _, _, _ = env.step(control) 
-#             obs_list.append(observation)
-#             ball_xy = observation[2:4]
-#             # Check collision
-#             if env.unwrapped.data.ncon:
-#                 contact_cnt+=1
-#                 if contact_cnt > 5 and not sum(ball_xy)>0:
-#                     # contact with wall
-#                     fail_status = 1
-#                     break
-#         # Check ball movement and calculate polar coords
-#         if not sum(ball_xy)>0.:
-#             # ball did not move
-#             fail_status = 2  
-#             ball_polar = np.array([0,0])   
-#         else:
-#             fail_status = 0  
-#             ball_polar = np.array([ np.rad2deg(np.arctan2(-ball_xy[0], ball_xy[1])), np.sqrt(ball_xy[0]**2 + ball_xy[1]**2) * 100])
-#         # Compile trial info
-#         all_info = {'trial_num':  num_trial+1,
-#                     'parameters':   params,
-#                     'coordinates':  coords,
-#                     'fail':     fail_status, 
-#                     'ball_polar':   ball_polar,
-#                     'observations': np.array(obs_list) }
-#         # INFO
-#         if fail_status:
-#             print("--- trial executed: FAIL ({})".format(fail_status))
-#         else:
-#             print("--- trial executed: SUCCESS -> labels: {}".format(ball_polar))
-#         return all_info
-
-
-#     # def checkStickConstraints(left_dx, left_dy, right_dx, right_dy, *_k):
-#  #    # Check if the parameters comply with stick dimension constraints  
-#  #    tmp_left = limb_left.endpoint_pose()['position']
-#  #    tmp_right = limb_right.endpoint_pose()['position']
-#  #    dx = abs((tmp_left.x + left_dx) - (tmp_right.x + right_dx))
-#  #    dy = abs((tmp_left.y + left_dy) - (tmp_right.y + right_dy))
-#  #    # print "/// STICK ", dx < STICK_X_MAX, dx < STICK_X_MAX and STICK_Y_MIN < dy < STICK_Y_MAX
-#  #    # print "/// STICK ", round(dx,2), round(dy,2)
-#  #    if dx <= STICK_X_MAX and dy <= STICK_Y_MAX:
-#  #         # abs(left_dx)>10*THRSH_POS and abs(left_dy)>10*THRSH_POS and\
-#  #         # abs(right_dx)>10*THRSH_POS and abs(right_dy)>10*THRSH_POS:
-#  #        return False
-#  #    else:
-#  #        return True
-
-
-
-#     # def getNewPose(left_dx, left_dy, right_dx, right_dy, w, speed):   
-#     #     # Get current position
-#     #     pose_tmp_left = limb_left.endpoint_pose()
-#     #     pose_tmp_right = limb_right.endpoint_pose()
-#     #     # Set new position
-#     #     new_pos_left = limb_left.Point( 
-#     #         x = pose_tmp_left['position'].x + left_dx, 
-#     #         y = pose_tmp_left['position'].y + left_dy, 
-#     #         z = pose_tmp_left['position'].z ) 
-#     #     new_pos_right = limb_right.Point( 
-#     #         x = pose_tmp_right['position'].x + right_dx, 
-#     #         y = pose_tmp_right['position'].y + right_dy, 
-#     #         z = pose_tmp_right['position'].z ) 
-#     #     # Get Joint positions
-#     #     joint_values_left = ik_solver.ik_solve('left', new_pos_left, pose_tmp_left['orientation'], limb_left.joint_angles())
-#     #     joint_values_right = ik_solver.ik_solve('right', new_pos_right, pose_tmp_right['orientation'], limb_right.joint_angles()) 
-#     #     # Set joint speed
-#     #     left_dL = sqdist(left_dx,left_dy)
-#     #     right_dL = sqdist(right_dx,right_dy) 
-#     #     if left_dL>right_dL:
-#     #         speed_left = speed
-#     #         try:
-#     #             speed_right = speed*right_dL/left_dL
-#     #         except:
-#     #             speed_right = 0
-#     #     else:
-#     #         speed_right = speed
-#     #         speed_left = speed*left_dL/right_dL
-#     #     # print speed_left, speed_right
-#     #     # return the joint values
-#     #     return joint_values_left, joint_values_right, speed_left, speed_right, new_pos_left, new_pos_right
-
-
-#     def saveData(self, trial_dirname):  
-#         with open(trial_dirname + "/data_training_info.dat", "wb") as m:
-#             pickle.dump(self.info_list, m, protocol=pickle.HIGHEST_PROTOCOL)
-
+    pass
