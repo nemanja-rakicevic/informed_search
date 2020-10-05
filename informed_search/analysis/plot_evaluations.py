@@ -50,7 +50,7 @@ def plot_performance(load_path,
                 load_path, fterm))
     filter_exp = np.setdiff1d(filter_include, filter_exclude)
     for d in filter_exp:
-        exp_name = d.split('/')[-1].split('__')[1]
+        exp_name = '__'.join(d.split('/')[-1].split('__')[:3])
         stats_file = glob.glob(os.path.join(d, 'statistics_evaluation.pkl'))
         if exp_name in experiments_dict.keys():
             experiments_dict[exp_name] += stats_file
@@ -72,8 +72,13 @@ def plot_performance(load_path,
             seeds_error_std.append(np.array(tmp_stds)[:CUTOFF])
             seeds_fail_mean.append(np.array(tmp_fails)[:CUTOFF])
         # Average seed for current model
+        mnames = stype.split('__')
+        minfo = mnames[2].split('_')
         all_stats.append(
-            {"model": stype.split('_')[-1],
+            {"model": '; '.join([mnames[1].split('_')[-1],
+                                 'cov={}'.format(minfo[1][3:]),
+                                 'kernel={}'.format(minfo[2][6:]),
+                                 '$\sigma_l^2$={}'.format(minfo[3][2:])]),
              "mean": np.array([np.array(seeds_error_mean).mean(axis=0),
                                np.array(seeds_error_mean).std(axis=0)]),
              "std": np.array([np.array(seeds_error_std).mean(axis=0),
@@ -96,7 +101,7 @@ def plot_performance(load_path,
         mean = np.array(a['mean'][0])
         std = np.array(a['mean'][1])
         xaxis = range(len(mean))
-        lb = a['model'] + ' models'
+        lb = a['model']  # + ' models'
         axarr[0].plot(mean, label=lb, linewidth=lw)
         axarr[0].fill_between(xaxis, (mean - std).clip(0), mean + std,
                               alpha=0.5)  # , label=lb)
@@ -111,7 +116,7 @@ def plot_performance(load_path,
         mean = np.array(a['std'][0])
         std = np.array(a['std'][1])
         xaxis = range(len(mean))
-        lb = a['model'] + ' models'
+        lb = a['model']  # + ' models'
         axarr[1].plot(mean, label=lb, linewidth=lw)
         axarr[1].fill_between(xaxis, (mean - std).clip(0), mean + std,
                               alpha=0.5)  # , label=lb)
@@ -127,7 +132,7 @@ def plot_performance(load_path,
         mean = np.array(a['fails'][0])
         std = np.array(a['fails'][1])
         xaxis = range(len(mean))
-        lb = a['model'] + ' models'
+        lb = a['model']  # + ' models'
         axarr[2].plot(mean, label=lb, linewidth=lw)
         axarr[2].fill_between(xaxis, (mean - std).clip(0), mean + std,
                               alpha=0.5)  # , label=lb)
@@ -159,13 +164,13 @@ def plot_performance(load_path,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-load', '--load_path', 
+    parser.add_argument('-load', '--load_path',
                         default=None, required=True,
                         help="Path to directory to plot.")
-    parser.add_argument('-save', '--save_path', 
+    parser.add_argument('-save', '--save_path',
                         default=None, required=False,
                         help="Path to directory where to save.")
-    parser.add_argument('-f', '--filter_string', 
+    parser.add_argument('-f', '--filter_string',
                         default='',
                         help="Take into account experiments that contain this.")
     args = parser.parse_args()

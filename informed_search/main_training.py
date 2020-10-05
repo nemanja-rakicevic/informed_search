@@ -103,14 +103,14 @@ def _start_logging(taskargs):
             taskargs['resolution'],
             taskargs['pidf_cov'],
             taskargs['kernel_name'].upper(),
-            taskargs['kernel_sigma'],
+            taskargs['kernel_lenscale'],
             taskargs['seed'],
             datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S")))
     os.makedirs(dirname)
     taskargs['dirname'] = dirname
     # Start logging info
     logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s %(name)-25s '
+                        format='%(asctime)s %(name)-40s '
                                '%(levelname)-8s %(message)s',
                         handlers=[
                             logging.FileHandler(
