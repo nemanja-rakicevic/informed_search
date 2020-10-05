@@ -20,7 +20,7 @@ def load_metadata(datapath):
     return args_dict
 
 
-def main_test(load_path, display):
+def main_test(load_path, display, verbose=True):
     """Run model evaluation on test targets."""
     load_task_kwargs = load_metadata(load_path)
     experiment = expm.ExperimentManager(
@@ -40,7 +40,7 @@ def main_test(load_path, display):
                 continue
         # Evaluate given test position
         _, _, test_stats = experiment.evaluate_single_test(
-            test_target, display=display, verbose=True)
+            test_target, display=display, verbose=verbose)
         # Print outcome info
         print("{} TEST TARGET (angle: {}; distance: {}) {}"
               "\n - Trial outcome:     {} [{}]; ball ({:4.2f},{:4.2f})"
