@@ -275,13 +275,13 @@ class InformedSearch(BaseModel):
                     good_params, good_fevals[:, 0])
                 self.mu_L, self.var_L = self.update_GPR(
                     good_params, good_fevals[:, 1])
-                self.update_PIDF(info_list[-1]['parameters'], failed=True)
+                self.update_PIDF(info_list[-1]['parameters'], failed=False)
             # Update PIDF
             elif info_list[-1]['fail_status'] > 0:
                 self.coord_failed = np.array([tr['coordinates'] for tr
                                              in info_list
                                              if tr['fail_status'] > 0])
-                self.update_PIDF(info_list[-1]['parameters'], failed=False)
+                self.update_PIDF(info_list[-1]['parameters'], failed=True)
             # Update UIDF
             all_trials = np.array([tr['parameters'] for tr in info_list])
             self.uidf = self.update_GPR(all_trials, None)
@@ -290,7 +290,7 @@ class InformedSearch(BaseModel):
             self.sidf = sidf / (sidf.max() + _EPS)
 
             if save_model_progress:
-                self.save_model()
+                self.save_model(**kwargs)
 
     def generate_pdf_matrix(self, x_sample, mu, cov):
         """Create a multivariate Gaussian over the parameter space."""
