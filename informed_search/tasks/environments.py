@@ -113,10 +113,11 @@ class SimulationExperiment(object):
         for i in range(self._episode_steps):
             if self.display:
                 self.env.render()
-            control = init_pos + param_seq[i]
+            if i < self._action_steps:
+                control = init_pos + param_seq[i]
             observation, _, done, info_dict = self.env.step(control)
             obs_list.append(observation)
-            # Check collision
+            # check collision
             if done:
                 fail_status = 1
                 break
