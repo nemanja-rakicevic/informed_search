@@ -64,6 +64,7 @@ class BaseModel(object):
         self.coord_explored = []
         self.coord_failed = []
         # Initialise attributes
+        self.name = self.__class__.__name__
         self._build_model(cov_coeff)
         self._build_kernel(kernel_name, kernel_lenscale, kernel_sigma)
 
@@ -228,7 +229,7 @@ class BaseModel(object):
     def load_model(self, loadpath):
         """Load model data from checkpoint."""
         logger.info("Loading: ", loadpath)
-        filename = os.path.join(self.dirname, "model_checkpoints.pkl")
+        filename = os.path.join(self.dirname, "experiment_dataset.pkl")
         with open(filename, "rb") as f:
             self.model_list = pickle.load(f)
             self.mu_alpha, \
