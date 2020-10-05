@@ -131,29 +131,29 @@ def plot_model(model_object,
                     len(dim1), len(dim2))
                 model_L = model_object.mu_L[:, :, 3, 3, 4].reshape(
                     len(dim1), len(dim2))
-                model_PIDF = model_object.pidf[:, :, 3, 3, 4].reshape(
+                model_pidf = model_object.pidf[:, :, 3, 3, 4].reshape(
                     len(dim1), len(dim2))
-                model_var = model_object.uidf[:, :, 3, 3, 4].reshape(
+                model_uidf = model_object.uidf[:, :, 3, 3, 4].reshape(
                     len(dim1), len(dim2))
-                model_select = model_object.sidf[:, :, 3, 3, 4].reshape(
+                model_sidf = model_object.sidf[:, :, 3, 3, 4].reshape(
                     len(dim1), len(dim2))
             else:
                 model_alpha = model_object.mu_alpha[0, 0, :, 0, :, 0].reshape(
                     len(dim1), len(dim2))
                 model_L = model_object.mu_L[0, 0, :, 0, :, 0].reshape(
                     len(dim1), len(dim2))
-                model_PIDF = model_object.pidf[0, 0, :, 0, :, 0].reshape(
+                model_pidf = model_object.pidf[0, 0, :, 0, :, 0].reshape(
                     len(dim1), len(dim2))
-                model_var = model_object.uidf[0, 0, :, 0, :, 0].reshape(
+                model_uidf = model_object.uidf[0, 0, :, 0, :, 0].reshape(
                     len(dim1), len(dim2))
-                model_select = model_object.sidf[0, 0, :, 0, :, 0].reshape(
+                model_sidf = model_object.sidf[0, 0, :, 0, :, 0].reshape(
                     len(dim1), len(dim2))
         else:
             model_alpha = model_object.mu_alpha
             model_L = model_object.mu_L
-            model_PIDF = model_object.pidf
-            model_var = model_object.uidf
-            model_select = model_object.sidf
+            model_pidf = model_object.pidf
+            model_uidf = model_object.uidf
+            model_sidf = model_object.sidf
         # Creat 3D plot meshgrid
         X, Y = np.meshgrid(dim2, dim1)
         # Downsample for memory contstraints
@@ -163,9 +163,9 @@ def plot_model(model_object,
         dim2 = dim2[::ds2]
         model_alpha = model_alpha[::ds1, ::ds2]
         model_L = model_L[::ds1, ::ds2]
-        model_PIDF = model_PIDF[::ds1, ::ds2]
-        model_var = model_var[::ds1, ::ds2]
-        model_select = model_select[::ds1, ::ds2]
+        model_pidf = model_pidf[::ds1, ::ds2]
+        model_uidf = model_uidf[::ds1, ::ds2]
+        model_sidf = model_sidf[::ds1, ::ds2]
         X = X[::ds1, ::ds2]
         Y = Y[::ds1, ::ds2]
         # Set ticks
@@ -178,47 +178,57 @@ def plot_model(model_object,
         yticks1 = np.linspace(
             min(dim1[0], dim1[-1]), max(dim1[0], dim1[-1]), 5).round(1)
         zticks_alpha = np.linspace(
-            model_object.mu_alpha.min(),
-            model_object.mu_alpha.max(), 4).round(2)
+            model_alpha.min(), model_alpha.max(), 5).round(2)
         zticks_L = np.linspace(
-            model_object.mu_L.min(), model_object.mu_L.max(), 4).round(2)
-        zticks_unc = np.linspace(
-            model_object.uidf.min(), model_object.uidf.max(), 4).round(2)
-        zticks_PIDF = np.linspace(
-            model_object.pidf.min(), model_object.pidf.max(), 7).round(2)
+            model_L.min(), model_L.max(), 5).round(2)
+        zticks_pidf = np.linspace(
+            model_pidf.min(), model_pidf.max(), 7).round(2)
+        zticks_uidf = np.linspace(
+            model_uidf.min(), model_uidf.max(), 7).round(2)
+        search_lim = (
+            min((1 - model_pidf).min(), model_uidf.min(), model_sidf.min()),
+            max((1 - model_pidf).max(), model_uidf.max(), model_sidf.max()))
+
         # Task models
         # Angle task model
         ax = fig.add_subplot(2, 3, 1, projection='3d')
         ax.set_title('ANGLE MODEL')
+        ax.plot_surface(X, Y, model_alpha, rstride=1, cstride=1,
+                        cmap=cm.coolwarm, linewidth=0, antialiased=False)
         ax.set_ylabel(param_names[1], labelpad=5)
         ax.set_xlabel(param_names[0], labelpad=5)
-        ax.set_zlabel('[degrees]', rotation='vertical', labelpad=10)
+        ax.set_zlabel('[degrees]       ', rotation='vertical', labelpad=10)
         ax.set_xticks(xticks)
         ax.set_yticks(yticks)
-        ax.set_zticks(zticks_alpha)
+        if abs(model_alpha.max() - model_alpha.min()) >= 1:
+            ax.set_zticks(zticks_alpha)
+        else:
+            ax.ticklabel_format(style='sci', axis='z', scilimits=(0, 0))
         ax.set_xticklabels([str(x) for x in xticks], rotation=41)
         ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
         ax.tick_params(axis='x', direction='out', pad=-5)
         ax.tick_params(axis='y', direction='out', pad=-3)
         ax.tick_params(axis='z', direction='out', pad=5)
-        ax.plot_surface(X, Y, model_alpha, rstride=1, cstride=1,
-                        cmap=cm.coolwarm, linewidth=0, antialiased=False)
         # Distance task model
         ax = fig.add_subplot(2, 3, 2, projection='3d')
         ax.set_title('DISTANCE MODEL')
+        ax.plot_surface(X, Y, model_L, rstride=1, cstride=1,
+                        cmap=cm.coolwarm, linewidth=0, antialiased=False)
         ax.set_ylabel(param_names[1], labelpad=5)
         ax.set_xlabel(param_names[0], labelpad=5)
         ax.set_zlabel('[cm]', rotation='vertical', labelpad=10)
         ax.set_xticks(xticks)
         ax.set_yticks(yticks)
-        ax.set_zticks(zticks_L)
+        if abs(model_L.max() - model_L.min()) >= 1:
+            ax.set_zticks(zticks_L)
+        else:
+            ax.ticklabel_format(style='sci', axis='z', scilimits=(0, 0))
         ax.set_xticklabels([str(x) for x in xticks], rotation=41)
         ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
         ax.tick_params(axis='x', direction='out', pad=-5)
         ax.tick_params(axis='y', direction='out', pad=-3)
         ax.tick_params(axis='z', direction='out', pad=5)
-        ax.plot_surface(X, Y, model_L, rstride=1, cstride=1,
-                        cmap=cm.coolwarm, linewidth=0, antialiased=False)
+
         # Exploration components
         # Selection IDF (top view)
         ax = fig.add_subplot(2, 3, 3)
@@ -235,7 +245,7 @@ def plot_model(model_object,
         ax.set_yticklabels([str(y) for y in yticks1])
         ax.yaxis.tick_right()
         ax.yaxis.set_label_position("right")
-        sidf = ax.imshow(model_select, cmap=cm.summer, origin='lower')
+        sidf = ax.imshow(model_sidf, cmap=cm.summer, origin='lower')
         for spine in ax.spines.values():
             spine.set_visible(False)
         # add also the trial points
@@ -249,42 +259,47 @@ def plot_model(model_object,
             ticks=[0.0, 0.5, 1.0])
         sidf.set_clim(-0.001, 1.001)
         # Penalisation IDF
-        ax = fig.add_subplot(2, 3, 4, projection='3d')
-        ax.set_title('Penalisation function: {} points'.format(
-            len(model_object.coord_failed)))
-        ax.set_ylabel(param_names[1], labelpad=5)
-        ax.set_xlabel(param_names[0], labelpad=5)
-        ax.set_xticks(xticks)
-        ax.set_yticks(yticks)
-        ax.set_xticklabels([str(x) for x in xticks], rotation=41)
-        ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
-        ax.tick_params(axis='x', direction='out', pad=-5)
-        ax.tick_params(axis='y', direction='out', pad=-3)
-        ax.tick_params(axis='z', direction='out', pad=2)
-        ax.set_zticks(zticks_PIDF)
-        ax.plot_surface(X, Y, (1 - model_PIDF), rstride=1, cstride=1,
-                        cmap=cm.copper, linewidth=0, antialiased=False)
+        if 'Informed' in model_object.name:
+            ax = fig.add_subplot(2, 3, 4, projection='3d')
+            ax.set_title('Penalisation function: {} points'.format(
+                len(model_object.coord_failed)))
+            ax.plot_surface(X, Y, (1 - model_pidf), rstride=1, cstride=1,
+                            cmap=cm.copper, linewidth=0, antialiased=False)
+            ax.set_zlim(search_lim)
+            ax.set_xlabel(param_names[0], labelpad=5)
+            ax.set_ylabel(param_names[1], labelpad=5)
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            ax.tick_params(axis='x', direction='out', pad=-5)
+            ax.tick_params(axis='y', direction='out', pad=-3)
+            ax.tick_params(axis='z', direction='out', pad=2)
         # Uncertainty IDF
-        ax = fig.add_subplot(2, 3, 5, projection='3d')
-        ax.set_title('Model uncertainty: {:4.2f}'.format(
-            model_object.uncertainty))
-        ax.set_ylabel(param_names[1], labelpad=5)
-        ax.set_xlabel(param_names[0], labelpad=5)
-        ax.set_xticks(xticks)
-        ax.set_yticks(yticks)
-        ax.set_zticks(zticks_unc)
-        ax.set_xticklabels([str(x) for x in xticks], rotation=41)
-        ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
-        ax.tick_params(axis='x', direction='out', pad=-5)
-        ax.tick_params(axis='y', direction='out', pad=-3)
-        ax.tick_params(axis='z', direction='out', pad=5)
-        ax.plot_surface(X, Y, model_var, rstride=1, cstride=1,
-                        cmap=cm.winter, linewidth=0, antialiased=False)
+        if 'Random' not in model_object.name:
+            ax = fig.add_subplot(2, 3, 5, projection='3d')
+            ax.set_title('Model uncertainty: {:4.2f}'.format(
+                model_object.uncertainty))
+            ax.plot_surface(X, Y, model_uidf, rstride=1, cstride=1,
+                            cmap=cm.winter, linewidth=0, antialiased=False)
+            ax.set_zlim(search_lim)
+            ax.set_xlabel(param_names[0], labelpad=5)
+            ax.set_ylabel(param_names[1], labelpad=5)
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            ax.set_xticklabels([str(x) for x in xticks], rotation=41)
+            ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            ax.tick_params(axis='x', direction='out', pad=-5)
+            ax.tick_params(axis='y', direction='out', pad=-3)
+            ax.tick_params(axis='z', direction='out', pad=5)
         # Selection IDF (3D view)
         ax = fig.add_subplot(2, 3, 6, projection='3d')
         ax.set_title('Selection function')
-        ax.set_ylabel(param_names[1], labelpad=5)
+        ax.plot_surface(X, Y, model_sidf, rstride=1, cstride=1,
+                        cmap=cm.summer, linewidth=0, antialiased=False)
+        ax.set_zlim(search_lim)
         ax.set_xlabel(param_names[0], labelpad=5)
+        ax.set_ylabel(param_names[1], labelpad=5)
         ax.set_xticks(xticks)
         ax.set_yticks(yticks)
         ax.set_xticklabels([str(x) for x in xticks], rotation=41)
@@ -292,20 +307,18 @@ def plot_model(model_object,
         ax.tick_params(axis='x', direction='out', pad=-5)
         ax.tick_params(axis='y', direction='out', pad=-3)
         ax.tick_params(axis='z', direction='out', pad=2)
-        ax.plot_surface(X, Y, model_select, rstride=1, cstride=1,
-                        cmap=cm.summer, linewidth=0, antialiased=False)
         # add also the trial points
         if show_points:
             for tr in model_object.coord_explored:
                 if list(tr) in [list(x) for x in model_object.coord_failed]:
                     ax.plot([dim2[tr[1] // ds2], dim2[tr[1] // ds2]],
                             [dim1[tr[0] // ds1], dim1[tr[0] // ds1]],
-                            [model_select.min(), model_select.max()],
+                            [model_sidf.min(), model_sidf.max()],
                             linewidth=1, color='r', alpha=0.7)
                 else:
                     ax.plot([dim2[tr[1] // ds2], dim2[tr[1] // ds2]],
                             [dim1[tr[0] // ds1], dim1[tr[0] // ds1]],
-                            [model_select.min(), model_select.max()],
+                            [model_sidf.min(), model_sidf.max()],
                             linewidth=1, color='c', alpha=0.7)
 
         savepath = os.path.join(savepath, "plots_model")
@@ -365,29 +378,29 @@ def plot_model_separate(model_object,
                     len(dim1), len(dim2))
                 model_L = model_object.mu_L[:, :, 3, 3, 4].reshape(
                     len(dim1), len(dim2))
-                model_PIDF = model_object.pidf[:, :, 3, 3, 4].reshape(
+                model_pidf = model_object.pidf[:, :, 3, 3, 4].reshape(
                     len(dim1), len(dim2))
-                model_var = model_object.uidf[:, :, 3, 3, 4].reshape(
+                model_uidf = model_object.uidf[:, :, 3, 3, 4].reshape(
                     len(dim1), len(dim2))
-                model_select = model_object.sidf[:, :, 3, 3, 4].reshape(
+                model_sidf = model_object.sidf[:, :, 3, 3, 4].reshape(
                     len(dim1), len(dim2))
             else:
                 model_alpha = model_object.mu_alpha[0, 0, :, 0, :, 0].reshape(
                     len(dim1), len(dim2))
                 model_L = model_object.mu_L[0, 0, :, 0, :, 0].reshape(
                     len(dim1), len(dim2))
-                model_PIDF = model_object.pidf[0, 0, :, 0, :, 0].reshape(
+                model_pidf = model_object.pidf[0, 0, :, 0, :, 0].reshape(
                     len(dim1), len(dim2))
-                model_var = model_object.uidf[0, 0, :, 0, :, 0].reshape(
+                model_uidf = model_object.uidf[0, 0, :, 0, :, 0].reshape(
                     len(dim1), len(dim2))
-                model_select = model_object.sidf[0, 0, :, 0, :, 0].reshape(
+                model_sidf = model_object.sidf[0, 0, :, 0, :, 0].reshape(
                     len(dim1), len(dim2))
         else:
             model_alpha = model_object.mu_alpha
             model_L = model_object.mu_L
-            model_PIDF = model_object.pidf
-            model_var = model_object.uidf
-            model_select = model_object.sidf
+            model_pidf = model_object.pidf
+            model_uidf = model_object.uidf
+            model_sidf = model_object.sidf
         # Creat 3D plot meshgrid
         X, Y = np.meshgrid(dim2, dim1)
         # Downsample for memory contstraints
@@ -397,9 +410,9 @@ def plot_model_separate(model_object,
         dim2 = dim2[::ds2]
         model_alpha = model_alpha[::ds1, ::ds2]
         model_L = model_L[::ds1, ::ds2]
-        model_PIDF = model_PIDF[::ds1, ::ds2]
-        model_var = model_var[::ds1, ::ds2]
-        model_select = model_select[::ds1, ::ds2]
+        model_pidf = model_pidf[::ds1, ::ds2]
+        model_uidf = model_uidf[::ds1, ::ds2]
+        model_sidf = model_sidf[::ds1, ::ds2]
         X = X[::ds1, ::ds2]
         Y = Y[::ds1, ::ds2]
         # Set ticks
@@ -412,13 +425,16 @@ def plot_model_separate(model_object,
         yticks1 = np.linspace(
             min(dim1[0], dim1[-1]), max(dim1[0], dim1[-1]), 5).round(1)
         zticks_alpha = np.linspace(
-            model_object.mu_alpha.min(), model_object.mu_alpha.max(), 4).round()
+            model_alpha.min(), model_alpha.max(), 5).round(2)
         zticks_L = np.linspace(
-            model_object.mu_L.min(), model_object.mu_L.max(), 4).round()
-        zticks_unc = np.linspace(
-            model_object.uidf.min(), model_object.uidf.max(), 4).round(2)
-        zticks_PIDF = np.linspace(
-            model_object.pidf.min(), model_object.pidf.max(), 7).round(1)
+            model_L.min(), model_L.max(), 5).round(2)
+        zticks_pidf = np.linspace(
+            model_pidf.min(), model_pidf.max(), 7).round(2)
+        zticks_uidf = np.linspace(
+            model_uidf.min(), model_uidf.max(), 7).round(2)
+        search_lim = (
+            min((1 - model_pidf).min(), model_uidf.min(), model_sidf.min()),
+            max((1 - model_pidf).max(), model_uidf.max(), model_sidf.max()))
 
         # Task models
         # Angle task model
@@ -427,19 +443,22 @@ def plot_model_separate(model_object,
             fig.get_size_inches()[0],
             fig.get_size_inches()[1])
         ax = fig.add_subplot(111, projection='3d')
+        ax.plot_surface(X, Y, model_alpha, rstride=1, cstride=1,
+                        cmap=cm.coolwarm, linewidth=0, antialiased=False)
         ax.set_xlabel(param_names[0], labelpad=10)
         ax.set_ylabel(param_names[1], labelpad=10)
-        ax.set_zlabel('[degrees]', rotation='vertical', labelpad=10)
+        ax.set_zlabel('[degrees]       ', rotation='vertical', labelpad=10)
         ax.set_xticks(xticks)
         ax.set_yticks(yticks)
-        ax.set_zticks(zticks_alpha)
+        if abs(model_alpha.max() - model_alpha.min()) >= 1:
+            ax.set_zticks(zticks_alpha)
+        else:
+            ax.ticklabel_format(style='sci', axis='z', scilimits=(0, 0))
         ax.set_xticklabels([str(x) for x in xticks], rotation=41)
         ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
         ax.tick_params(axis='x', direction='out', pad=-5)
         ax.tick_params(axis='y', direction='out', pad=-3)
         ax.tick_params(axis='z', direction='out', pad=5)
-        ax.plot_surface(X, Y, model_alpha, rstride=1, cstride=1,
-                        cmap=cm.coolwarm, linewidth=0, antialiased=False)
         plt.savefig("{}/img_trial_{:05d}_model_angle.png".format(
             savepath, num_trial),
             format="png")
@@ -449,19 +468,22 @@ def plot_model_separate(model_object,
             fig.get_size_inches()[0],
             fig.get_size_inches()[1])
         ax = fig.add_subplot(111, projection='3d')
+        ax.plot_surface(X, Y, model_L, rstride=1, cstride=1,
+                        cmap=cm.coolwarm, linewidth=0, antialiased=False)
         ax.set_xlabel(param_names[0], labelpad=10)
         ax.set_ylabel(param_names[1], labelpad=10)
         ax.set_zlabel('[cm]', rotation='vertical', labelpad=10)
         ax.set_xticks(xticks)
         ax.set_yticks(yticks)
-        ax.set_zticks(zticks_L)
+        if abs(model_L.max() - model_L.min()) >= 1:
+            ax.set_zticks(zticks_L)
+        else:
+            ax.ticklabel_format(style='sci', axis='z', scilimits=(0, 0))
         ax.set_xticklabels([str(x) for x in xticks], rotation=41)
         ax.set_yticklabels([str(x) for x in yticks], rotation=-15)
         ax.tick_params(axis='x', direction='out', pad=-5)
         ax.tick_params(axis='y', direction='out', pad=-3)
         ax.tick_params(axis='z', direction='out', pad=5)
-        ax.plot_surface(X, Y, model_L, rstride=1, cstride=1,
-                        cmap=cm.coolwarm, linewidth=0, antialiased=False)
         plt.savefig("{}/img_trial_{:05d}_model_dist.png".format(
             savepath, num_trial),
             format="png")
@@ -485,7 +507,7 @@ def plot_model_separate(model_object,
         ax1.set_yticklabels([str(y) for y in yticks1])
         ax1.yaxis.tick_right()
         ax1.yaxis.set_label_position("right")
-        sidf = ax1.imshow(model_select, cmap=cm.summer, origin='lower')
+        sidf = ax1.imshow(model_sidf, cmap=cm.summer, origin='lower')
         for spine in ax1.spines.values():
             spine.set_visible(False)
         # add also the trial points
@@ -501,53 +523,63 @@ def plot_model_separate(model_object,
             savepath, num_trial),
             format="png")
         # Penalisation IDF
-        fig = plt.figure("PENALISATION IDF #{}".format(num_trial), figsize=None)
-        fig.set_size_inches(
-            fig.get_size_inches()[0],
-            fig.get_size_inches()[1])
-        ax1 = fig.add_subplot(111, projection='3d')
-        ax1.set_ylabel(param_names[1], labelpad=5)
-        ax1.set_xlabel(param_names[0], labelpad=5)
-        ax1.set_xticks(xticks)
-        ax1.set_yticks(yticks)
-        ax1.set_xticklabels([str(x) for x in xticks], rotation=41)
-        ax1.set_yticklabels([str(x) for x in yticks], rotation=-15)
-        ax1.tick_params(axis='x', direction='out', pad=-5)
-        ax1.tick_params(axis='y', direction='out', pad=-3)
-        ax1.tick_params(axis='z', direction='out', pad=2)
-        # ax.set_zticks(zticks_PIDF)
-        ax1.plot_surface(X, Y, (1 - model_PIDF), rstride=1, cstride=1,
-                         cmap=cm.copper, linewidth=0, antialiased=False)
-        plt.savefig("{}/img_trial_{:05d}_pidf.png".format(
-            savepath, num_trial),
-            format="png")
+        if 'Informed' in model_object.name:
+            fig = plt.figure(
+                "PENALISATION IDF #{}".format(num_trial), figsize=None)
+            fig.set_size_inches(
+                fig.get_size_inches()[0],
+                fig.get_size_inches()[1])
+            ax1 = fig.add_subplot(111, projection='3d')
+            ax1.plot_surface(
+                X, Y, (1 - model_pidf), rstride=1, cstride=1, cmap=cm.copper,
+                linewidth=0, antialiased=False)
+            ax1.set_zlim(search_lim)
+            ax1.set_ylabel(param_names[1], labelpad=5)
+            ax1.set_xlabel(param_names[0], labelpad=5)
+            ax1.set_xticks(xticks)
+            ax1.set_yticks(yticks)
+            ax1.set_xticklabels([str(x) for x in xticks], rotation=41)
+            ax1.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            ax1.tick_params(axis='x', direction='out', pad=-5)
+            ax1.tick_params(axis='y', direction='out', pad=-3)
+            ax1.tick_params(axis='z', direction='out', pad=2)
+            plt.savefig("{}/img_trial_{:05d}_pidf.png".format(
+                savepath, num_trial),
+                format="png")
         # Uncertainty IDF
-        fig = plt.figure("UNCERTAINTY IDF #{}".format(num_trial), figsize=None)
-        fig.set_size_inches(
-            fig.get_size_inches()[0],
-            fig.get_size_inches()[1])
-        ax1 = fig.add_subplot(111, projection='3d')
-        ax1.set_ylabel(param_names[1], labelpad=5)
-        ax1.set_xlabel(param_names[0], labelpad=5)
-        ax1.set_xticks(xticks)
-        ax1.set_yticks(yticks)
-        ax1.set_zticks(zticks_unc)
-        ax1.set_xticklabels([str(x) for x in xticks], rotation=41)
-        ax1.set_yticklabels([str(x) for x in yticks], rotation=-15)
-        ax1.tick_params(axis='x', direction='out', pad=-5)
-        ax1.tick_params(axis='y', direction='out', pad=-3)
-        ax1.tick_params(axis='z', direction='out', pad=5)
-        ax1.plot_surface(X, Y, model_var, rstride=1, cstride=1, cmap=cm.winter,
-                         linewidth=0, antialiased=False)
-        plt.savefig("{}/img_trial_{:05d}_uidf.png".format(
-            savepath, num_trial),
-            format="png")
+        if 'Random' not in model_object.name:
+            fig = plt.figure(
+                "UNCERTAINTY IDF #{}".format(num_trial), figsize=None)
+            fig.set_size_inches(
+                fig.get_size_inches()[0],
+                fig.get_size_inches()[1])
+            ax1 = fig.add_subplot(111, projection='3d')
+            ax1.plot_surface(
+                X, Y, model_uidf, rstride=1, cstride=1, cmap=cm.winter,
+                linewidth=0, antialiased=False)
+            ax1.set_zlim(search_lim)
+            ax1.set_ylabel(param_names[1], labelpad=5)
+            ax1.set_xlabel(param_names[0], labelpad=5)
+            ax1.set_xticks(xticks)
+            ax1.set_yticks(yticks)
+            ax1.set_zticks(zticks_uidf)
+            ax1.set_xticklabels([str(x) for x in xticks], rotation=41)
+            ax1.set_yticklabels([str(x) for x in yticks], rotation=-15)
+            ax1.tick_params(axis='x', direction='out', pad=-5)
+            ax1.tick_params(axis='y', direction='out', pad=-3)
+            ax1.tick_params(axis='z', direction='out', pad=5)
+            plt.savefig("{}/img_trial_{:05d}_uidf.png".format(
+                savepath, num_trial),
+                format="png")
         # Selection IDF
         fig = plt.figure("SELECTION IDF #{}".format(num_trial), figsize=None)
         fig.set_size_inches(
             fig.get_size_inches()[0],
             fig.get_size_inches()[1])
         ax1 = fig.add_subplot(111, projection='3d')
+        ax1.plot_surface(X, Y, model_sidf, rstride=1, cstride=1,
+                         cmap=cm.summer, linewidth=0, antialiased=False)
+        ax1.set_zlim(search_lim)
         ax1.set_ylabel(param_names[1], labelpad=5)
         ax1.set_xlabel(param_names[0], labelpad=5)
         ax1.set_xticks(xticks)
@@ -557,20 +589,18 @@ def plot_model_separate(model_object,
         ax1.tick_params(axis='x', direction='out', pad=-5)
         ax1.tick_params(axis='y', direction='out', pad=-3)
         ax1.tick_params(axis='z', direction='out', pad=2)
-        surf = ax1.plot_surface(X, Y, model_select, rstride=1, cstride=1,
-                                cmap=cm.summer, linewidth=0, antialiased=False)
         # add also the trial points
         if show_points:
             for tr in model_object.coord_explored:
                 if list(tr) in [list(x) for x in model_object.coord_failed]:
                     ax1.plot([dim2[tr[1] // ds2], dim2[tr[1] // ds2]],
                              [dim1[tr[0] // ds1], dim1[tr[0] // ds1]],
-                             [model_select.min(), model_select.max()],
+                             [model_sidf.min(), model_sidf.max()],
                              linewidth=1, color='r', alpha=0.7)
                 else:
                     ax1.plot([dim2[tr[1] // ds2], dim2[tr[1] // ds2]],
                              [dim1[tr[0] // ds1], dim1[tr[0] // ds1]],
-                             [model_select.min(), model_select.max()],
+                             [model_sidf.min(), model_sidf.max()],
                              linewidth=1, color='c', alpha=0.7)
         plt.savefig("{}/img_trial_{:05d}_sidf.png".format(
             savepath, num_trial),
