@@ -69,7 +69,6 @@ class ExperimentManager(object):
                             save_model=True,
                             save_test_progress=True, **kwargs):
         """Interface to evaluate all test cases."""
-        # Evaluate on environments test cases, save results
         if save_model:
             self.model.save_model(num_trial=num_trial, **kwargs)
         self.environment.verbose = verbose
