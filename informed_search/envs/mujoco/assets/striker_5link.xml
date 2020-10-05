@@ -11,18 +11,17 @@
 	<worldbody>
 		
 		<!-- Arena -->
-		<geom conaffinity="0" contype="0" name="ground" pos="0 0 0" rgba="0.9 0.9 0.9 1" size="1 1 10" type="plane"/>
+		<geom conaffinity="0" contype="0" name="ground" pos="0 0.5 0" rgba="0.9 0.9 0.9 1" size="1 1 10" type="plane"/>
 
 		<geom conaffinity="1" fromto="-0.16 -0.25  .01   0.16  -0.25  .01" name="sideS" rgba="0.0 0.0 0.0 1" size=".02" type="capsule"/>
 		<geom conaffinity="1" fromto=" 0.16 -0.25  .01   0.16   0.0   .01" name="sideE" rgba="0.0 0.0 0.0 1" size=".02" type="capsule"/>
-		<geom conaffinity="0" fromto="-0.02  1.25  .01   0.02   1.25  .01" name="sideN" rgba="0.0 0.0 0.0 1" size=".002" type="capsule"/>
 		<geom conaffinity="1" fromto="-0.16 -0.25  .01  -0.16   0.0   .01" name="sideW" rgba="0.0 0.0 0.0 1" size=".02" type="capsule"/>
 		
 
+		<!-- Starting point -->
+		<geom conaffinity="0" contype="0" name="root" pos="0 0 0" rgba="0.0 0.2 0.9 0.2" size=".025" type="sphere"/>
 
 		<!-- Arm -->
-		<geom conaffinity="1" contype="0" fromto="0 0 0 0 0 0.02" name="root" rgba="0.9 0.4 0.6 1" size=".011" type="cylinder"/>
-
 		<body name="body0" pos="0 -0.22 .01">
 			<joint axis="0 0 1" limited="true" name="joint0" pos="0 0 0" range="-1.57 1.57" type="hinge" damping="1" stiffness="0" />
 			<geom fromto="0 0 0 0 0.07 0" name="link0" rgba="0.7 0.0 0.0 1" size=".01" type="capsule"/>
@@ -70,7 +69,7 @@
 		<body name="real_target" pos="0.10 -0.10 0.0">
 			<joint armature="1" axis="1 0 0" limited="true" name="real_target_x" pos="0 0 0" range="-2.9 2.9" ref=".1" type="slide" damping="0.1" stiffness="0" />
 			<joint armature="1" axis="0 1 0" limited="true" name="real_target_y" pos="0 0 0" range="-2.9 2.9" ref="-.1" type="slide" damping="0.1" stiffness="0" />
-			<geom conaffinity="0" contype="0" name="real_target" pos="0 0 0" rgba="0.0 0.8 0.5 1" size=".025" type="sphere"/>
+			<geom conaffinity="0" contype="0" name="real_target" pos="0 0 0" rgba="0.0 0.8 0.5 0.2" size=".025" type="sphere"/>
 		</body>
 
 
