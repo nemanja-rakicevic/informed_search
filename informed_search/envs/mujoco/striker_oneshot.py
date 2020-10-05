@@ -48,7 +48,6 @@ class BaseStriker(object):
         return self._get_obs()
 
     def step(self, a):
-        # a = a / 180. * np.pi
         a = 10. * a
         vec = self.get_body_com("fingertip") - self.get_body_com("ball")
         reward_dist = -np.linalg.norm(vec[:2])
@@ -73,10 +72,8 @@ class BaseStriker(object):
 
     def viewer_setup(self):
         self.viewer.cam.trackbodyid = 0
-        self.viewer.cam.distance = self.model.stat.extent * 1.
-        # self.viewer.cam.lookat[0] += 2.5
-        self.viewer.cam.lookat[1] = -0.005
-        # self.viewer.cam.lookat[2] += 1.5
+        self.viewer.cam.distance = 2.5  # self.model.stat.extent * 3.
+        self.viewer.cam.lookat[1] = 0.5
         self.viewer.cam.elevation = -90
         self.viewer.cam.azimuth = 90
 
