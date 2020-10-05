@@ -178,13 +178,14 @@ def plot_model(model_object,
         yticks1 = np.linspace(
             min(dim1[0], dim1[-1]), max(dim1[0], dim1[-1]), 5).round(1)
         zticks_alpha = np.linspace(
-            model_object.mu_alpha.min(), model_object.mu_alpha.max(), 4).round()
+            model_object.mu_alpha.min(),
+            model_object.mu_alpha.max(), 4).round(2)
         zticks_L = np.linspace(
-            model_object.mu_L.min(), model_object.mu_L.max(), 4).round()
+            model_object.mu_L.min(), model_object.mu_L.max(), 4).round(2)
         zticks_unc = np.linspace(
             model_object.uidf.min(), model_object.uidf.max(), 4).round(2)
         zticks_PIDF = np.linspace(
-            model_object.pidf.min(), model_object.pidf.max(), 7).round(1)
+            model_object.pidf.min(), model_object.pidf.max(), 7).round(2)
         # Task models
         # Angle task model
         ax = fig.add_subplot(2, 3, 1, projection='3d')
@@ -260,7 +261,7 @@ def plot_model(model_object,
         ax.tick_params(axis='x', direction='out', pad=-5)
         ax.tick_params(axis='y', direction='out', pad=-3)
         ax.tick_params(axis='z', direction='out', pad=2)
-        # ax.set_zticks(zticks_PIDF)
+        ax.set_zticks(zticks_PIDF)
         ax.plot_surface(X, Y, (1 - model_PIDF), rstride=1, cstride=1,
                         cmap=cm.copper, linewidth=0, antialiased=False)
         # Uncertainty IDF

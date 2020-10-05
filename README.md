@@ -64,7 +64,7 @@ Download repository:
 git clone https://github.com/nemanja-rakicevic/informed_search.git
 cd informed_search
 
-export $INFOSEARCH_PATH=$(pwd)
+export INFOSEARCH_PATH=$(pwd)/informed_search
 
 ```
 

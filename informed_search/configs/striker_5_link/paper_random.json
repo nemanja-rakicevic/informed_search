@@ -1,6 +1,6 @@
 {
     "environment": "sim5link",
-    "eval_freq": 10,
+    "eval_freq": 1,
     "kernel_lenscale": 0.01,
     "kernel_name": "rq",
     "kernel_sigma": 1.0,
