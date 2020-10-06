@@ -1,13 +1,14 @@
 
 
-# Informed Search
+# Informed Search 
 
 Informed Search of the movement parameter space, that gathers most informative
 samples for fitting the forward model.
 
-[Full paper](https://link.springer.com/article/10.1007%2Fs10514-019-09842-7)
-
-[Project website](https://sites.google.com/view/informedsearch)
+<p align="center">
+   <a href="https://link.springer.com/article/10.1007%2Fs10514-019-09842-7">Full paper</a> |
+   <a href="https://sites.google.com/view/informedsearch">Project website</a>
+</p>
 
 
 ## Motivation and Method Description
@@ -33,9 +34,8 @@ The selection function gives us the most informative regions at each trial itera
 
 ## Experiments
 
-The approach has been evaluated in simulation on a puck striking task, 
+The approach has been evaluated in simulation on a puck striking task,
 as well as on the real dual-arm hockey-playing robot.
-
 Here we provide the code for the simulation experiments.
 
 
@@ -49,12 +49,12 @@ Simulation Experiment | Robot Experiment |
 # Using the code
 
 
-__Prerequisites:__ Conda, Python 3, MuJoCo 150
+__Prerequisites:__ Conda, Python 3, MuJoCo 150.
 
 
 ##  Installation
 
-Navigate to the base installation directory where to download the repository:
+Navigate to the base installation directory, in which to download the repository:
 ```
 cd <INSTALL_PATH>
 ```
@@ -97,11 +97,9 @@ This automatically adds `$INFOSEARCH_PATH` to `$PYTHON_PATH`.
 
 In order to perform the training, it is necessary to chose the environment 
 (striker_2_link or striker_5_link), 
-and the algorithm to run (informed, random, uidf, bo and entropy).
-<!-- The config files for striker_2_link contain default values corresponding to 
-the experiments presented in figure 6b in the original
-[paper](https://link.springer.com/article/10.1007%2Fs10514-019-09842-7)]. -->
-Other arguments are optional. For more information refer to the code.
+and the algorithm to run (informed, random, uidf, bo or entropy).
+
+Other arguments are optional. For more information refer to the code documentation.
 
 ```
 cd $INFOSEARCH_PATH
@@ -123,7 +121,7 @@ Evaluate the learned model from a specified path, on the whole test set:
 python analysis/evaluate_test_full.py --load <path to experiment directory>
 ```
 
-Check performace of the loaded model for specific test target positions:
+or on specific test target positions:
 ```
 python analysis/evaluate_test_target.py --load <path to experiment directory>
 ```
@@ -135,6 +133,8 @@ In order to benefit from previous experiments using the same agent architecture
 and certain environment similarities, one can improve the efficiency of learning
 the forward task model, by re-using the successful parameters in the new
 environment.
+
+To run a transfer experiment between corresponding environments:
 
 ```
 python analysis/transfer_test.py --source <path to source experiment directory>
