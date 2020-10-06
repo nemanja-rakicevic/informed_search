@@ -17,4 +17,3 @@ dependencies:
         - python-dateutil==2.7.2
         - python-utils==2.2.0
         - setuptools==39.2.0
-        - tqdm==4.15.0
