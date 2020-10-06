@@ -67,7 +67,6 @@ git clone https://github.com/nemanja-rakicevic/informed_search.git
 cd informed_search
 
 export INFOSEARCH_PATH=$(pwd)/informed_search
-
 ```
 
 
@@ -83,7 +82,6 @@ Set up Conda environment with all dependencies:
 conda env create -f infosearch_env.yml
 
 conda activate infosearch_env
-
 ```
 
 Install repository:
