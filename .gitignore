@@ -1,4 +1,3 @@
-.ipynb_checkpoints/*
 *__pycache__*
 *.pyc
 informed_search/experiment_data/*
