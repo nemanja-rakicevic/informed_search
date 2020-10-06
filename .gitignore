@@ -1,15 +1,6 @@
-RECORDING_HUMANS/*
-RECORDING_LEARNING/*
-RECORDING_TESTING/*
-TRIALS_2D/*
-TRIALS_FULL/*
-TRIALS_RETRAINED/*
 .ipynb_checkpoints/*
-informed_search/simulation_experiments/DATA/*
-informed_search/simulation_experiments/DATA_SAVE/*
-informed_search/experiment_data/*
 *__pycache__*
 *.pyc
+informed_search/experiment_data/*
 notused
-informed_search/trained_model_data/*
 *_ignore.py
