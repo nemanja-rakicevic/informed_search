@@ -196,27 +196,6 @@ class SimulationExperiment(object):
                 num_trial, statistics, euclid_plot, polar_plot, **kwargs)
         return statistics
 
-    # TODO: implement parallel testing
-    # def full_tests_parallel(self, num_trial, save_progress=True, heatmap=True):
-    #     test_dict = {'angles': self.test_angles, 'dist': self.test_dist}
-    #     ldist, langle = len(self.test_dist), len(self.test_angles)
-
-    #     tc = [self.model.query_target(*test_target)+tuple(test_target) \
-    #                 for test_target in self.test_cases]
-
-    #     with mp.Pool(processes=self.num_cpu) as pool:
-    #         polar_error, euclid_error, trial_stats = \
-    #             pool.starmap(self.run_test_case, tc)
-
-    #     euclid_plot = np.array(euclid_plot[::-1]).reshape((langle, ldist)).T
-    #     polar_plot = np.array(polar_plot[::-1]).reshape((langle, ldist)).T
-
-    #     # Save statistics and plots
-    #     if save_progress:
-    #         self.save_test_results(num_trial, statistics, test_dict,
-    #                                euclid_plot, polar_plot,
-    #                                savepath=self.model.dirname)
-
     def save_trial_data(self):
         """Save training data."""
         with open(self.dirname + "/statistics_trials.dat", "wb") as f:
@@ -265,6 +244,7 @@ class SimulationExperiment(object):
             os.system("mv {} {}".format(
                 self.dirname + "/statistics_evaluation.dat",
                 self.dirname + "/statistics_evaluation.pkl"))
+
 
 class RobotExperiment(object):
     """
