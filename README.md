@@ -36,6 +36,8 @@ The selection function gives us the most informative regions at each trial itera
 The approach has been evaluated in simulation on a puck striking task, 
 as well as on the real dual-arm hockey-playing robot.
 
+Here we provide the code for the simulation experiments.
+
 
 Simulation Experiment | Robot Experiment |
 :-------------------------:|:-------------------------:|
@@ -47,7 +49,7 @@ Simulation Experiment | Robot Experiment |
 # Using the code
 
 
-__Prerequisites:__ Conda, Python 3, MuJoCo licence
+__Prerequisites:__ Conda, Python 3, MuJoCo 150
 
 
 ##  Installation
@@ -114,7 +116,7 @@ python main_training.py --config_file configs/striker_2_link/paper_informed.json
 ```
 
 
-##  Load saved models
+##  Evaluating saved models
 
 Evaluate the learned model from a specified path, on the whole test set:
 ```
@@ -126,6 +128,17 @@ Check performace of the loaded model for specific test target positions:
 python analysis/evaluate_test_target.py --load <path to experiment directory>
 ```
 
+
+##  Transferring between environments
+
+In order to benefit from previous experiments using the same agent architecture
+and certain environment similarities, one can improve the efficiency of learning
+the forward task model, by re-using the successful parameters in the new
+environment.
+
+```
+python analysis/transfer_test.py --source <path to source experiment directory>
+```
 
 ---
 
