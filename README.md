@@ -27,7 +27,7 @@ Informed Search uses three functions defined over the parameter space.
 The selection function gives us the most informative regions at each trial iteration. 
 
 <p align="center">
-  <img src="img/method_components.png" width="700" /> 
+  <img src="img/informed_search_components.png" title="Method Components" width="700" /> 
 </p>
 
 
@@ -41,7 +41,7 @@ Here we provide the code for the simulation experiments.
 
 Simulation Experiment | Robot Experiment |
 :-------------------------:|:-------------------------:|
-<img src="img/simulation_experiment.png" width="450" align="left" title="Simulation Experiment"/> | <img src="img/deniro_hockey.jpg" width="400" align="top" title="Robot Experiment"/> 
+<img src="img/experiment_simulation.png" width="450" align="left" title="Simulation Experiment"/> | <img src="img/experiment_robot.jpg" width="400" align="top" title="Robot Experiment"/> 
 
 ---
 
