@@ -325,7 +325,7 @@ class InformedSearch(BaseModel):
             self.generate_pdf_matrix(self.param_space, mu, self.cov_matrix),
             self.param_dims)
         trial_gaussian /= (trial_gaussian.max() + _EPS)
-        trial_gaussian *= -1 if failed else 1
+        trial_gaussian *= 1 if failed else -1
         # Update the penalisation IDF
         self.pidf = np.clip(previous_pidf + trial_gaussian, self.prior_init, 1.)
 
