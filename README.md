@@ -88,8 +88,6 @@ Install repository:
 
 `pip install -e . ; python setup.py clean`
 
-This automatically adds `$INFOSEARCH_PATH` to `$PYTHON_PATH`.
-
 
 ##  Training
 
