@@ -11,7 +11,7 @@ Description:
 
 import os
 import gym
-import envs
+# import envs
 import pickle
 import logging
 
@@ -20,6 +20,7 @@ import numpy as np
 
 from itertools import product
 
+import informed_search.envs
 import informed_search.utils.plotting as uplot
 from informed_search.utils.misc import _TAB
 
