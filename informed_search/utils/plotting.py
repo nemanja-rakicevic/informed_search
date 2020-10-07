@@ -12,14 +12,14 @@ Description:
 import os
 import logging
 import numpy as np
-
-import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
-
+mpl.use('Agg')
 mpl.rcParams.update({'font.size': 14})
+
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
 
 logger = logging.getLogger(__name__)
 

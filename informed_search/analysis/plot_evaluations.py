@@ -18,6 +18,10 @@ import argparse
 
 import numpy as np
 import matplotlib as mpl
+
+mpl.use('Agg')
+mpl.rcParams.update({'font.size': 18})
+
 import matplotlib.pyplot as plt
 
 from matplotlib.ticker import FormatStrFormatter, MaxNLocator, MultipleLocator
