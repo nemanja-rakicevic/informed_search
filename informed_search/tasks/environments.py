@@ -11,12 +11,10 @@ Description:
 
 import os
 import gym
-# import envs
 import pickle
 import logging
 
 import numpy as np
-# import multiprocessing as mp
 
 from itertools import product
 
