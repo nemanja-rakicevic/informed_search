@@ -17,6 +17,8 @@ import datetime
 
 import informed_search.tasks.experiment_manage as expm
 
+from informed_search.utils.misc import _TAB
+
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +101,17 @@ def main_test(source_path, verbose=True):
             experiment.model.coord_failed.append(sc_)
         transfer_info_list.append(trial_info)
         experiment.model.update_model(transfer_info_list, num_trial=ntrial_)
+        logger.info("Transferring TRIAL {}:"
+                    "\n{} - Trial coords: {} params: {}"
+                    "\n{} - Fail_status: {}; Distance to target: {:4.2f}"
+                    "\n{} - Total (failed: {}; successful: {})"
+                    "\n{} - Updated model uncertainty: {:4.2}".format(
+                        ntrial_,
+                        _TAB, sc_, sp_, _TAB,
+                        trial_info['fail_status'], trial_info['target_dist'],
+                        _TAB, experiment.environment.n_fail,
+                        experiment.environment.n_success, _TAB,
+                        experiment.model.uncertainty))
         experiment.evaluate_test_cases(ntrial_)
     logger.info("\t>>> TRANSFER EXPERIMENT DONE.")
 
