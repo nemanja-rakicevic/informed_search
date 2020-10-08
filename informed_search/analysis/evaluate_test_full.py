@@ -27,7 +27,7 @@ def main_test(load_path):
     experiment = expm.ExperimentManager(
         load_task_kwargs,
         load_model_path=load_path)
-    test_stats = experiment.evaluate_test_cases(
+    test_stats, _, _ = experiment.evaluate_test_cases(
         num_trial=None,
         save_model=False,
         save_test_progress=False,

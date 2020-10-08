@@ -189,11 +189,14 @@ class SimulationExperiment(object):
         # Generate plots
         euclid_plot = np.array(euclid_plot[::-1]).reshape((langle, ldist)).T
         polar_plot = np.array(polar_plot[::-1]).reshape((langle, ldist)).T
+        # Generate main trial statistics
+        errors = [ss['euclid_error'] for ss in statistics]
+        num_fails = sum([x['fail_status'] > 0 for x in statistics])
         # Save statistics and plots
         if save_test_progress:
             self.save_test_results(
                 num_trial, statistics, euclid_plot, polar_plot, **kwargs)
-        return statistics
+        return statistics, errors, num_fails
 
     def save_trial_data(self):
         """Save training data."""
