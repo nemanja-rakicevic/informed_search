@@ -68,6 +68,8 @@ def _start_logging(taskargs):
     with open(filename, 'w') as outfile:
             json.dump(taskargs, outfile, sort_keys=True, indent=4)
     logger.info('Starting session: {}\n'.format(dirname))
+    logger.info("Transferring environments: {} >> {}\n".format(
+        taskargs['environment_source'], taskargs['environment']))
     return taskargs
 
 
@@ -76,12 +78,11 @@ def main_test(source_path, verbose=True):
     # Apply to the corresponding target environment (same parameterisation)
     source_task = load_metadata(source_path)
     source_env = source_task['environment']
+    source_task['environment_source'] = source_task['environment']
     if 'nl' in source_env:
-        source_task['environment'] = source_env[:-3]
+        source_task['environment'] = source_task['environment_source'][:-3]
     else:
-        source_task['environment'] = source_env + '_nl'
-    logger.info("Transferring: {} > {}".format(
-        source_env, source_task['environment']))
+        source_task['environment'] = source_task['environment_source'] + '_nl'
     # Start new transfer experiment
     task_kwargs = _start_logging(source_task)
     experiment = expm.ExperimentManager(task_kwargs)
