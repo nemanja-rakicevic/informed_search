@@ -12,6 +12,7 @@ import json
 import logging
 import argparse
 import datetime
+import numpy as np
 
 import informed_search.tasks.experiment_manage as expm
 
@@ -41,14 +42,14 @@ def _load_args():
                              "'sim5link'\n"
                              "(TODO)'robot'")
     # Modelling
-    parser.add_argument('--search_type', default='UIDF',
+    parser.add_argument('--search_algo', default='UIDF',
                         help="Select which model to use: "
                              "random\n"
                              "informed\n"
                              "UIDF\n"
                              "entropy\n"
                              "BO")
-    parser.add_argument('--pidf_cov', default=0.1,
+    parser.add_argument('--pidf_coeff', default=0.1,
                         type=float,
                         help="Penalisation function covariance coefficient.")
     parser.add_argument('--kernel_name', default='se',
@@ -97,13 +98,14 @@ def _start_logging(taskargs):
     dirname = os.path.join(
         dirname,
         "env__{}".format(taskargs['environment']),
-        "ENV_{}__SEARCH_{}__res{}_cov{}_kernel{}_sl{}__{}_{}".format(
+        "ENV_{}__SEARCH_{}__res{}_pidf{}_kernel{}_ls{}".format(
             taskargs['environment'],
-            taskargs['search_type'],
+            taskargs['search_algo'],
             taskargs['resolution'],
-            taskargs['pidf_cov'],
+            taskargs['pidf_coeff'],
             taskargs['kernel_name'].upper(),
-            taskargs['kernel_lenscale'],
+            taskargs['kernel_lenscale']),
+        "S{}_{}".format(
             taskargs['seed'],
             datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S")))
     os.makedirs(dirname)
@@ -130,8 +132,8 @@ def main_run():
     # Initialise
     task_kwargs = _load_args()
     task_kwargs = _start_logging(task_kwargs)
-    experiment = expm.ExperimentManager(task_kwargs)
     # Run main loop
+    experiment = expm.ExperimentManager(task_kwargs)
     for ntrial_ in range(1, task_kwargs['num_trial'] + 1):
         if experiment.run_trial(ntrial_) is not None:
             break
