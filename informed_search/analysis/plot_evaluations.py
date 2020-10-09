@@ -41,6 +41,7 @@ def plot_performance(load_path,
     if len(filter_string):
         graph_name += '__' + filter_string
 
+    # Extract data to plot
     filter_include = []
     filter_exclude = []
     experiments_dict = {}
@@ -55,17 +56,17 @@ def plot_performance(load_path,
     filter_exp = np.setdiff1d(filter_include, filter_exclude)
     for d in filter_exp:
         exp_name = '__'.join(d.split('/')[-1].split('__')[:3])
-        stats_file = glob.glob(os.path.join(d, 'statistics_evaluation.pkl'))
+        stats_files = glob.glob(os.path.join(d, 'S*/statistics_evaluation.pkl'))
         if exp_name in experiments_dict.keys():
-            experiments_dict[exp_name] += stats_file
+            experiments_dict[exp_name] += stats_files
         else:
-            experiments_dict[exp_name] = stats_file
+            experiments_dict[exp_name] = stats_files
     for stype in experiments_dict.keys():
         seeds_error_mean = []
         seeds_error_std = []
         seeds_fail_mean = []
-        for exp in experiments_dict[stype]:
-            with open(exp, "rb") as m:
+        for exp_file in experiments_dict[stype]:
+            with open(exp_file, "rb") as m:
                 trial_stats = pickle.load(m)
             # extract the test info for every trial in the experiment
             tmp_errs = [ts[4][0] for ts in trial_stats]
@@ -75,12 +76,17 @@ def plot_performance(load_path,
             seeds_error_mean.append(np.array(tmp_errs)[:CUTOFF])
             seeds_error_std.append(np.array(tmp_stds)[:CUTOFF])
             seeds_fail_mean.append(np.array(tmp_fails)[:CUTOFF])
+        # Cut seeds to length
+        min_len = min([len(m) for m in seeds_error_mean])
+        seeds_error_mean = [mm[:min_len] for mm in seeds_error_mean]
+        seeds_error_std = [mm[:min_len] for mm in seeds_error_std]
+        seeds_fail_mean = [mm[:min_len] for mm in seeds_fail_mean]
         # Average seed for current model
         mnames = stype.split('__')
         minfo = mnames[2].split('_')
         all_stats.append(
             {"model": '; '.join([mnames[1].split('_')[-1],
-                                 'cov={}'.format(minfo[1][3:]),
+                                 'pidf={}'.format(minfo[1][4:]),
                                  'kernel={}'.format(minfo[2][6:]),
                                  '$\sigma_l^2$={}'.format(minfo[3][2:])]),
              "mean": np.array([np.array(seeds_error_mean).mean(axis=0),
@@ -96,7 +102,6 @@ def plot_performance(load_path,
     clinfo = ['blue', 'olive', 'indigo', 'teal', 'purple', 'maroon', 'deeppink',
               'red', 'olive', 'indigo', 'teal', 'purple', 'maroon', 'deeppink',
               'red']
-    mpl.rcParams.update({'font.size': 18})
     f, axarr = plt.subplots(3, sharex=True)
     f.set_size_inches(f.get_size_inches()[0] * 3, f.get_size_inches()[1] * 2)
 
