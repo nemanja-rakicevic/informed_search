@@ -7,7 +7,6 @@ Description:
 """
 
 import logging
-import numpy as np
 
 import informed_search.models.modelling as umodel
 import informed_search.tasks.environments as uenv
@@ -21,13 +20,14 @@ logger = logging.getLogger(__name__)
 class ExperimentManager(object):
     """Manages interfacing the search algorithm, model and the environment."""
 
-    def __init__(self, task_kwargs, load_model_path=None, **kwargs):
+    def __init__(self, task_kwargs, load_model_path=None):
         # Initialise the experiment type
-        self.environment = uenv.SimulationExperiment(**task_kwargs, **kwargs)
+        self.environment = uenv.SimulationExperiment(**task_kwargs)
         # Initialise the search algorithm
-        stype = task_kwargs['search_type']
-        stype = stype if stype.isupper() else stype.capitalize()
-        self.model = getattr(umodel, stype + 'Search')(
+        search_algo = task_kwargs['search_algo']
+        search_algo = search_algo if search_algo.isupper() \
+            else search_algo.capitalize()
+        self.model = getattr(umodel, search_algo + 'Search')(
             parameter_list=self.environment.parameter_list,
             **task_kwargs)
         # Load previous experiment

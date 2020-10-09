@@ -39,15 +39,16 @@ class BaseModel(object):
     """Base task model learning class."""
 
     def __init__(self,
-                 parameter_list,
+                 seed,
                  dirname,
-                 kernel_name='se',
-                 kernel_lenscale=0.1,
-                 kernel_sigma=1,
-                 cov_coeff=1,
-                 seed=100,
+                 parameter_list,
+                 kernel_name,
+                 kernel_lenscale,
+                 kernel_sigma,
+                 pidf_coeff,
                  is_training=False,
-                 show_plots=False, **kwargs):
+                 show_plots=False,
+                 **kwargs):
         # Fix numpy seed
         np.random.seed(seed)
         self.show_plots = show_plots
@@ -65,16 +66,17 @@ class BaseModel(object):
         self.coord_failed = []
         # Initialise attributes
         self.name = self.__class__.__name__
-        self._build_model(cov_coeff)
+        self._build_model(pidf_coeff)
         self._build_kernel(kernel_name, kernel_lenscale, kernel_sigma)
 
-    def _build_model(self, cov_coeff):
+    def _build_model(self, pidf_coeff):
         """Initialise task model and exploration components."""
         # Prior distribution
         self.prior_init = np.ones(self.param_dims) / np.product(self.param_dims)
         # Create covariance matrix
-        self.cov_coeff = cov_coeff
-        self.cov_matrix = self.cov_coeff * np.eye(self.n_param)
+        if pidf_coeff is not None:
+            self.pidf_coeff = pidf_coeff
+            self.pidf_cov = self.pidf_coeff * np.eye(self.n_param)
         # Initialise informed search components
         self.pidf = self.prior_init
         self.uidf = self.prior_init
@@ -315,14 +317,14 @@ class InformedSearch(BaseModel):
             # scale covariance matrix based on failure frequency
             fcnt = np.array([max(np.bincount(self.coord_failed[:, f]))
                              for f in range(self.n_param)], np.float)
-            cov_coeff = 1 + (fcnt - fcnt.min()) / fcnt.max()
+            cov_diag = 1 + (fcnt - fcnt.min()) / fcnt.max()
         else:
             # fixed covariance matrix for successful trial outcomes
-            cov_coeff = 0.5 * np.ones(self.n_param)
-        np.fill_diagonal(self.cov_matrix, self.cov_coeff * cov_coeff)
+            cov_diag = 0.5 * np.ones(self.n_param)
+        np.fill_diagonal(self.pidf_cov, self.pidf_coeff * cov_diag)
         # Estimate the contributing Gaussian
         trial_gaussian = np.reshape(
-            self.generate_pdf_matrix(self.param_space, mu, self.cov_matrix),
+            self.generate_pdf_matrix(self.param_space, mu, self.pidf_cov),
             self.param_dims)
         trial_gaussian /= (trial_gaussian.max() + _EPS)
         trial_gaussian *= 1 if failed else -1
