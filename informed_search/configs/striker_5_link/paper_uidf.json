@@ -5,9 +5,9 @@
     "kernel_name": "rq",
     "kernel_sigma": 1.0,
     "num_trial": 300,
-    "pidf_cov": 0.1,
+    "pidf_coeff": 0.1,
     "resolution": 7,
-    "search_type": "UIDF",
+    "search_algo": "UIDF",
     "seed": 100,
     "show_plots": 0,
     "verbose": 0

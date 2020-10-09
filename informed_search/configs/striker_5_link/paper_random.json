@@ -5,9 +5,9 @@
     "kernel_name": "rq",
     "kernel_sigma": 1.0,
     "num_trial": 300,
-    "pidf_cov": 5,
+    "pidf_coeff": 5,
     "resolution": 7,
-    "search_type": "random",
+    "search_algo": "random",
     "seed": 100,
     "show_plots": 0,
     "verbose": 0

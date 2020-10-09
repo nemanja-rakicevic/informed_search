@@ -5,9 +5,9 @@
     "kernel_name": "se",
     "kernel_sigma": 1.0,
     "num_trial": 150,
-    "pidf_cov": 10,
+    "pidf_coeff": 10,
     "resolution": 150,
-    "search_type": "entropy",
+    "search_algo": "entropy",
     "seed": 100,
     "show_plots": 0,
     "verbose": 0
