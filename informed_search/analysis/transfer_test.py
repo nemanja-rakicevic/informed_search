@@ -43,11 +43,11 @@ def _start_logging(taskargs):
     dirname = os.path.join(
         dirname,
         "env__{}".format(taskargs['environment']),
-        "ENV_{}__SEARCH_{}-transfer__res{}_cov{}_kernel{}_sl{}__{}_{}".format(
+        "ENV_{}__SEARCH_{}-transfer__res{}_pidf{}_kernel{}_sl{}__{}_{}".format(
             taskargs['environment'],
-            taskargs['search_type'],
+            taskargs['search_algo'],
             taskargs['resolution'],
-            taskargs['pidf_cov'],
+            taskargs['pidf_coeff'],
             taskargs['kernel_name'].upper(),
             taskargs['kernel_lenscale'],
             taskargs['seed'],
@@ -102,12 +102,12 @@ def main_test(source_path, verbose=True):
             experiment.model.coord_failed.append(sc_)
         transfer_info_list.append(trial_info)
         experiment.model.update_model(transfer_info_list, num_trial=ntrial_)
-        logger.info("Transferring TRIAL {}:"
+        logger.info("Transferring TRIAL {} / {}:"
                     "\n{} - Trial coords: {} params: {}"
                     "\n{} - Fail_status: {}; Distance to target: {:4.2f}"
                     "\n{} - Total (failed: {}; successful: {})"
                     "\n{} - Updated model uncertainty: {:4.2}".format(
-                        ntrial_,
+                        ntrial_ + 1, len(succ_coords),
                         _TAB, sc_, sp_, _TAB,
                         trial_info['fail_status'], trial_info['target_dist'],
                         _TAB, experiment.environment.n_fail,
