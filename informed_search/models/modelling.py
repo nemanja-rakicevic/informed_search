@@ -102,7 +102,7 @@ class BaseModel(object):
                                  kernel_lenscale=kernel_lenscale,
                                  kernel_sigma=kernel_sigma)
         # self.Kss = self.kernel_fn(a=self.param_space, b=self.param_space)
-        self.Kss_diag = np.ones(len(self.param_space))
+        self.Kss_diag = kernel_sigma * np.ones(len(self.param_space))
 
     def query_target(self, angle_s, dist_s, verbose=False):
         """Generate test parameter coordinates for given target polar coords."""
