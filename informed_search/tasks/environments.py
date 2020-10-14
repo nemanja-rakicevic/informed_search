@@ -36,12 +36,12 @@ class SimulationExperiment(object):
                  dirname,
                  environment,
                  resolution,
-                 verbose=False,
-                 display=False,
+                 verbose,
+                 render,
                  **kwargs):
         self.dirname = dirname
         self.verbose = verbose
-        self.display = display
+        self.render = render
         # Initialise environment info
         ename = environment.split('_')[0]
         elim = 'NL' if len(environment.split('_')) > 1 else ''
@@ -59,18 +59,26 @@ class SimulationExperiment(object):
         self.test_cases = np.vstack(
             list(product(self.test_angles, self.test_dist)))
 
-    def _log_trial(self, fail_status, ball_polar, target_dist, test_target,
+    def _log_trial(self,
+                   parameters,
+                   fail_status,
+                   ball_polar,
+                   target_dist,
+                   test_target,
                    **kwargs):
-        if self.verbose:
+        if self.verbose & 1:
             error_string = ''
             if fail_status:
-                outcome_string = "FAIL ({})".format(fail_status)
+                out_string = "\n{}\t> FAIL ({})".format(_TAB, fail_status)
             else:
-                outcome_string = "SUCCESS\t> ball_polar: {}".format(ball_polar)
+                out_string = "\n{}\t> SUCCESS".format(_TAB)
+                out_string += "\n{}\t> ball_polar: ({:4.2f}, {:4.2f})".format(
+                    _TAB, *ball_polar)
                 if test_target is not None:
-                    error_string = "; euclid error: {}".format(target_dist)
-            logger.info("--- trial executed: {}{}".format(
-                outcome_string, error_string))
+                    error_string = "\n{}\t> euclid error: {:4.2f}".format(
+                        _TAB, target_dist)
+            logger.info("--- trial parameters executed: {}{}{}".format(
+                parameters, out_string, error_string))
 
     @property
     def n_total(self):
@@ -110,7 +118,7 @@ class SimulationExperiment(object):
         init_pos = init_pos[:self._num_links]
         obs_list = []
         for i in range(self._episode_steps):
-            if self.display:
+            if self.render:
                 self.env.render()
             if i < self._action_steps:
                 control = init_pos + param_seq[i]
@@ -120,7 +128,7 @@ class SimulationExperiment(object):
             if done:
                 fail_status = 1
                 break
-        if self.display:
+        if self.render:
             self.env.close()
         # Check ball movement and calculate polar coords
         ball_xy = info_dict['ball_xy']
@@ -149,7 +157,7 @@ class SimulationExperiment(object):
     def run_test_case(self, model_object, test_target, **kwargs):
         """Evaluate the learned model on a single test target."""
         # Generate movement parameter vector
-        tc_coords, tc_params, model_polar_error, model_pidf = \
+        tc_coords, tc_params, estimated_polar, model_polar_error, model_pidf = \
             model_object.query_target(*test_target, **kwargs)
         # Execute given parameter vector
         trial_info = self.execute_trial(tc_coords, tc_params,
@@ -159,7 +167,8 @@ class SimulationExperiment(object):
         polar_error = np.linalg.norm(trial_info['ball_polar'] - test_target)
         # Trial stats dict
         test_stats = trial_info.copy()
-        test_stats.update({'euclid_error': euclid_error,
+        test_stats.update({'estimated_polar': estimated_polar,
+                           'euclid_error': euclid_error,
                            'polar_error': polar_error,
                            'model_polar_error': model_polar_error,
                            'model_pidf': model_pidf})
@@ -169,23 +178,40 @@ class SimulationExperiment(object):
         else:
             return polar_error, euclid_error, test_stats
 
-    def full_tests_sequential(self, num_trial, model_object,
-                              save_test_progress=True, **kwargs):
+    def full_tests_sequential(self,
+                              num_trial,
+                              model_object,
+                              save_test_progress=True,
+                              **kwargs):
         """Evaluate the learned model on the full test set."""
         ldist, langle = len(self.test_dist), len(self.test_angles)
         euclid_plot = []
         polar_plot = []
         statistics = []
-        for t, tcase in enumerate(self.test_cases):
-            if self.verbose:
-                print("\nTEST # {} > angle, distance: ({},{})".format(
-                    t, *tcase))
+        for tnum, tcase in enumerate(self.test_cases):
+            if self.verbose & 2:
+                logger.info("TEST # {} > (angle: {}, distance: {})".format(
+                    tnum, *tcase))
             # Get parameter for test case and execute
             polar_error, euclid_error, test_stats = self.run_test_case(
                 model_object=model_object, test_target=tcase)
             euclid_plot.append(euclid_error)
             polar_plot.append(polar_error)
             statistics.append(test_stats)
+            if self.verbose & 2:
+                logger.info("EVAL # {} > {}"
+                    "\n{}- Target position    > (angle: {}, distance: {})"
+                    "\n{}- Estimated position > "
+                    "(angle: {:4.2f}, distance: {:4.2f})"
+                    "\n{}- Achieved position  > "
+                    "(angle: {:4.2f}, distance: {:4.2f})"
+                    "\n{}- Estimated polar error > {:4.2f}"
+                    "\n{}- Achieved polar error  > {:4.2f}\n".format(
+                        tnum, test_stats['trial_outcome'], _TAB, *tcase,
+                        _TAB, *test_stats['estimated_polar'],
+                        _TAB, *test_stats['ball_polar'],
+                        _TAB, test_stats['model_polar_error'],
+                        _TAB, test_stats['polar_error']))
         # Generate plots
         euclid_plot = np.array(euclid_plot[::-1]).reshape((langle, ldist)).T
         polar_plot = np.array(polar_plot[::-1]).reshape((langle, ldist)).T
@@ -207,8 +233,14 @@ class SimulationExperiment(object):
             self.dirname + "/statistics_trials.dat",
             self.dirname + "/statistics_trials.pkl"))
 
-    def save_test_results(self, num_trial, statistics, euclid_plot, polar_plot,
-                          save_plots=True, save_data=True, **kwargs):
+    def save_test_results(self,
+                          num_trial,
+                          statistics,
+                          euclid_plot,
+                          polar_plot,
+                          save_plots=True,
+                          save_data=True,
+                          **kwargs):
         """Save evaluation data."""
         test_dict = {'angles': self.test_angles,
                      'dist': self.test_dist}

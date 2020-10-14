@@ -64,24 +64,22 @@ class ExperimentManager(object):
                         self.environment.n_success, _TAB,
                         self.model.uncertainty))
 
-    def evaluate_test_cases(self, num_trial,
-                            verbose=False,
+    def evaluate_test_cases(self,
+                            num_trial,
                             save_model=True,
-                            save_test_progress=True, **kwargs):
+                            save_test_progress=True,
+                            **kwargs):
         """Interface to evaluate all test cases."""
         if save_model:
             self.model.save_model(num_trial=num_trial, **kwargs)
-        self.environment.verbose = verbose
         return self.environment.full_tests_sequential(
             num_trial=num_trial,
             model_object=self.model,
             save_test_progress=save_test_progress,
             **kwargs)
 
-    def evaluate_single_test(self, test_target, display=False, verbose=False):
+    def evaluate_single_test(self, test_target):
         """Interface to evaluate a single test case."""
-        self.environment.display = display
         return self.environment.run_test_case(
             model_object=self.model,
-            test_target=test_target,
-            verbose=verbose)
+            test_target=test_target)

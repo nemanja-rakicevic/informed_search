@@ -73,7 +73,7 @@ def _start_logging(taskargs):
     return taskargs
 
 
-def main_test(source_path, verbose=True):
+def main_test(source_path):
     """Run source environments point in new environment and evaluate."""
     # Apply to the corresponding target environment (same parameterisation)
     source_task = load_metadata(source_path)

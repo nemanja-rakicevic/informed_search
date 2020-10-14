@@ -7,7 +7,9 @@ Description:
                 user defined test.
 """
 
+import sys
 import json
+import logging
 import argparse
 
 import informed_search.tasks.experiment_manage as expm
@@ -20,9 +22,10 @@ def load_metadata(datapath):
     return args_dict
 
 
-def main_test(load_path, display, verbose=True):
+def main_test(load_path, verbose, render):
     """Run model evaluation on test targets."""
     load_task_kwargs = load_metadata(load_path)
+    load_task_kwargs.update(dict(render=render, verbose=verbose))
     experiment = expm.ExperimentManager(
         load_task_kwargs,
         load_model_path=load_path)
@@ -39,8 +42,7 @@ def main_test(load_path, display, verbose=True):
                 print(i)
                 continue
         # Evaluate given test position
-        _, _, test_stats = experiment.evaluate_single_test(
-            test_target, display=display, verbose=verbose)
+        _, _, test_stats = experiment.evaluate_single_test(test_target)
         # Print outcome info
         print("{} TEST TARGET (angle: {}; distance: {}) {}"
               "\n - Trial outcome:     {} [{}]; ball ({:4.2f},{:4.2f})"
@@ -64,8 +66,24 @@ if __name__ == "__main__":
     parser.add_argument('-load', '--load_path',
                         default=None, required=True,
                         help="Path to the learned model file.")
-    parser.add_argument('-disp', '--display',
+    parser.add_argument('-r', '--render',
                         default=False,
                         help="Show execution.")
+    parser.add_argument('-v', '--verbose',
+                        default=0,
+                        type=int,
+                        help="Define verbose level\n"
+                             "0: basic info\n"
+                             "1: training - trial info\n"
+                             "2: testing - parameter selection info\n"
+                             "3: training and testing detailed info\n")
     args = parser.parse_args()
-    main_test(load_path=args.load_path, display=args.display)
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(name)-40s '
+                               '%(levelname)-8s %(message)s',
+                        handlers=[
+                            logging.FileHandler(
+                                '{}/test_target.log'.format(args.load_path)),
+                            logging.StreamHandler()])
+    main_test(
+      load_path=args.load_path, render=args.render, verbose=args.verbose)

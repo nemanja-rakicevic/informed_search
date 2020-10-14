@@ -64,18 +64,16 @@ def _load_args():
                         type=float,
                         help="Sigma coefficient of the kernel")
     # Utils
-    parser.add_argument('--show_plots', default=0,
-                        help="Define plots to show\n"
-                             "0: no plots\n"
-                             "1: model plots\n"
-                             "2: test plots\n"
-                             "3: both model and test plots\n")
+    parser.add_argument('--render', default=0,
+                        type=int,
+                        help="Show experiment animation")
     parser.add_argument('--verbose', default=0,
+                        type=int,
                         help="Define verbose level\n"
                              "0: basic info\n"
-                             "1: training detailed info\n"
-                             "2: test detailed info\n"
-                             "3: training and test detailed info\n")
+                             "1: training - trial info\n"
+                             "2: testing - parameter selection info\n"
+                             "3: training and testing detailed info\n")
     args = parser.parse_args()
     # Load default arguments from config file
     with open(args.config_file) as json_file:

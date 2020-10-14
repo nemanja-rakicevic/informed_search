@@ -29,7 +29,8 @@ from functools import partial
 import informed_search.utils.plotting as uplot
 import informed_search.models.kernels as kern
 
-from informed_search.utils.misc import _EPS, elementwise_sqdist, scaled_sqdist
+from informed_search.utils.misc import _EPS, _TAB
+from informed_search.utils.misc import elementwise_sqdist, scaled_sqdist
 
 
 logger = logging.getLogger(__name__)
@@ -41,19 +42,18 @@ class BaseModel(object):
     def __init__(self,
                  seed,
                  dirname,
+                 verbose,
                  parameter_list,
                  kernel_name,
                  kernel_lenscale,
                  kernel_sigma,
                  pidf_coeff,
-                 is_training=False,
-                 show_plots=False,
                  **kwargs):
         # Fix numpy seed
         np.random.seed(seed)
-        self.show_plots = show_plots
         # Generate experiment directory
         self.dirname = dirname
+        self.verbose = verbose
         # Initialise parameter space
         self.param_list = parameter_list
         self.param_space = np.array([xs for xs
@@ -104,7 +104,7 @@ class BaseModel(object):
         # self.Kss = self.kernel_fn(a=self.param_space, b=self.param_space)
         self.Kss_diag = kernel_sigma * np.ones(len(self.param_space))
 
-    def query_target(self, angle_s, dist_s, verbose=False):
+    def query_target(self, angle_s, dist_s):
         """Generate test parameter coordinates for given target polar coords."""
         thrsh = 0.1
         # Calculate model error for target point
@@ -134,27 +134,23 @@ class BaseModel(object):
                 break
             else:
                 # continue to the next smallest model error
-                if verbose:
-                    print("\n(Iteration: {}; search {}) "
-                          "--- BAD SAMPLE, resampling ..."
-                          "\n - PIDF: {:4.2}; UIDF: {:4.2}; SIDF: {:4.2};"
-                          "\n".format(
-                              cnt, src, pidf_value, uidf_value, sidf_value))
-        if verbose:
-            print("\n(Iteration: {})"
-                  "\n - PIDF: {:4.2}; UIDF: {:4.2}; SIDF: {:4.2};"
-                  "\n - Generated coords: {} -> parameters: {} "
-                  "\n - Model polar error: {:4.2f}"
-                  "\n --- |selected ({:4.2f}, {:4.2f}) - target ({}, {})| = "
-                  "error ({:4.2f}, {:4.2f})\n".format(
-                      cnt, pidf_value, uidf_value, sidf_value,
-                      selected_coord, selected_params, 
-                      best_fit[src - 1],
-                      selected_mu_alpha, selected_mu_L,
-                      angle_s, dist_s,
-                      error_angle, error_dist))
+                if self.verbose & 2:
+                    logger.info(
+                        "(Iteration: {}; search {}) "
+                        "--- BAD SAMPLE, resampling ..."
+                        "\n{} - PIDF: {:4.2f}; UIDF: {:4.2f}; SIDF: {:4.2f};"
+                        "\n{} - threshold: {}".format(
+                            cnt, src, _TAB, pidf_value, uidf_value, sidf_value,
+                            _TAB, thrsh))
+        if self.verbose & 2:
+            logger.info("(Iteration: {})"
+                "\n{} - PIDF: {:4.2f}; UIDF: {:4.2f}; SIDF: {:4.2f};"
+                "\n{} - Generated coords: {} -> parameters: {}".format(
+                    cnt, _TAB, pidf_value, uidf_value, sidf_value,
+                    _TAB, selected_coord, selected_params))
         # Return vector to execute as well as estimated model polar error
-        return selected_coord, selected_params, best_fit[src - 1], pidf_value
+        return selected_coord, selected_params, \
+            (selected_mu_alpha, selected_mu_L), best_fit[src - 1], pidf_value
 
     def generate_sample(self, info_list=None, **kwargs):
         """
@@ -230,7 +226,7 @@ class BaseModel(object):
 
     def load_model(self, loadpath):
         """Load model data from checkpoint."""
-        logger.info("Loading: ", loadpath)
+        logger.info("Loading: {}".format(loadpath))
         filename = os.path.join(self.dirname, "experiment_dataset.pkl")
         with open(filename, "rb") as f:
             self.model_list = pickle.load(f)
