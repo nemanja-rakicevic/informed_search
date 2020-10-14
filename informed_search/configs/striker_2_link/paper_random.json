@@ -9,6 +9,6 @@
     "resolution": 150,
     "search_algo": "random",
     "seed": 100,
-    "show_plots": 0,
+    "render": 0,
     "verbose": 0
 }
